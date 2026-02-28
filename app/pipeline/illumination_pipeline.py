@@ -22,7 +22,7 @@ class IlluminationPipeline:
     Pipeline simplificado para diagnóstico de iluminação
     """
     
-    def __init__(self, model_type: str = 'qwen', use_4bit: bool = True, device: str = 'cuda'):
+    def __init__(self, model_type: str = 'qwen', use_4bit: bool = True, device: str = 'cuda', enable_compile: bool = False):
         """
         Inicializa pipeline
         
@@ -30,10 +30,12 @@ class IlluminationPipeline:
             model_type: 'qwen' ou 'phi'
             use_4bit: Usar quantização 4-bit
             device: 'cuda', 'cpu', ou 'auto'
+            enable_compile: Usar torch.compile() para otimização (requer PyTorch 2.0+)
         """
         self.model_type = model_type
         self.use_4bit = use_4bit
         self.device = device
+        self.enable_compile = enable_compile
         
         # Carrega configurações
         config = Config()
@@ -58,7 +60,7 @@ class IlluminationPipeline:
             logger.info(f"Loading {self.model_type} model...")
             
             if self.model_type == 'qwen':
-                self.model = QwenARModel(use_4bit=self.use_4bit, device=self.device)
+                self.model = QwenARModel(use_4bit=self.use_4bit, device=self.device, enable_compile=self.enable_compile)
             elif self.model_type == 'phi':
                 self.model = PhiARModel(use_4bit=self.use_4bit, device=self.device)
             else:
@@ -225,4 +227,32 @@ class IlluminationPipeline:
                 results.append(result)
         
         logger.info(f"Completed batch diagnosis for {len(results)} scenes")
+        return results
+    
+    def diagnose_images_batch(self, image_paths: list) -> list:
+        """
+        Diagnostica múltiplas imagens a partir de caminhos de arquivo
+        Extrai métricas + diagnóstico em batch para máxima eficiência
+        
+        Args:
+            image_paths: Lista de caminhos de arquivos de imagens
+        
+        Returns:
+            Lista de diagnósticos completos
+        """
+        logger.info(f"Processing {len(image_paths)} images in batch...")
+        
+        # 1. Carrega imagens
+        images = []
+        for path in image_paths:
+            img = Image.open(path)
+            images.append(img)
+        
+        # 2. Extrai métricas em batch
+        metrics_list = self.extract_metrics_batch(images)
+        
+        # 3. Diagnostica em batch
+        results = self.diagnose_from_metrics_batch(metrics_list)
+        
+        logger.info(f"Completed batch processing for {len(results)} images")
         return results

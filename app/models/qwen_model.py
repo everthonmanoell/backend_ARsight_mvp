@@ -27,15 +27,18 @@ class QwenARModel(ARDiagnosticModel):
     
     MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
     
-    def __init__(self, use_4bit: bool = True, device: str = None):
+    def __init__(self, use_4bit: bool = True, device: str = None, enable_compile: bool = False):
         """
         Inicializa modelo Qwen
         
         Args:
             use_4bit: Usar quantização 4-bit (recomendado)
             device: 'cuda', 'cpu', ou 'auto' (auto-detecta se None)
+            enable_compile: Usar torch.compile() para aceleração (experimental)
         """
         super().__init__(use_4bit)
+        
+        self.enable_compile = enable_compile
         
         # Detecta dispositivo
         if device is None or device == 'auto':
@@ -88,6 +91,28 @@ class QwenARModel(ARDiagnosticModel):
                 )
                 logger.info(f"Model loaded on {self.device}")
             
+            # Otimização: torch.compile() para aceleração (PyTorch 2.0+)
+            if self.enable_compile and hasattr(torch, 'compile'):
+                try:
+                    logger.info("Compiling model with torch.compile()...")
+                    self.model = torch.compile(self.model, mode="reduce-overhead")
+                    logger.info("✅ Model compiled successfully")
+                except Exception as e:
+                    logger.warning(f"torch.compile() failed: {e}, continuing without compilation")
+            
+            # Otimização: BetterTransformer (integrado no transformers)
+            # Nota: NÃO é compatível com modelos quantizados (bitsandbytes 4-bit)
+            # Apenas tenta se NÃO estiver usando quantização 4-bit
+            if not self.use_4bit and not self.enable_compile:
+                try:
+                    logger.info("Applying BetterTransformer optimization...")
+                    self.model.to_bettertransformer()
+                    logger.info("✅ BetterTransformer enabled")
+                except AttributeError:
+                    logger.debug("BetterTransformer not available in this transformers version")
+                except Exception as e:
+                    logger.debug(f"BetterTransformer failed: {e}")
+            
             # Carrega tokenizer
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.MODEL_NAME,
@@ -113,7 +138,7 @@ class QwenARModel(ARDiagnosticModel):
             "You are an AR lighting specialist. Analyze the illumination conditions and explain "
             "how they affect AR tracking, object recognition, and user experience. "
             "Be specific about lighting quality factors like brightness, contrast, and uniformity. "
-            "Provide a complete, natural explanation in 2-3 sentences. Stay factual and technical."
+            "Keep your explanation under 50 words. Stay factual and technical."
         )
         
         # Extrai evidências
@@ -181,7 +206,8 @@ class QwenARModel(ARDiagnosticModel):
         logger.debug(f"Tokenização: {(t1-t0)*1000:.1f}ms")
         
         # Gera com parâmetros otimizados
-        with torch.no_grad():
+        # torch.inference_mode() é mais rápido que torch.no_grad()
+        with torch.inference_mode():
             t2 = time.time()
             outputs = self.model.generate(
                 **inputs,
@@ -252,7 +278,8 @@ class QwenARModel(ARDiagnosticModel):
         logger.debug(f"Batch tokenization: {(t1-t0)*1000:.1f}ms for {len(prompts)} prompts")
         
         # Geração em batch
-        with torch.no_grad():
+        # torch.inference_mode() é mais rápido que torch.no_grad()
+        with torch.inference_mode():
             t2 = time.time()
             outputs = self.model.generate(
                 **inputs,

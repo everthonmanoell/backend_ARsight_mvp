@@ -11,6 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config.config import Config
 from app.api.routes import router, set_pipeline
 from app.pipeline.illumination_pipeline import IlluminationPipeline
+import numpy as np
+from PIL import Image
+import time
 
 # Configure logging
 logging.basicConfig(
@@ -35,17 +38,43 @@ async def lifespan(app: FastAPI):
         model_type = config.get('models.default', 'qwen')
         use_4bit = config.get('models.use_4bit', True)
         device = config.get('models.device', 'cuda')
+        enable_compile = config.get('models.enable_compile', False)
+        warmup_on_startup = config.get('models.warmup_on_startup', True)
         
-        logger.info(f"Loading pipeline (model: {model_type}, 4-bit: {use_4bit}, device: {device})")
+        logger.info(f"Loading pipeline (model: {model_type}, 4-bit: {use_4bit}, device: {device}, compile: {enable_compile})")
+        
+        if enable_compile:
+            logger.warning("⚠️  torch.compile() ENABLED - Initial compilation will take 2-5 minutes...")
         
         pipeline = IlluminationPipeline(
             model_type=model_type,
             use_4bit=use_4bit,
-            device=device
+            device=device,
+            enable_compile=enable_compile
         )
         
+        # Warm-up: pré-carrega pesos e compila modelo
+        if warmup_on_startup:
+            logger.info("🔥 Starting warm-up (loading weights + compiling if enabled)...")
+            warmup_start = time.time()
+            
+            # Cria imagem dummy (256x256 RGB)
+            dummy_image = Image.fromarray(
+                np.random.randint(0, 256, (256, 256, 3), dtype=np.uint8)
+            )
+            
+            # Força carregamento e compilação
+            _ = pipeline.diagnose(dummy_image)
+            
+            warmup_time = time.time() - warmup_start
+            
+            if enable_compile:
+                logger.info(f"✅ Warm-up complete! Model compiled and ready (took {warmup_time:.1f}s)")
+            else:
+                logger.info(f"✅ Warm-up complete! Model loaded and ready (took {warmup_time:.1f}s)")
+        
         set_pipeline(pipeline)
-        logger.info("API started successfully!")
+        logger.info("🚀 API ready to accept requests!")
         
         yield
         
