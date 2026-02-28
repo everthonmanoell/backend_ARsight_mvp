@@ -153,3 +153,76 @@ class IlluminationPipeline:
         logger.info(f"Illumination: {metrics['illumination_label']} (score: {illumination_score:.3f})")
         
         return metrics
+    
+    def extract_metrics_batch(self, images: list) -> list:
+        """
+        Extrai métricas de múltiplas imagens em batch
+        
+        Args:
+            images: Lista de imagens PIL
+        
+        Returns:
+            Lista de dicionários com métricas
+        """
+        logger.info(f"Extracting metrics from {len(images)} images...")
+        
+        all_metrics = []
+        for idx, image in enumerate(images, 1):
+            logger.debug(f"  Processing image {idx}/{len(images)}")
+            metrics = self.extract_metrics(image)
+            all_metrics.append(metrics)
+        
+        logger.info(f"Extracted metrics from {len(all_metrics)} images")
+        return all_metrics
+    
+    def diagnose_from_metrics(self, metrics: Dict) -> Dict:
+        """
+        Diagnostica usando métricas pré-calculadas (sem processar imagem)
+        
+        Args:
+            metrics: Dicionário com métricas já extraídas
+        
+        Returns:
+            Diagnóstico completo
+        """
+        logger.info(f"Diagnosing from pre-calculated metrics: {metrics.get('illumination_label')}")
+        
+        # Carrega modelo se necessário
+        self._load_model()
+        
+        # Diagnóstico com SLM
+        result = self.model.diagnose(metrics)
+        
+        return result
+    
+    def diagnose_from_metrics_batch(self, metrics_list: list) -> list:
+        """
+        Diagnostica múltiplas cenas usando métricas pré-calculadas
+        Processa em batch para maior eficiência
+        
+        Args:
+            metrics_list: Lista de dicionários com métricas
+        
+        Returns:
+            Lista de diagnósticos
+        """
+        logger.info(f"Batch diagnosis for {len(metrics_list)} scenes...")
+        
+        # Carrega modelo se necessário
+        self._load_model()
+        
+        # Processa em batch (se modelo suportar)
+        if hasattr(self.model, 'diagnose_batch'):
+            logger.info("Using model batch processing")
+            results = self.model.diagnose_batch(metrics_list)
+        else:
+            # Fallback: processa sequencialmente
+            logger.info("Model doesn't support batch, processing sequentially")
+            results = []
+            for idx, metrics in enumerate(metrics_list, 1):
+                logger.debug(f"  Processing scene {idx}/{len(metrics_list)}")
+                result = self.model.diagnose(metrics)
+                results.append(result)
+        
+        logger.info(f"Completed batch diagnosis for {len(results)} scenes")
+        return results

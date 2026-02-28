@@ -144,13 +144,17 @@ class PhiARModel(ARDiagnosticModel):
         return prompt
     
     def _call_model(self, prompt: str) -> str:
-        """Gera explicação com Phi-3"""
+        """Gera explicação com Phi-3 (otimizado)"""
         inputs = self.tokenizer(
             prompt,
             return_tensors="pt",
             truncation=True,
             max_length=512
-        ).to(self.model.device)
+        )
+        
+        # Move para device do modelo
+        device = next(self.model.parameters()).device
+        inputs = {k: v.to(device) for k, v in inputs.items()}
         
         with torch.no_grad():
             outputs = self.model.generate(
@@ -159,17 +163,21 @@ class PhiARModel(ARDiagnosticModel):
                 temperature=self.temperature,
                 top_p=self.top_p,
                 do_sample=True if self.temperature > 0 else False,
-                repetition_penalty=1.05,
                 pad_token_id=self.tokenizer.pad_token_id,
                 eos_token_id=self.tokenizer.eos_token_id
             )
         
-        full_output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # Decodifica apenas novos tokens
+        input_length = inputs['input_ids'].shape[1]
+        generated_tokens = outputs[0][input_length:]
+        response = self.tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
         
-        # Extrai resposta após <|assistant|>
-        if "<|assistant|>" in full_output:
-            explanation = full_output.split("<|assistant|>")[-1].strip()
-        else:
-            explanation = full_output.split("\n\n")[-1].strip()
+        # Fallback se extração falhar
+        if not response or len(response) < 10:
+            full_output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            if "<|assistant|>" in full_output:
+                response = full_output.split("<|assistant|>")[-1].strip()
+            else:
+                response = full_output.replace(prompt, "").strip()
         
-        return explanation
+        return response

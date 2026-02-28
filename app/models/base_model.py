@@ -165,3 +165,65 @@ class ARDiagnosticModel(ABC):
             return self.templates.get_template_explanation(
                 status, risk_level, triggered_rules, metrics
             )
+    
+    def diagnose_batch(self, metrics_list: List[Dict]) -> List[Dict]:
+        """
+        Diagnostica múltiplas cenas em batch (mais eficiente que sequencial)
+        
+        Args:
+            metrics_list: Lista de dicionários com métricas
+        
+        Returns:
+            Lista de diagnósticos
+        """
+        logger.info(f"Batch diagnosis for {len(metrics_list)} scenes...")
+        
+        # Carrega modelo se necessário
+        if self.model is None:
+            logger.info("Loading model for first inference...")
+            self._load_model()
+        
+        results = []
+        
+        # Fase 1: Avaliação determinística (rápido)
+        evaluations = []
+        for metrics in metrics_list:
+            if not self.validator.validate_metrics(metrics):
+                raise ValueError("Invalid metrics format in batch")
+            
+            status, risk_level, triggered_rules = self.rule_engine.evaluate(metrics)
+            evaluations.append((metrics, status, risk_level, triggered_rules))
+        
+        # Fase 2: Geração de explicações (pode ser otimizado)
+        # Por enquanto processa sequencialmente, mas com modelo já carregado
+        for metrics, status, risk_level, triggered_rules in evaluations:
+            explanation = self._generate_explanation(
+                metrics, status, risk_level, triggered_rules
+            )
+            
+            if not self.validator.is_valid_explanation(explanation, metrics):
+                logger.debug("Explanation failed validation, using template")
+                explanation = self.templates.get_template_explanation(
+                    status, risk_level, triggered_rules, metrics
+                )
+            
+            explanation = self.validator.sanitize_explanation(explanation)
+            
+            result = {
+                'status': status,
+                'risk_level': risk_level,
+                'explanation': explanation,
+                'metrics': {
+                    'illumination': metrics.get('illumination'),
+                    'illumination_label': metrics.get('illumination_label'),
+                    'mean_brightness': metrics.get('mean_luma', 0) / 255.0
+                },
+                'triggered_rules': triggered_rules,
+                'recommendations': self.rule_engine.build_recommendations(triggered_rules, status)
+            }
+            
+            results.append(result)
+        
+        logger.info(f"Batch completed: {len(results)} diagnoses generated")
+        return results
+

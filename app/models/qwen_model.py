@@ -162,7 +162,7 @@ class QwenARModel(ARDiagnosticModel):
         return prompt
     
     def _call_model(self, prompt: str) -> str:
-        """Gera explicação com Qwen"""
+        """Gera explicação com Qwen (otimizado)"""
         import time
         
         # Tokeniza
@@ -172,11 +172,15 @@ class QwenARModel(ARDiagnosticModel):
             return_tensors="pt",
             truncation=True,
             max_length=512
-        ).to(self.model.device)
+        )
+        
+        # Move para device do modelo
+        device = next(self.model.parameters()).device
+        inputs = {k: v.to(device) for k, v in inputs.items()}
         t1 = time.time()
         logger.debug(f"Tokenização: {(t1-t0)*1000:.1f}ms")
         
-        # Gera com parâmetros otimizados para velocidade
+        # Gera com parâmetros otimizados
         with torch.no_grad():
             t2 = time.time()
             outputs = self.model.generate(
@@ -185,33 +189,29 @@ class QwenARModel(ARDiagnosticModel):
                 temperature=self.temperature,
                 top_p=self.top_p,
                 do_sample=True if self.temperature > 0 else False,
-                repetition_penalty=1.05,
                 pad_token_id=self.tokenizer.pad_token_id,
                 eos_token_id=self.tokenizer.eos_token_id
             )
             t3 = time.time()
             num_tokens = outputs[0].shape[0] - inputs['input_ids'].shape[1]
-            logger.info(f"Geração LLM: {(t3-t2):.2f}s ({num_tokens} tokens gerados)")
+            logger.info(f"Geração LLM: {(t3-t2):.2f}s ({num_tokens} tokens)")
         
-        # Decodifica
+        # Decodifica APENAS os tokens novos (otimização crítica)
         t4 = time.time()
-        full_output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        input_length = inputs['input_ids'].shape[1]
+        generated_tokens = outputs[0][input_length:]
+        response = self.tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
         t5 = time.time()
         logger.debug(f"Decodificação: {(t5-t4)*1000:.1f}ms")
         
-        # Extrai apenas a resposta
-        if "<|im_start|>assistant" in full_output:
-            explanation = full_output.split("<|im_start|>assistant")[-1].strip()
-        elif "assistant" in full_output:
-            explanation = full_output.split("assistant")[-1].strip()
-        else:
-            if "one paragraph:" in full_output:
-                explanation = full_output.split("one paragraph:")[-1].strip()
+        # Fallback se extração falhar
+        if not response or len(response) < 10:
+            full_output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            if "<|im_start|>assistant" in full_output:
+                response = full_output.split("<|im_start|>assistant")[-1].strip()
+                if "<|im_end|>" in response:
+                    response = response.split("<|im_end|>")[0].strip()
             else:
-                parts = full_output.split("\n\n")
-                explanation = parts[-1].strip() if len(parts) > 1 else full_output
+                response = full_output.replace(prompt, "").strip()
         
-        # Remove marcadores residuais
-        explanation = explanation.replace("<|im_end|>", "").strip()
-        
-        return explanation
+        return response
