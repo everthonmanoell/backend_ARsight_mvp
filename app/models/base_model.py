@@ -168,7 +168,8 @@ class ARDiagnosticModel(ABC):
     
     def diagnose_batch(self, metrics_list: List[Dict]) -> List[Dict]:
         """
-        Diagnostica múltiplas cenas em batch (mais eficiente que sequencial)
+        Diagnostica múltiplas cenas em batch (TRUE BATCH INFERENCE)
+        Processa múltiplos prompts em um único forward pass
         
         Args:
             metrics_list: Lista de dicionários com métricas
@@ -176,14 +177,12 @@ class ARDiagnosticModel(ABC):
         Returns:
             Lista de diagnósticos
         """
-        logger.info(f"Batch diagnosis for {len(metrics_list)} scenes...")
+        logger.info(f"True batch inference for {len(metrics_list)} scenes...")
         
         # Carrega modelo se necessário
         if self.model is None:
             logger.info("Loading model for first inference...")
             self._load_model()
-        
-        results = []
         
         # Fase 1: Avaliação determinística (rápido)
         evaluations = []
@@ -194,15 +193,34 @@ class ARDiagnosticModel(ABC):
             status, risk_level, triggered_rules = self.rule_engine.evaluate(metrics)
             evaluations.append((metrics, status, risk_level, triggered_rules))
         
-        # Fase 2: Geração de explicações (pode ser otimizado)
-        # Por enquanto processa sequencialmente, mas com modelo já carregado
+        # Fase 2: Construção de prompts
+        prompts = []
         for metrics, status, risk_level, triggered_rules in evaluations:
-            explanation = self._generate_explanation(
-                metrics, status, risk_level, triggered_rules
-            )
+            prompt = self._build_prompt(metrics, status, risk_level, triggered_rules)
+            prompts.append(prompt)
+        
+        # Fase 3: Batch inference (TRUE BATCH - todos os prompts em um forward pass)
+        logger.info(f"Generating {len(prompts)} explanations in batch...")
+        try:
+            explanations = self._call_model_batch(prompts)
+        except Exception as e:
+            logger.warning(f"Batch generation failed: {e}, falling back to sequential")
+            # Fallback para processamento sequencial
+            explanations = []
+            for prompt in prompts:
+                try:
+                    expl = self._call_model(prompt)
+                    explanations.append(expl)
+                except Exception as e2:
+                    logger.error(f"Sequential generation also failed: {e2}")
+                    explanations.append("")
+        
+        # Fase 4: Validação e montagem de resultados
+        results = []
+        for (metrics, status, risk_level, triggered_rules), explanation in zip(evaluations, explanations):
             
             if not self.validator.is_valid_explanation(explanation, metrics):
-                logger.debug("Explanation failed validation, using template")
+                logger.debug(f"Explanation failed validation, using template")
                 explanation = self.templates.get_template_explanation(
                     status, risk_level, triggered_rules, metrics
                 )
@@ -226,4 +244,19 @@ class ARDiagnosticModel(ABC):
         
         logger.info(f"Batch completed: {len(results)} diagnoses generated")
         return results
+    
+    def _call_model_batch(self, prompts: List[str]) -> List[str]:
+        """
+        Processa múltiplos prompts em um único forward pass (TRUE BATCH)
+        Deve ser implementado pelos modelos específicos
+        
+        Args:
+            prompts: Lista de prompts
+        
+        Returns:
+            Lista de explicações geradas
+        """
+        # Fallback padrão: processa sequencialmente
+        logger.warning("Model doesn't implement _call_model_batch, using sequential processing")
+        return [self._call_model(prompt) for prompt in prompts]
 

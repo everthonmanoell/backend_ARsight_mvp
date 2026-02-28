@@ -215,3 +215,81 @@ class QwenARModel(ARDiagnosticModel):
                 response = full_output.replace(prompt, "").strip()
         
         return response
+    
+    def _call_model_batch(self, prompts: List[str]) -> List[str]:
+        """
+        Processa múltiplos prompts em batch (TRUE BATCH INFERENCE)
+        Múltiplos forward passes em paralelo
+        
+        Args:
+            prompts: Lista de prompts
+        
+        Returns:
+            Lista de explicações geradas
+        """
+        import time
+        
+        if not prompts:
+            return []
+        
+        logger.info(f"Batch processing {len(prompts)} prompts...")
+        
+        # Tokeniza todos os prompts com padding
+        t0 = time.time()
+        inputs = self.tokenizer(
+            prompts,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
+            padding=True,  # Padding para alinhar tamanhos
+            return_attention_mask=True
+        )
+        
+        # Move para device do modelo
+        device = next(self.model.parameters()).device
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+        t1 = time.time()
+        logger.debug(f"Batch tokenization: {(t1-t0)*1000:.1f}ms for {len(prompts)} prompts")
+        
+        # Geração em batch
+        with torch.no_grad():
+            t2 = time.time()
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=self.max_tokens,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                do_sample=True if self.temperature > 0 else False,
+                pad_token_id=self.tokenizer.pad_token_id,
+                eos_token_id=self.tokenizer.eos_token_id
+            )
+            t3 = time.time()
+            total_tokens = sum(len(outputs[i]) - len(inputs['input_ids'][i]) for i in range(len(prompts)))
+            avg_tokens = total_tokens / len(prompts)
+            logger.info(f"Batch generation: {(t3-t2):.2f}s ({len(prompts)} prompts, avg {avg_tokens:.0f} tokens, {(t3-t2)/len(prompts):.2f}s/prompt)")
+        
+        # Decodifica cada resposta
+        t4 = time.time()
+        responses = []
+        for i, (output, input_ids) in enumerate(zip(outputs, inputs['input_ids'])):
+            # Decodifica apenas os tokens novos
+            input_length = len(input_ids)
+            generated_tokens = output[input_length:]
+            response = self.tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
+            
+            # Fallback se extração falhar
+            if not response or len(response) < 10:
+                full_output = self.tokenizer.decode(output, skip_special_tokens=True)
+                if "<|im_start|>assistant" in full_output:
+                    response = full_output.split("<|im_start|>assistant")[-1].strip()
+                    if "<|im_end|>" in response:
+                        response = response.split("<|im_end|>")[0].strip()
+                else:
+                    response = full_output.strip()
+            
+            responses.append(response)
+        
+        t5 = time.time()
+        logger.debug(f"Batch decoding: {(t5-t4)*1000:.1f}ms")
+        
+        return responses

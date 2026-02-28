@@ -181,3 +181,64 @@ class PhiARModel(ARDiagnosticModel):
                 response = full_output.replace(prompt, "").strip()
         
         return response
+    
+    def _call_model_batch(self, prompts: List[str]) -> List[str]:
+        """
+        Processa múltiplos prompts em batch (TRUE BATCH INFERENCE)
+        
+        Args:
+            prompts: Lista de prompts
+        
+        Returns:
+            Lista de explicações geradas
+        """
+        if not prompts:
+            return []
+        
+        logger.info(f"Phi-3 batch processing {len(prompts)} prompts...")
+        
+        # Tokeniza todos os prompts com padding
+        inputs = self.tokenizer(
+            prompts,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
+            padding=True,
+            return_attention_mask=True
+        )
+        
+        # Move para device do modelo
+        device = next(self.model.parameters()).device
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+        
+        # Geração em batch
+        with torch.no_grad():
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=self.max_tokens,
+                temperature=self.temperature,
+                top_p=self.top_p,
+                do_sample=True if self.temperature > 0 else False,
+                pad_token_id=self.tokenizer.pad_token_id,
+                eos_token_id=self.tokenizer.eos_token_id
+            )
+        
+        # Decodifica cada resposta
+        responses = []
+        for i, (output, input_ids) in enumerate(zip(outputs, inputs['input_ids'])):
+            input_length = len(input_ids)
+            generated_tokens = output[input_length:]
+            response = self.tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
+            
+            # Fallback
+            if not response or len(response) < 10:
+                full_output = self.tokenizer.decode(output, skip_special_tokens=True)
+                if "<|assistant|>" in full_output:
+                    response = full_output.split("<|assistant|>")[-1].strip()
+                else:
+                    response = full_output.strip()
+            
+            responses.append(response)
+        
+        logger.info(f"Phi-3 batch completed: {len(responses)} responses")
+        return responses
