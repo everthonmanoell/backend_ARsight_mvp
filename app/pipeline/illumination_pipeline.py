@@ -114,3 +114,42 @@ class IlluminationPipeline:
         result['illumination_details'] = illumination_details
         
         return result
+    
+    def extract_metrics(self, image: Image.Image) -> Dict:
+        """
+        Extrai apenas métricas de iluminação (sem LLM)
+        
+        Args:
+            image: Imagem PIL
+        
+        Returns:
+            Dicionário com métricas
+        """
+        # Converte PIL para OpenCV
+        image_np = np.array(image)
+        if len(image_np.shape) == 2:  # Grayscale
+            image_np = cv2.cvtColor(image_np, cv2.COLOR_GRAY2BGR)
+        elif image_np.shape[2] == 4:  # RGBA
+            image_np = cv2.cvtColor(image_np, cv2.COLOR_RGBA2BGR)
+        else:  # RGB
+            image_np = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+        
+        logger.info("Extracting illumination metrics (no LLM)...")
+        
+        # Analisa iluminação
+        illumination_score, illumination_details = self.illumination_analyzer.analyze(image_np)
+        
+        # Retorna métricas
+        metrics = {
+            'illumination': illumination_score,
+            'illumination_label': illumination_details.get('label', 'unknown'),
+            'mean_luma': illumination_details.get('mean_luma', 0.0),
+            'std_luma': illumination_details.get('std_luma', 0.0),
+            'uniformity': illumination_details.get('uniformity', 0.0),
+            'pct_clipped_dark': illumination_details.get('pct_clipped_dark', 0.0),
+            'pct_clipped_bright': illumination_details.get('pct_clipped_bright', 0.0)
+        }
+        
+        logger.info(f"Illumination: {metrics['illumination_label']} (score: {illumination_score:.3f})")
+        
+        return metrics

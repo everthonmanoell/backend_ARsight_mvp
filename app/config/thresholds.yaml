@@ -8,24 +8,20 @@ models:
   
   qwen:
     name: Qwen/Qwen2.5-0.5B-Instruct
-    max_tokens: 100
-    temperature: 0.3  # Baixo para reduzir alucinações
-    top_p: 0.85
+    max_tokens: 80    # 2-3 sentenças curtas
+    temperature: 0.0  # Greedy decoding (rápido)
+    top_p: 0.9
   
   phi:
     name: microsoft/Phi-3-mini-4k-instruct
-    max_tokens: 120
-    temperature: 0.4
-    top_p: 0.85
+    max_tokens: 80
+    temperature: 0.0
+    top_p: 0.9
 
-# Rule engine thresholds (illumination only)
-rule_engine:
-  illumination:
-    underexposed_threshold: 0.35  # Abaixo disso = underexposed
-    overexposed_threshold: 0.75   # Acima disso = overexposed
-    min_brightness: 0.2           # Mínimo absoluto
-    max_brightness: 0.9           # Máximo aceitável
-    clipping_threshold: 0.15      # % de pixels clipped
+# Rule engine configuration
+# A classificação de iluminação é feita pelo IlluminationAnalyzer (pdi.illumination)
+# que considera clipping, luminância média e score de forma integrada
+rule_engine: {}
 
 # PDI analysis parameters
 pdi:
@@ -35,6 +31,14 @@ pdi:
     analyze_clipping: true
     clipping_low: 10             # Threshold para shadow clipping
     clipping_high: 245           # Threshold para highlight clipping
+    
+    # Classification thresholds
+    clipped_bright_overexposed: 0.10    # % de pixels clipped bright para classificar como overexposed
+    clipped_dark_underexposed: 0.10     # % de pixels clipped dark para classificar como underexposed
+    mean_underexposed: 70               # Luminância média abaixo desse valor é underexposed
+    mean_overexposed: 185               # Luminância média acima desse valor é overexposed
+    good: 0.7                           # Score >= 0.7 é "adequate"
+    min_acceptable: 0.5                 # Score >= 0.5 é "acceptable"
 
 # API Configuration
 api:

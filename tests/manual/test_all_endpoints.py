@@ -29,7 +29,7 @@ def test_extract_metrics():
     print("2. EXTRACT METRICS ONLY (No LLM - Fast)")
     print("=" * 80)
     
-    image_path = "data/illumination/adequate/normal_image1.jpg"
+    image_path = "data/illumination/normal/normal_image1.jpg"
     
     if not Path(image_path).exists():
         print(f"❌ Image not found: {image_path}")
@@ -60,7 +60,7 @@ def test_diagnose():
     print("3. FULL DIAGNOSIS (With LLM - Slow)")
     print("=" * 80)
     
-    image_path = "data/illumination/underexposed/dark_image1.jpg"
+    image_path = "data/illumination/dark_underexposed/dark_image1.jpg"
     
     if not Path(image_path).exists():
         print(f"❌ Image not found: {image_path}")
@@ -93,7 +93,7 @@ def test_upload():
     print("4. UPLOAD IMAGE (Save to disk)")
     print("=" * 80)
     
-    image_path = "data/illumination/overexposed/bright_image1.jpg"
+    image_path = "data/illumination/bright_overexposed/bright_image1.jpg"
     
     if not Path(image_path).exists():
         print(f"❌ Image not found: {image_path}")
@@ -125,9 +125,9 @@ def test_batch_diagnose():
     print("=" * 80)
     
     image_paths = [
-        "data/illumination/underexposed/dark_image1.jpg",
-        "data/illumination/adequate/normal_image1.jpg",
-        "data/illumination/overexposed/bright_image1.jpg"
+        "data/illumination/dark_underexposed/dark_image1.jpg",
+        "data/illumination/normal/normal_image1.jpg",
+        "data/illumination/bright_overexposed/bright_image1.jpg"
     ]
     
     # Filtra apenas imagens que existem
@@ -176,8 +176,8 @@ def test_batch_upload():
     print("=" * 80)
     
     image_paths = [
-        "data/illumination/adequate/normal_image1.jpg",
-        "data/illumination/adequate/normal_image2.jpg"
+        "data/illumination/normal/normal_image1.jpg",
+        "data/illumination/normal/normal_image2.jpg"
     ]
     
     # Filtra apenas imagens que existem

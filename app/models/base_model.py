@@ -122,12 +122,9 @@ class ARDiagnosticModel(ABC):
                 'illumination_label': metrics.get('illumination_label'),
                 'mean_brightness': metrics.get('mean_luma', 0) / 255.0  # Normaliza para 0-1
             },
-            'triggered_rules': triggered_rules
+            'triggered_rules': triggered_rules,
+            'recommendations': self.rule_engine.build_recommendations(triggered_rules, status)
         }
-        
-        # Adiciona recomendações se FAIL
-        if status == 'fail':
-            result['recommendations'] = self.rule_engine.build_recommendations(triggered_rules)
         
         return result
     

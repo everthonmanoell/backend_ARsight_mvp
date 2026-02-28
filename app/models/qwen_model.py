@@ -108,33 +108,42 @@ class QwenARModel(ARDiagnosticModel):
                      triggered_rules: List[str]) -> str:
         """Constrói prompt para Qwen (ChatML format)"""
         
-        # System prompt - restritivo para reduzir alucinações
+        # System prompt - específico sobre iluminação
         system_msg = (
-            "You are an AR diagnostic expert. Analyze ONLY the provided illumination metric. "
-            "Provide a factual, technical explanation based strictly on the data shown. "
-            "Use one concise paragraph. Do NOT invent information."
+            "You are an AR lighting specialist. Analyze the illumination conditions and explain "
+            "how they affect AR tracking, object recognition, and user experience. "
+            "Be specific about lighting quality factors like brightness, contrast, and uniformity. "
+            "Provide a complete, natural explanation in 2-3 sentences. Stay factual and technical."
         )
         
         # Extrai evidências
         illumination_label = metrics.get('illumination_label', 'unknown')
         illumination_score = metrics.get('illumination', 0.0)
+        mean_luma = metrics.get('mean_luma', 0.0)
+        uniformity = metrics.get('uniformity', 0.0)
         
         # User prompt
         if status == 'pass':
             user_msg = (
-                f"Scene Analysis:\n"
-                f"- Illumination: {illumination_label} (score: {illumination_score:.2f})\n"
-                f"Status: PASS (good conditions)\n\n"
-                f"Explain why this scene is suitable for AR in one paragraph:"
+                f"Lighting Analysis:\n"
+                f"- Quality: {illumination_label.upper()}\n"
+                f"- Illumination Score: {illumination_score:.2f}\n"
+                f"- Mean Brightness: {mean_luma:.1f}/255\n"
+                f"- Uniformity: {uniformity:.2f}\n"
+                f"Status: PASS\n\n"
+                f"Explain why these lighting conditions are optimal for AR applications:"
             )
         else:
             rules_text = '; '.join(triggered_rules)
             user_msg = (
-                f"Scene Analysis:\n"
-                f"- Illumination: {illumination_label} (score: {illumination_score:.2f})\n"
+                f"Lighting Analysis:\n"
+                f"- Quality: {illumination_label.upper()}\n"
+                f"- Illumination Score: {illumination_score:.2f}\n"
+                f"- Mean Brightness: {mean_luma:.1f}/255\n"
+                f"- Uniformity: {uniformity:.2f}\n"
                 f"Status: FAIL\n"
-                f"Issues: {rules_text}\n\n"
-                f"Explain the critical problems affecting AR performance in one paragraph:"
+                f"Problems Detected: {rules_text}\n\n"
+                f"Explain how these lighting issues specifically impact AR tracking accuracy and visual quality:"
             )
         
         # Formato ChatML para Qwen
@@ -154,31 +163,41 @@ class QwenARModel(ARDiagnosticModel):
     
     def _call_model(self, prompt: str) -> str:
         """Gera explicação com Qwen"""
+        import time
         
         # Tokeniza
+        t0 = time.time()
         inputs = self.tokenizer(
             prompt,
             return_tensors="pt",
             truncation=True,
             max_length=512
         ).to(self.model.device)
+        t1 = time.time()
+        logger.debug(f"Tokenização: {(t1-t0)*1000:.1f}ms")
         
-        # Gera com parâmetros anti-alucinação
+        # Gera com parâmetros otimizados para velocidade
         with torch.no_grad():
+            t2 = time.time()
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=self.max_tokens,
                 temperature=self.temperature,
                 top_p=self.top_p,
                 do_sample=True if self.temperature > 0 else False,
-                repetition_penalty=1.1,  # Evita loops
-                no_repeat_ngram_size=3,  # Evita repetições
+                repetition_penalty=1.05,
                 pad_token_id=self.tokenizer.pad_token_id,
                 eos_token_id=self.tokenizer.eos_token_id
             )
+            t3 = time.time()
+            num_tokens = outputs[0].shape[0] - inputs['input_ids'].shape[1]
+            logger.info(f"Geração LLM: {(t3-t2):.2f}s ({num_tokens} tokens gerados)")
         
         # Decodifica
+        t4 = time.time()
         full_output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        t5 = time.time()
+        logger.debug(f"Decodificação: {(t5-t4)*1000:.1f}ms")
         
         # Extrai apenas a resposta
         if "<|im_start|>assistant" in full_output:

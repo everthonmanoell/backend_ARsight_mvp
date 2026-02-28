@@ -44,28 +44,28 @@ Saída esperada:
 ```
 
 ### 2. Extrair Apenas Métricas (rápido, sem LLM)
-```bash
-curl.exe -X POST http://localhost:8000/metrics ^
+```powershell
+curl.exe -X POST http://localhost:8000/metrics `
   -F "file=@data/illumination/adequate/normal_image1.jpg"
 ```
 
 ### 3. Diagnóstico de Imagem Única (com LLM)
-```bash
-curl.exe -X POST http://localhost:8000/diagnose ^
+```powershell
+curl.exe -X POST http://localhost:8000/diagnose `
   -F "file=@data/illumination/underexposed/dark_image1.jpg"
 ```
 
 ### 4. Fazer Upload e Salvar Imagem
-```bash
-curl.exe -X POST http://localhost:8000/upload ^
+```powershell
+curl.exe -X POST http://localhost:8000/upload `
   -F "file=@data/illumination/adequate/normal_image1.jpg"
 ```
 
 ### 5. Diagnóstico em Lote
-```bash
-curl.exe -X POST http://localhost:8000/diagnose/batch ^
-  -F "files=@data/illumination/underexposed/dark_image1.jpg" ^
-  -F "files=@data/illumination/adequate/normal_image1.jpg" ^
+```powershell
+curl.exe -X POST http://localhost:8000/diagnose/batch `
+  -F "files=@data/illumination/underexposed/dark_image1.jpg" `
+  -F "files=@data/illumination/adequate/normal_image1.jpg" `
   -F "files=@data/illumination/overexposed/bright_image1.jpg"
 ```
 

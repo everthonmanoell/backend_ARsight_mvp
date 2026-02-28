@@ -103,27 +103,39 @@ class PhiARModel(ARDiagnosticModel):
         """Constrói prompt para Phi-3"""
         
         system_msg = (
-            "You are an AR diagnostic expert. Analyze ONLY the provided illumination metric. "
-            "Provide a factual, technical explanation. Use one concise paragraph."
+            "You are an AR lighting specialist. Analyze the illumination conditions and explain "
+            "how they affect AR tracking, object recognition, and user experience. "
+            "Be specific about lighting quality factors like brightness, contrast, and uniformity. "
+            "Provide a complete, natural explanation in 2-3 sentences. Stay factual and technical."
         )
         
         # Extrai evidências
         illumination_label = metrics.get('illumination_label', 'unknown')
         illumination_score = metrics.get('illumination', 0.0)
+        mean_luma = metrics.get('mean_luma', 0.0)
+        uniformity = metrics.get('uniformity', 0.0)
         
         if status == 'pass':
             user_msg = (
-                f"Analyze this AR scene (PASS status):\n"
-                f"Illumination: {illumination_label} (score: {illumination_score:.2f})\n\n"
-                f"Explain in one paragraph why conditions are favorable for AR:"
+                f"Lighting Analysis:\n"
+                f"- Quality: {illumination_label.upper()}\n"
+                f"- Illumination Score: {illumination_score:.2f}\n"
+                f"- Mean Brightness: {mean_luma:.1f}/255\n"
+                f"- Uniformity: {uniformity:.2f}\n"
+                f"Status: PASS\n\n"
+                f"Explain why these lighting conditions are optimal for AR applications:"
             )
         else:
             rules_text = '; '.join(triggered_rules)
             user_msg = (
-                f"Analyze this AR scene (FAIL status):\n"
-                f"Illumination: {illumination_label} (score: {illumination_score:.2f})\n"
-                f"Critical issues: {rules_text}\n\n"
-                f"Explain in one paragraph the problems affecting AR performance:"
+                f"Lighting Analysis:\n"
+                f"- Quality: {illumination_label.upper()}\n"
+                f"- Illumination Score: {illumination_score:.2f}\n"
+                f"- Mean Brightness: {mean_luma:.1f}/255\n"
+                f"- Uniformity: {uniformity:.2f}\n"
+                f"Status: FAIL\n"
+                f"Problems Detected: {rules_text}\n\n"
+                f"Explain how these lighting issues specifically impact AR tracking accuracy and visual quality:"
             )
         
         # Phi-3 usa formato específico
@@ -147,8 +159,7 @@ class PhiARModel(ARDiagnosticModel):
                 temperature=self.temperature,
                 top_p=self.top_p,
                 do_sample=True if self.temperature > 0 else False,
-                repetition_penalty=1.1,
-                no_repeat_ngram_size=3,
+                repetition_penalty=1.05,
                 pad_token_id=self.tokenizer.pad_token_id,
                 eos_token_id=self.tokenizer.eos_token_id
             )
