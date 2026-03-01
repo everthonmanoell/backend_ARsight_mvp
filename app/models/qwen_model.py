@@ -116,7 +116,8 @@ class QwenARModel(ARDiagnosticModel):
             # Carrega tokenizer
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.MODEL_NAME,
-                trust_remote_code=True
+                trust_remote_code=True,
+                padding_side='left'  # Requerido para decoder-only em batch
             )
             
             # Configura pad token
@@ -186,6 +187,49 @@ class QwenARModel(ARDiagnosticModel):
         
         return prompt
     
+    def _build_summary_prompt(self, agg: Dict) -> str:
+        """Constrói prompt de sumarização do ambiente (ChatML format)"""
+        total          = agg['total']
+        problem_count  = agg['problem_count']
+        dominant_label = agg['dominant_label']
+        overall_risk   = agg['overall_risk']
+        avg_luma       = agg['avg_mean_luma']
+        avg_uniformity = agg['avg_uniformity']
+        avg_clip_bright = agg['avg_pct_clipped_bright']
+        avg_clip_dark   = agg['avg_pct_clipped_dark']
+
+        system_msg = (
+            "You are an AR lighting specialist. Given aggregated illumination data from multiple "
+            "frames of the same environment, provide a consolidated assessment. Explain the overall "
+            "lighting conditions and their impact on AR tracking. Keep the assessment under 60 words. "
+            "Stay factual and technical."
+        )
+
+        status_text = "FAIL" if problem_count > 0 else "PASS"
+        user_msg = (
+            f"Environment Assessment ({problem_count}/{total} frames problematic):\n"
+            f"- Dominant lighting condition: {dominant_label.upper()}\n"
+            f"- Overall risk: {overall_risk.upper()}\n"
+            f"- Average brightness: {avg_luma:.1f}/255\n"
+            f"- Average uniformity: {avg_uniformity:.2f}\n"
+            f"- Average bright clipping: {avg_clip_bright:.1%}\n"
+            f"- Average dark clipping: {avg_clip_dark:.1%}\n"
+            f"Status: {status_text}\n\n"
+            f"Provide a consolidated assessment of this environment for AR use and key recommendations:"
+        )
+
+        messages = [
+            {"role": "system", "content": system_msg},
+            {"role": "user",   "content": user_msg}
+        ]
+
+        prompt = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+        return prompt
+
     def _call_model(self, prompt: str) -> str:
         """Gera explicação com Qwen (otimizado)"""
         import time

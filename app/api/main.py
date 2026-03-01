@@ -53,23 +53,28 @@ async def lifespan(app: FastAPI):
             enable_compile=enable_compile
         )
         
-        # Warm-up: pré-carrega pesos e compila modelo
+        # Warm-up: pré-carrega pesos e estabiliza torch.compile() JIT
         if warmup_on_startup:
-            logger.info("🔥 Starting warm-up (loading weights + compiling if enabled)...")
+            # torch.compile recompila nas primeiras N chamadas (tracing JIT);
+            # 3 runs com brightness variado garantem que o modelo está estável
+            # antes de aceitar requests reais.
+            warmup_runs = 3 if enable_compile else 1
+            logger.info(f"🔥 Starting warm-up ({warmup_runs} run(s), compile={enable_compile})...")
             warmup_start = time.time()
-            
-            # Cria imagem dummy (256x256 RGB)
-            dummy_image = Image.fromarray(
-                np.random.randint(0, 256, (256, 256, 3), dtype=np.uint8)
-            )
-            
-            # Força carregamento e compilação
-            _ = pipeline.diagnose(dummy_image)
-            
+
+            brightness_levels = [80, 128, 200]  # escuro / normal / claro
+            for i in range(warmup_runs):
+                dummy_image = Image.fromarray(
+                    np.full((256, 256, 3), brightness_levels[i % len(brightness_levels)], dtype=np.uint8)
+                )
+                t0 = time.time()
+                _ = pipeline.diagnose(dummy_image)
+                logger.info(f"   Warmup #{i+1}/{warmup_runs}: {time.time()-t0:.2f}s")
+
             warmup_time = time.time() - warmup_start
-            
+
             if enable_compile:
-                logger.info(f"✅ Warm-up complete! Model compiled and ready (took {warmup_time:.1f}s)")
+                logger.info(f"✅ Warm-up complete! Model compiled and stable (took {warmup_time:.1f}s)")
             else:
                 logger.info(f"✅ Warm-up complete! Model loaded and ready (took {warmup_time:.1f}s)")
         

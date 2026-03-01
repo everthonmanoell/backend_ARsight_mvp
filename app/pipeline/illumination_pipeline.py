@@ -228,6 +228,22 @@ class IlluminationPipeline:
         
         logger.info(f"Completed batch diagnosis for {len(results)} scenes")
         return results
+
+    def diagnose_from_metrics_batch_with_summary(self, metrics_list: list):
+        """
+        Diagnostica N cenas + gera summary do ambiente num unico batch LLM (N+1 prompts).
+
+        Args:
+            metrics_list: Lista de dicionários com métricas PDI
+
+        Returns:
+            tuple (individual_results: List[Dict], summary: Dict)
+        """
+        logger.info(f"Batch+summary diagnosis for {len(metrics_list)} scenes...")
+        self._load_model()
+        results, summary = self.model.diagnose_batch_with_summary(metrics_list)
+        logger.info("Batch+summary completed")
+        return results, summary
     
     def diagnose_images_batch(self, image_paths: list) -> list:
         """

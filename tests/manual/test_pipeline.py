@@ -1,292 +1,266 @@
 """
-Teste Manual do Pipeline Completo
-Gera JSON dos resultados simulando resposta para frontend
-Uso: python tests/manual/test_pipeline.py
+Teste Manual do Pipeline Completo - True Batch (10 imagens) + Summary
+Simula o fluxo real: celular envia 10 frames -> servidor diagnostica em batch -> retorna JSON
+
+Uso:
+    python tests/manual/test_pipeline.py
 """
 import cv2
 import json
+import sys
 import time
-from pathlib import Path
 from datetime import datetime
-from PIL import Image
-from app.pipeline.illumination_pipeline import IlluminationPipeline
-from app.config.config import Config
+from pathlib import Path
 
-def process_image(pipeline, image_path: Path, expected_label: str = None):
-    """
-    Processa uma imagem e retorna resultado completo
-    
-    Args:
-        pipeline: Pipeline inicializado
-        image_path: Caminho da imagem
-        expected_label: Label esperado (para validação)
-    
-    Returns:
-        dict: Resultado completo com métricas e tempos
-    """
-    # Carrega imagem com OpenCV (BGR)
-    image_cv = cv2.imread(str(image_path))
-    if image_cv is None:
-        return {
-            'filename': image_path.name,
-            'error': 'Failed to load image',
-            'status': 'error'
-        }
-    
-    # Converte BGR para RGB e depois para PIL Image
-    # Pipeline.diagnose() espera PIL Image RGB
-    image_rgb = cv2.cvtColor(image_cv, cv2.COLOR_BGR2RGB)
-    image = Image.fromarray(image_rgb)
-    
-    # Processa com timing
-    start_time = time.time()
-    
-    try:
-        # Diagnóstico completo (com LLM)
-        result = pipeline.diagnose(image)
-        
-        processing_time = time.time() - start_time
-        
-        # Monta resposta no formato frontend
-        response = {
-            'filename': image_path.name,
-            'timestamp': datetime.now().isoformat(),
-            'processing_time_seconds': round(processing_time, 3),
-            
-            # Status e Risco
-            'status': result['status'],
-            'risk_level': result['risk_level'],
-            
-            # Métricas de Iluminação
-            'metrics': {
-                'illumination': {
-                    'score': round(result['metrics']['illumination'], 3),
-                    'label': result['metrics']['illumination_label'],
-                    'mean_brightness': round(result['metrics']['mean_brightness'], 3),
-                },
-                'details': result.get('illumination_details', {})
-            },
-            
-            # Explicação do LLM
-            'explanation': result['explanation'],
-            
-            # Recomendações
-            'recommendations': result.get('recommendations', []),
-            
-            # Regras acionadas
-            'triggered_rules': result.get('triggered_rules', []),
-            
-            # Validação (se fornecido label esperado)
-            'validation': {
-                'expected_label': expected_label,
-                'predicted_label': result['metrics']['illumination_label'],
-                'correct': result['metrics']['illumination_label'] == expected_label if expected_label else None
-            }
-        }
-        
-        return response
-        
-    except Exception as e:
-        processing_time = time.time() - start_time
-        return {
-            'filename': image_path.name,
-            'timestamp': datetime.now().isoformat(),
-            'processing_time_seconds': round(processing_time, 3),
-            'error': str(e),
-            'status': 'error'
-        }
+from PIL import Image
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from app.config.config import Config
+from app.pipeline.illumination_pipeline import IlluminationPipeline
+
+
+# Imagens de teste (4 overexposed + 3 underexposed + 3 normal = 10)
+BATCH_IMAGES = [
+    ("data/illumination/bright_overexposed/bright_image1.jpg", "overexposed"),
+    ("data/illumination/bright_overexposed/bright_image2.jpg", "overexposed"),
+    ("data/illumination/bright_overexposed/bright_image3.jpg", "overexposed"),
+    ("data/illumination/bright_overexposed/bright_image4.jpg", "overexposed"),
+    ("data/illumination/dark_underexposed/dark_image1.jpg",    "underexposed"),
+    ("data/illumination/dark_underexposed/dark_image2.jpg",    "underexposed"),
+    ("data/illumination/dark_underexposed/dark_image3.jpg",    "underexposed"),
+    ("data/illumination/normal/normal_image1.jpg",             "adequate"),
+    ("data/illumination/normal/normal_image2.jpg",             "acceptable"),
+    ("data/illumination/normal/normal_image3.jpg",             "adequate"),
+]
+
+
+def load_image(path: str):
+    """Carrega imagem via OpenCV e converte para PIL RGB."""
+    img_cv = cv2.imread(path)
+    if img_cv is None:
+        return None
+    return Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
+
+
+def sep(char="-", width=80):
+    print(char * width)
 
 
 def main():
-    """Executa teste completo do pipeline"""
-    
-    print("\n" + "=" * 80)
-    print("TESTE MANUAL DO PIPELINE - SIMULAÇÃO FRONTEND")
-    print("=" * 80)
-    
-    # Mapeamento de labels esperados para imagens normal
-    # (baseado nos scores do test_illumination.py)
-    normal_expected_labels = {
-        'normal_image1.jpg': 'adequate',   # score ~0.734
-        'normal_image2.jpg': 'acceptable',  # score ~0.5-0.7
-        'normal_image3.jpg': 'adequate',   # score ~0.797
-        'normal_image4.jpg': 'adequate',   # score ~0.785
-        'normal_image5.jpg': 'acceptable'   # score ~0.5-0.7
-    }
-    
-    # Configura testes
-    test_cases = [
-        {
-            'category': 'overexposed',
-            'expected_label': 'overexposed',
-            'images': [
-                'data/illumination/bright_overexposed/bright_image1.jpg',
-                'data/illumination/bright_overexposed/bright_image2.jpg',
-                'data/illumination/bright_overexposed/bright_image3.jpg',
-                'data/illumination/bright_overexposed/bright_image4.jpg',
-                'data/illumination/bright_overexposed/bright_image5.jpg',
-            ]
-        },
-        {
-            'category': 'underexposed',
-            'expected_label': 'underexposed',
-            'images': [
-                'data/illumination/dark_underexposed/dark_image1.jpg',
-                'data/illumination/dark_underexposed/dark_image2.jpg',
-                'data/illumination/dark_underexposed/dark_image3.jpg',
-                'data/illumination/dark_underexposed/dark_image4.jpg',
-                'data/illumination/dark_underexposed/dark_image5.jpg',
-            ]
-        },
-        {
-            'category': 'normal (adequate + acceptable)',
-            'expected_label': None,  # Label varia por imagem
-            'images': [
-                'data/illumination/normal/normal_image1.jpg',  # adequate
-                'data/illumination/normal/normal_image2.jpg',  # acceptable
-                'data/illumination/normal/normal_image3.jpg',  # adequate
-                'data/illumination/normal/normal_image4.jpg',  # adequate
-                'data/illumination/normal/normal_image5.jpg',  # acceptable
-            ]
-        }
-    ]
-    
-    # Inicializa pipeline
-    print("\n1. Inicializando pipeline...")
-    config = Config()
-    model_type = config.get('models.default', 'qwen')
-    use_4bit = config.get('models.use_4bit', True)
-    device = config.get('models.device', 'cuda')
-    
-    print(f"   Model: {model_type}")
-    print(f"   4-bit: {use_4bit}")
-    print(f"   Device: {device}")
-    
+    sep("=")
+    print("TESTE DO PIPELINE - TRUE BATCH (10 IMAGENS) + SUMMARY")
+    sep("=")
+
+    # --- Inicializa pipeline ---
+    config         = Config()
+    model_type     = config.get("models.default", "qwen")
+    use_4bit       = config.get("models.use_4bit", True)
+    device         = config.get("models.device", "cuda")
+    enable_compile = config.get("models.enable_compile", False)
+
+    print(f"\nConfig: model={model_type}  4bit={use_4bit}  device={device}  compile={enable_compile}")
+
+    t_init = time.perf_counter()
     pipeline = IlluminationPipeline(
         model_type=model_type,
         use_4bit=use_4bit,
-        device=device
+        device=device,
+        enable_compile=enable_compile,
     )
-    
-    # Processa todas as imagens
-    print(f"\n2. Processando imagens...\n")
-    
-    all_results = []
-    total_images = sum(len(tc['images']) for tc in test_cases)
-    processed = 0
+    pipeline._load_model()
+    print(f"Modelo carregado em {time.perf_counter() - t_init:.1f}s")
+
+    # --- Carrega imagens ---
+    print(f"\nCarregando {len(BATCH_IMAGES)} imagens...")
+    images, filenames, expected_labels = [], [], []
+    missing = []
+
+    for path_str, label in BATCH_IMAGES:
+        path = Path(path_str)
+        img  = load_image(path_str)
+        if img is None:
+            missing.append(path_str)
+        else:
+            images.append(img)
+            filenames.append(path.name)
+            expected_labels.append(label)
+            print(f"  [ok] {path.name}")
+
+    if missing:
+        print(f"\n[AVISO] {len(missing)} imagem(ns) nao encontrada(s):")
+        for m in missing:
+            print(f"  {m}")
+
+    if not images:
+        print("\n[ERRO] Nenhuma imagem disponivel. Verifique data/illumination/")
+        return
+
+    n = len(images)
+    print(f"\n{n} imagem(ns) prontas para o batch")
+
+    # --- FASE 1: PDI ---
+    print()
+    sep()
+    print("FASE 1 - PDI (visao computacional)")
+    sep()
+
+    t_pdi = time.perf_counter()
+    pdi_metrics = pipeline.extract_metrics_batch(images)
+    pdi_elapsed = time.perf_counter() - t_pdi
+
+    print(f"Metricas extraidas: {n} imagens em {pdi_elapsed*1000:.1f}ms  ({pdi_elapsed/n*1000:.1f}ms/img)\n")
+
+    for i, (fname, m) in enumerate(zip(filenames, pdi_metrics)):
+        print(f"  [{i+1:02d}] {fname:<35}  label={m['illumination_label']:<18}  "
+              f"score={m['illumination']:.3f}  luma={m['mean_luma']:.1f}")
+
+    # --- FASE 2: LLM batch + summary (N+1 prompts num unico batch) ---
+    print()
+    sep()
+    print("FASE 2 - SLM / LLM (true batch: N diagnosticos + 1 summary)")
+    sep()
+
+    t_llm = time.perf_counter()
+    diagnoses, summary = pipeline.diagnose_from_metrics_batch_with_summary(pdi_metrics)
+    llm_elapsed = time.perf_counter() - t_llm
+
+    per_diag = llm_elapsed / n
+    print(f"{n} diagnosticos + 1 summary gerados em {llm_elapsed:.2f}s  ({per_diag*1000:.0f}ms/diagnostico)")
+
+    # --- Summary do ambiente ---
+    print()
+    sep()
+    print("SUMMARY DO AMBIENTE")
+    sep()
+    print(f"  Risco geral      : {summary['overall_risk'].upper()}")
+    print(f"  Condicao dominante: {summary['dominant_label']}")
+    print(f"  Frames problema  : {summary['problem_count']}/{n}")
+    print(f"  Frames normais   : {summary['normal_count']}/{n}")
+    print(f"  Explicacao       : {summary['explanation'][:120]}...")
+    print(f"  Recomendacoes    :")
+    for rec in summary.get("recommendations", []):
+        print(f"    - {rec}")
+    mavg = summary.get("metrics_avg", {})
+    print(f"  Metricas medias  : luma={mavg.get('mean_luma', 0):.1f}  "
+          f"uniformidade={mavg.get('uniformity', 0):.3f}  "
+          f"clip_bright={mavg.get('pct_clipped_bright', 0):.3f}  "
+          f"clip_dark={mavg.get('pct_clipped_dark', 0):.3f}")
+
+    # --- Resultados por frame ---
+    print()
+    sep()
+    print("RESULTADOS POR FRAME")
+    sep()
+
+    results = []
     correct = 0
-    total_time = 0
-    
-    for test_case in test_cases:
-        category = test_case['category']
-        expected_label = test_case['expected_label']
-        
-        print(f"\n{'─' * 80}")
-        print(f"Categoria: {category.upper()}")
-        print(f"{'─' * 80}")
-        
-        for img_path in test_case['images']:
-            path = Path(img_path)
-            if not path.exists():
-                print(f"  ❌ {path.name} - Não encontrada")
-                continue
-            
-            processed += 1
-            print(f"\n  [{processed}/{total_images}] Processando {path.name}...")
-            
-            # Determina label esperado (usa mapeamento para imagens normal)
-            if path.name in normal_expected_labels:
-                expected_label_for_image = normal_expected_labels[path.name]
-            else:
-                expected_label_for_image = expected_label
-            
-            # Processa imagem
-            result = process_image(pipeline, path, expected_label_for_image)
-            all_results.append(result)
-            
-            # Atualiza estatísticas
-            if result.get('status') != 'error':
-                total_time += result['processing_time_seconds']
-                if result['validation']['correct']:
-                    correct += 1
-                
-                # Mostra resumo
-                status_emoji = "✓" if result['status'] == 'pass' else "✗"
-                validation_emoji = "✓" if result['validation']['correct'] else "✗"
-                
-                print(f"     Status: {status_emoji} {result['status'].upper()} ({result['risk_level']})")
-                print(f"     Label: {validation_emoji} {result['metrics']['illumination']['label']}")
-                print(f"     Score: {result['metrics']['illumination']['score']:.3f}")
-                print(f"     Tempo: {result['processing_time_seconds']:.2f}s")
-                print(f"     Explicação: {result['explanation'][:80]}...")
-                
-                if result['recommendations']:
-                    print(f"     Recomendações: {len(result['recommendations'])}")
-            else:
-                print(f"     ❌ Erro: {result.get('error', 'Unknown')}")
-    
-    # Calcula estatísticas finais
-    avg_time = total_time / processed if processed > 0 else 0
-    accuracy = (correct / processed * 100) if processed > 0 else 0
-    
-    # Monta resultado final para frontend
-    frontend_response = {
-        'metadata': {
-            'test_name': 'Pipeline Complete Test',
-            'timestamp': datetime.now().isoformat(),
-            'model': model_type,
-            'device': device,
-            'quantization': '4-bit' if use_4bit else 'fp16/fp32'
-        },
-        'statistics': {
-            'total_images': total_images,
-            'processed': processed,
-            'successful': correct,
-            'failed': processed - correct,
-            'accuracy_percent': round(accuracy, 2),
-            'total_time_seconds': round(total_time, 2),
-            'average_time_seconds': round(avg_time, 2),
-            'throughput_images_per_second': round(1.0 / avg_time, 3) if avg_time > 0 else 0
-        },
-        'results': all_results
-    }
-    
-    # Salva JSON
-    output_dir = Path('outputs')
+
+    for i, (fname, pdi, diag, expected) in enumerate(
+            zip(filenames, pdi_metrics, diagnoses, expected_labels)):
+
+        predicted  = pdi["illumination_label"]
+        is_correct = predicted == expected
+        if is_correct:
+            correct += 1
+
+        status_tag = "[PASS]" if diag["status"] == "pass" else "[FAIL]"
+        label_tag  = "[ok]"   if is_correct else "[!!]"
+
+        print(f"\n  [{i+1:02d}] {fname}")
+        print(f"       Status   : {status_tag} {diag['status'].upper()}  ({diag['risk_level']})")
+        print(f"       Label    : {label_tag} predito={predicted:<18} esperado={expected}")
+        print(f"       Metricas : score={pdi['illumination']:.3f}  luma={pdi['mean_luma']:.1f}  "
+              f"std={pdi['std_luma']:.1f}  uniformidade={pdi['uniformity']:.3f}")
+        print(f"       Explicac.: {diag['explanation'][:90]}...")
+
+        results.append({
+            "frame_index":     i,
+            "filename":        fname,
+            "expected_label":  expected,
+            "status":          diag["status"],
+            "risk_level":      diag["risk_level"],
+            "label_correct":   is_correct,
+            "explanation":     diag["explanation"],
+            "triggered_rules": diag.get("triggered_rules", []),
+            "recommendations": diag.get("recommendations", []),
+            "metrics": {
+                "illumination_score": round(pdi["illumination"], 4),
+                "illumination_label": pdi["illumination_label"],
+                "mean_brightness":    round(pdi["mean_luma"] / 255.0, 4),
+                "mean_luma":          round(pdi["mean_luma"], 2),
+                "std_luma":           round(pdi["std_luma"], 2),
+                "uniformity":         round(pdi["uniformity"], 4),
+                "pct_clipped_dark":   round(pdi["pct_clipped_dark"], 4),
+                "pct_clipped_bright": round(pdi["pct_clipped_bright"], 4),
+            },
+        })
+
+    # --- Estatisticas ---
+    total_elapsed = pdi_elapsed + llm_elapsed
+    accuracy      = correct / n * 100
+
+    print()
+    sep("=")
+    print("RESUMO")
+    sep("=")
+    print(f"\n  Imagens processadas : {n}")
+    print(f"  Acuracia de label   : {correct}/{n}  ({accuracy:.1f}%)")
+    print(f"\n  Tempo PDI total     : {pdi_elapsed*1000:.1f}ms  ({pdi_elapsed/n*1000:.1f}ms/img)")
+    print(f"  Tempo LLM total     : {llm_elapsed:.2f}s   ({per_diag*1000:.0f}ms/diagnostico)")
+    print(f"  Tempo total         : {total_elapsed:.2f}s")
+    meta_ok = per_diag < 1.0
+    print(f"  Meta < 1s/diagnost. : {'[OK] atingida' if meta_ok else '[!!] nao atingida'}  ({per_diag:.3f}s)")
+
+    # --- Salva JSON ---
+    output_dir  = Path("outputs")
     output_dir.mkdir(exist_ok=True)
-    
-    output_file = output_dir / f'pipeline_test_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
-    
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(frontend_response, f, indent=2, ensure_ascii=False)
-    
-    # Mostra resumo final
-    print(f"\n{'=' * 80}")
-    print("RESUMO FINAL")
-    print(f"{'=' * 80}")
-    print(f"\n📊 Estatísticas:")
-    print(f"   Total de imagens: {total_images}")
-    print(f"   Processadas: {processed}")
-    print(f"   Corretas: {correct}")
-    print(f"   Acurácia: {accuracy:.1f}%")
-    print(f"\n⏱️  Desempenho:")
-    print(f"   Tempo total: {total_time:.2f}s")
-    print(f"   Tempo médio: {avg_time:.2f}s por imagem")
-    print(f"   Throughput: {1.0/avg_time:.2f} imagens/segundo" if avg_time > 0 else "   Throughput: N/A")
-    print(f"\n💾 Resultado salvo em: {output_file}")
-    print(f"\n✅ Teste concluído!")
-    print("=" * 80)
-    
-    # Mostra preview do JSON
-    print(f"\n📄 Preview do JSON gerado (primeiros 50 linhas):")
-    print("─" * 80)
-    with open(output_file, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-        for i, line in enumerate(lines[:50], 1):
-            print(line.rstrip())
-        if len(lines) > 50:
-            print(f"... ({len(lines) - 50} linhas restantes)")
-    print("─" * 80)
+    output_file = output_dir / f"pipeline_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+
+    output = {
+        "metadata": {
+            "timestamp":    datetime.now().isoformat(),
+            "model":        model_type,
+            "device":       device,
+            "quantization": "4-bit" if use_4bit else "fp16/fp32",
+            "compile":      enable_compile,
+            "batch_size":   n,
+        },
+        "performance": {
+            "pdi_total_ms":        round(pdi_elapsed * 1000, 1),
+            "pdi_per_image_ms":    round(pdi_elapsed / n * 1000, 1),
+            "llm_total_s":         round(llm_elapsed, 3),
+            "llm_per_diagnosis_s": round(per_diag, 3),
+            "total_s":             round(total_elapsed, 3),
+            "target_met":          meta_ok,
+        },
+        "statistics": {
+            "total":    n,
+            "correct":  correct,
+            "accuracy": round(accuracy, 2),
+        },
+        "summary": summary,
+        "frames":  results,
+    }
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+
+    print(f"\nJSON salvo em: {output_file}")
+
+    print()
+    sep()
+    print("Preview do JSON (primeiras 40 linhas):")
+    sep()
+    with open(output_file, encoding="utf-8") as f:
+        for i, line in enumerate(f):
+            if i >= 40:
+                print("  ...")
+                break
+            print(line, end="")
+    print()
+    sep()
+    print("\nTeste concluido!")
 
 
 if __name__ == "__main__":
