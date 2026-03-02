@@ -13,8 +13,8 @@ from datetime import datetime
 from pathlib import Path
 
 from PIL import Image
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+ 
+sys.path.insert(0, str(Path(__file__).parent.parent.parent)) # Ajuste para acessar app/ a partir de tests/manual/
 
 from app.config.config import Config
 from app.pipeline.illumination_pipeline import IlluminationPipeline

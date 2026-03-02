@@ -8,26 +8,29 @@ import os
 from pathlib import Path
 from typing import Dict, Any
 
-
+# classe de configurações, responsável por carregar e fornecer acesso às configurações do sistema, como thresholds do rule engine e parâmetros dos modelos
 class Config:
     """
     Carrega e gerencia configurações do sistema
     """
     
-    _instance = None
-    _config = None
+    _instance = None # Singleton instance
+    _config = None   # Dicionário com as configurações carregadas
     
+    # método que garante que apenas uma instância de Config seja criada (Singleton pattern)
     def __new__(cls):
-        """Singleton pattern"""
         if cls._instance is None:
             cls._instance = super(Config, cls).__new__(cls)
         return cls._instance
     
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # método de inicialização que chama o carregamento do arquivo YAML
     def __init__(self):
-        """Inicializa e carrega configurações"""
         if self._config is None:
             self.load_config()
-    
+
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # método que carrega o arquivo YAML e armazena as configurações em um dicionário
     def load_config(self, config_path: str = None):
         """
         Carrega configurações do YAML
@@ -35,14 +38,17 @@ class Config:
         Args:
             config_path: Caminho customizado (opcional)
         """
+        # usando caminho customizado se fornecido, senão procura arquivo padrão
         if config_path is None:
             # Procura arquivo padrão
-            current_dir = Path(__file__).parent
+            current_dir = Path(__file__).parent 
             config_path = current_dir / 'thresholds.yaml'
         
-        with open(config_path, 'r') as f:
-            self._config = yaml.safe_load(f)
-    
+        with open(config_path, 'r') as f:            # Carrega o arquivo YAML
+            self._config = yaml.safe_load(f)         # Armazena as configurações em um dicionário
+
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # método para acessar valores de configuração usando chaves hierárquicas (ex: 'models.default')
     def get(self, key: str, default: Any = None) -> Any:
         """
         Obtém valor de configuração
@@ -54,37 +60,48 @@ class Config:
         Returns:
             Valor da configuração
         """
-        keys = key.split('.')
-        value = self._config
+        # Divide a chave hierárquica em partes
+        keys = key.split('.') 
+
+        # Começa com o dicionário completo
+        value = self._config  
         
+        # Navega pelo dicionário usando as partes da chave
         for k in keys:
-            if isinstance(value, dict) and k in value:
-                value = value[k]
-            else:
+            # Verifica se a chave existe no nível atual do dicionário
+            if isinstance(value, dict) and k in value: 
+                # Move para o próximo nível do dicionário
+                value = value[k]    
+            # Se a chave não for encontrada, retorna o valor padrão                   
+            else: 
                 return default
-        
-        return value
+            
+        # Retorna o valor encontrado após navegar por toda a hierarquia
+        return value 
     
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # método para acessar thresholds do rule engine
     def get_rule_thresholds(self) -> Dict:
-        """Retorna thresholds do rule engine"""
         return self.get('rule_engine', {})
     
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------    
+    # método para acessar configuração específica do modelo (qwen ou phi)
     def get_model_config(self, model_name: str = None) -> Dict:
-        """
-        Retorna configuração do modelo
-        
-        Args:
-            model_name: 'qwen' ou 'phi' (usa default se None)
-        """
+
+        # verifica se o nome do modelo foi fornecido, se não, usa o modelo padrão definido em thresholds.yaml
         if model_name is None:
-            model_name = self.get('models.default', 'qwen')
+            model_name = self.get('models.default', 'qwen') 
         
-        return self.get(f'models.{model_name}', {})
+        # Retorna a configuração específica do modelo solicitado
+        return self.get(f'models.{model_name}', {})  
     
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # método para retornar todas as configurações (útil para debug)
     def get_all(self) -> Dict:
-        """Retorna todas as configurações"""
         return self._config if self._config else {}
 
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-# Instância global
+
+# Instância global das configurações, pode ser importada e usada em todo o sistema
 config = Config()

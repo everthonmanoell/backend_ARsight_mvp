@@ -38,19 +38,14 @@ async def lifespan(app: FastAPI):
         model_type = config.get('models.default', 'qwen')
         use_4bit = config.get('models.use_4bit', True)
         device = config.get('models.device', 'cuda')
-        enable_compile = config.get('models.enable_compile', False)
         warmup_on_startup = config.get('models.warmup_on_startup', True)
         
-        logger.info(f"Loading pipeline (model: {model_type}, 4-bit: {use_4bit}, device: {device}, compile: {enable_compile})")
-        
-        if enable_compile:
-            logger.warning("⚠️  torch.compile() ENABLED - Initial compilation will take 2-5 minutes...")
+        logger.info(f"Loading pipeline (model: {model_type}, 4-bit: {use_4bit}, device: {device})")
         
         pipeline = IlluminationPipeline(
             model_type=model_type,
             use_4bit=use_4bit,
-            device=device,
-            enable_compile=enable_compile
+            device=device
         )
         
         # Warm-up: pré-carrega pesos e estabiliza torch.compile() JIT

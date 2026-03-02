@@ -6,7 +6,7 @@ import logging
 import cv2
 import numpy as np
 
-# configura logger para este módulo, serve para obter logs específicos do ROIExtractor, sem poluir outros módulos
+# configura logger para este módulo
 logger = logging.getLogger(__name__)
 
 # IlluminationAnalyzer é responsável por analisar a qualidade da iluminação da cena, retornando um score e detalhes para auditoria

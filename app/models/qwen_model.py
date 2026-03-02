@@ -13,7 +13,7 @@ from app.config.config import Config
 
 logger = logging.getLogger(__name__)
 
-
+# classe específica para o modelo Qwen 0.5B, com otimizações para baixa latência e uso eficiente de VRAM, ideal para Jetson Nano/Xavier NX
 class QwenARModel(ARDiagnosticModel):
     """
     Implementação com Qwen 2.5 0.5B Instruct
@@ -21,24 +21,20 @@ class QwenARModel(ARDiagnosticModel):
     Características:
     - 0.5B parâmetros (muito leve)
     - ~1GB VRAM com quantização 4-bit
-    - ~1.2s por cena (GPU)
     - Ideal para Jetson Nano/Xavier NX
     """
     
     MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
     
-    def __init__(self, use_4bit: bool = True, device: str = None, enable_compile: bool = False):
+    def __init__(self, use_4bit: bool = True, device: str = None):
         """
         Inicializa modelo Qwen
         
         Args:
             use_4bit: Usar quantização 4-bit (recomendado)
             device: 'cuda', 'cpu', ou 'auto' (auto-detecta se None)
-            enable_compile: Usar torch.compile() para aceleração (experimental)
         """
         super().__init__(use_4bit)
-        
-        self.enable_compile = enable_compile
         
         # Detecta dispositivo
         if device is None or device == 'auto':
@@ -50,17 +46,27 @@ class QwenARModel(ARDiagnosticModel):
         
         # Carrega configurações de geração do YAML
         config = Config()
-        self.max_tokens = config.get('models.qwen.max_tokens', 100)
-        self.temperature = config.get('models.qwen.temperature', 0.3)
-        self.top_p = config.get('models.qwen.top_p', 0.85)
+        self.max_tokens = config.get('models.qwen.max_tokens', 60)
+        self.summary_max_tokens = config.get('models.qwen.summary_tokens', 150)
+
+        # Temperatura mais baixa para respostas mais focadas e consistentes, ideal para explicações técnicas
+        # A temperatura num modelo de linguagem controla a aleatoriedade da geração: valores mais baixos resultam em respostas mais determinísticas e focadas, 
+        # enquanto valores mais altos geram respostas mais variadas e criativas. 
+        self.temperature = config.get('models.qwen.temperature', 0.3) 
+
+        # Top-p sampling (nucleus sampling) é uma técnica de geração onde o modelo considera apenas os tokens mais prováveis que juntos somam uma probabilidade p (ex: 0.9)
+        # para manter uma geração focada com alguma diversidade foi usado 0.85
+        self.top_p = config.get('models.qwen.top_p', 0.85) 
         
-        logger.info(f"Generation params: max_tokens={self.max_tokens}, temp={self.temperature}, top_p={self.top_p}")
+        logger.info(f"Generation params: max_tokens={self.max_tokens}, summary_max_tokens={self.summary_max_tokens}, temp={self.temperature}, top_p={self.top_p}")
         
         # Carrega modelo
         self._load_model()
-    
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # método para carregar o modelo com as otimizações configuradas 
     def _load_model(self):
         """Carrega Qwen 0.5B com otimizações"""
+
         logger.info(f"Loading {self.MODEL_NAME}...")
         
         try:
@@ -73,7 +79,7 @@ class QwenARModel(ARDiagnosticModel):
                     bnb_4bit_use_double_quant=True,
                 )
                 
-                self.model = AutoModelForCausalLM.from_pretrained(
+                self.model = AutoModelForCausalLM.from_pretrained( 
                     self.MODEL_NAME,
                     quantization_config=quantization_config,
                     device_map="auto",
@@ -91,36 +97,17 @@ class QwenARModel(ARDiagnosticModel):
                 )
                 logger.info(f"Model loaded on {self.device}")
             
-            # Otimização: torch.compile() para aceleração (PyTorch 2.0+)
-            if self.enable_compile and hasattr(torch, 'compile'):
-                try:
-                    logger.info("Compiling model with torch.compile()...")
-                    self.model = torch.compile(self.model, mode="reduce-overhead")
-                    logger.info("✅ Model compiled successfully")
-                except Exception as e:
-                    logger.warning(f"torch.compile() failed: {e}, continuing without compilation")
-            
-            # Otimização: BetterTransformer (integrado no transformers)
-            # Nota: NÃO é compatível com modelos quantizados (bitsandbytes 4-bit)
-            # Apenas tenta se NÃO estiver usando quantização 4-bit
-            if not self.use_4bit and not self.enable_compile:
-                try:
-                    logger.info("Applying BetterTransformer optimization...")
-                    self.model.to_bettertransformer()
-                    logger.info("✅ BetterTransformer enabled")
-                except AttributeError:
-                    logger.debug("BetterTransformer not available in this transformers version")
-                except Exception as e:
-                    logger.debug(f"BetterTransformer failed: {e}")
-            
-            # Carrega tokenizer
+            # Carrega tokenizer(responsável por converter texto em tokens numéricos que o modelo pode processar)
+            # O parâmetro padding_side='left' é crucial para modelos decoder-only, garantindo que o padding seja adicionado à esquerda dos prompts,
+            # alinhando corretamente os tokens de entrada e permitindo uma geração mais eficiente e coerente, especialmente em batch.
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.MODEL_NAME,
                 trust_remote_code=True,
                 padding_side='left'  # Requerido para decoder-only em batch
             )
             
-            # Configura pad token
+            # Configura pad token(necessário para batch processing, garantindo que os prompts sejam alinhados corretamente)
+            # Se o modelo não tiver um pad_token definido, usamos o eos_token como fallback(prática comum para modelos que não possuem um token de padding específico)
             if self.tokenizer.pad_token is None:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
             
@@ -129,8 +116,9 @@ class QwenARModel(ARDiagnosticModel):
         except Exception as e:
             logger.error(f"Error loading model: {e}")
             raise
-    
-    def _build_prompt(self, metrics: Dict, status: str, risk_level: str,
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # método para construir o prompt de diagnóstico para o modelo, formatado para Qwen (ChatML)
+    def _build_prompt(self, metrics: Dict, status: str, risk_level: str, 
                      triggered_rules: List[str]) -> str:
         """Constrói prompt para Qwen (ChatML format)"""
         
@@ -186,7 +174,7 @@ class QwenARModel(ARDiagnosticModel):
         )
         
         return prompt
-    
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     def _build_summary_prompt(self, agg: Dict) -> str:
         """Constrói prompt de sumarização do ambiente (ChatML format)"""
         total          = agg['total']
@@ -196,26 +184,32 @@ class QwenARModel(ARDiagnosticModel):
         avg_luma       = agg['avg_mean_luma']
         avg_uniformity = agg['avg_uniformity']
         avg_clip_bright = agg['avg_pct_clipped_bright']
-        avg_clip_dark   = agg['avg_pct_clipped_dark']
 
         system_msg = (
-            "You are an AR lighting specialist. Given aggregated illumination data from multiple "
-            "frames of the same environment, provide a consolidated assessment. Explain the overall "
-            "lighting conditions and their impact on AR tracking. Keep the assessment under 60 words. "
-            "Stay factual and technical."
+            "You are an AR lighting specialist. Write in plain, natural sentences. "
+            "Do not use bullet points, lists, or markdown formatting. "
+            "Do not repeat the input data — interpret it and explain what it means for AR use. "
+            "Keep your response to 1-2 sentences, under 40 words total."
         )
 
-        status_text = "FAIL" if problem_count > 0 else "PASS"
+        label_names = {
+            'overexposed':  'excessively bright',
+            'underexposed': 'too dark',
+            'poor':         'uneven illumination',
+        }
+        label_breakdown = agg.get('label_breakdown', {})
+        breakdown_parts = [
+            f"{count} {label_names.get(lbl, lbl)}"
+            for lbl, count in sorted(label_breakdown.items(), key=lambda x: -x[1])
+        ]
+        breakdown_text = ' and '.join(breakdown_parts) if breakdown_parts else 'problematic'
+
         user_msg = (
-            f"Environment Assessment ({problem_count}/{total} frames problematic):\n"
-            f"- Dominant lighting condition: {dominant_label.upper()}\n"
-            f"- Overall risk: {overall_risk.upper()}\n"
-            f"- Average brightness: {avg_luma:.1f}/255\n"
-            f"- Average uniformity: {avg_uniformity:.2f}\n"
-            f"- Average bright clipping: {avg_clip_bright:.1%}\n"
-            f"- Average dark clipping: {avg_clip_dark:.1%}\n"
-            f"Status: {status_text}\n\n"
-            f"Provide a consolidated assessment of this environment for AR use and key recommendations:"
+            f"An AR session was evaluated across {total} camera frames. "
+            f"{problem_count} frames had lighting problems ({breakdown_text}). "
+            f"Average brightness: {avg_luma:.0f}/255, uniformity: {avg_uniformity:.0%}, "
+            f"overexposed pixels: {avg_clip_bright:.0%}. Overall risk: {overall_risk}. "
+            f"In 1-2 short sentences, explain what this means for AR and what the user should do:"
         )
 
         messages = [
@@ -229,8 +223,8 @@ class QwenARModel(ARDiagnosticModel):
             add_generation_prompt=True
         )
         return prompt
-
-    def _call_model(self, prompt: str) -> str:
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    def _call_model(self, prompt: str, max_new_tokens: int = None) -> str:
         """Gera explicação com Qwen (otimizado)"""
         import time
         
@@ -255,7 +249,7 @@ class QwenARModel(ARDiagnosticModel):
             t2 = time.time()
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=self.max_tokens,
+                max_new_tokens=max_new_tokens if max_new_tokens is not None else self.max_tokens,
                 temperature=self.temperature,
                 top_p=self.top_p,
                 do_sample=True if self.temperature > 0 else False,
@@ -285,15 +279,15 @@ class QwenARModel(ARDiagnosticModel):
                 response = full_output.replace(prompt, "").strip()
         
         return response
-    
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     def _call_model_batch(self, prompts: List[str]) -> List[str]:
         """
         Processa múltiplos prompts em batch (TRUE BATCH INFERENCE)
         Múltiplos forward passes em paralelo
-        
+
         Args:
-            prompts: Lista de prompts
-        
+            prompts: Lista de prompts individuais (sem summary)
+
         Returns:
             Lista de explicações geradas
         """

@@ -47,10 +47,11 @@ class PhiARModel(ARDiagnosticModel):
         # Carrega configurações de geração do YAML
         config = Config()
         self.max_tokens = config.get('models.phi.max_tokens', 120)
+        self.summary_max_tokens = config.get('models.phi.summary_tokens', 200)
         self.temperature = config.get('models.phi.temperature', 0.4)
         self.top_p = config.get('models.phi.top_p', 0.85)
         
-        logger.info(f"Generation params: max_tokens={self.max_tokens}, temp={self.temperature}, top_p={self.top_p}")
+        logger.info(f"Generation params: max_tokens={self.max_tokens}, summary_max_tokens={self.summary_max_tokens}, temp={self.temperature}, top_p={self.top_p}")
         
         self._load_model()
     
@@ -71,26 +72,31 @@ class PhiARModel(ARDiagnosticModel):
                     self.MODEL_NAME,
                     quantization_config=quantization_config,
                     device_map="auto",
-                    trust_remote_code=True,
-                    torch_dtype=torch.float16,
-                    attn_implementation="eager"  # Fix para rope_scaling KeyError
+                    dtype=torch.float16,
+                    attn_implementation="eager"
                 )
             else:
                 self.model = AutoModelForCausalLM.from_pretrained(
                     self.MODEL_NAME,
                     device_map="auto",
-                    trust_remote_code=True,
-                    torch_dtype=torch.float32 if self.device == 'cpu' else torch.float16,
-                    attn_implementation="eager"  # Fix para rope_scaling KeyError
+                    dtype=torch.float32 if self.device == 'cpu' else torch.float16,
+                    attn_implementation="eager"
                 )
             
             self.tokenizer = AutoTokenizer.from_pretrained(
-                self.MODEL_NAME,
-                trust_remote_code=True
+                self.MODEL_NAME
             )
             
             if self.tokenizer.pad_token is None:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
+            
+            # Essencial para batch inference com decoder-only models
+            self.tokenizer.padding_side = 'left'
+
+            # Phi-3 termina respostas com <|end|> — incluir como EOS token
+            end_token_id = self.tokenizer.convert_tokens_to_ids("<|end|>")
+            eos_id = self.tokenizer.eos_token_id
+            self.eos_token_ids = list({eos_id, end_token_id}) if end_token_id != eos_id else [eos_id]
             
             logger.info("Phi-3 Mini loaded successfully")
             
@@ -104,9 +110,9 @@ class PhiARModel(ARDiagnosticModel):
         
         system_msg = (
             "You are an AR lighting specialist. Analyze the illumination conditions and explain "
-            "how they affect AR tracking, object recognition, and user experience. "
-            "Be specific about lighting quality factors like brightness, contrast, and uniformity. "
-            "Provide a complete, natural explanation in 2-3 sentences. Stay factual and technical."
+            "how they affect AR tracking and user experience. "
+            "Be factual and concise. Write exactly 1-2 sentences, under 50 words total. "
+            "Do not use bullet points or lists."
         )
         
         # Extrai evidências
@@ -143,7 +149,54 @@ class PhiARModel(ARDiagnosticModel):
         
         return prompt
     
-    def _call_model(self, prompt: str) -> str:
+    def _build_summary_prompt(self, agg: Dict) -> str:
+        """Constrói prompt de sumarização do ambiente (formato Phi-3)"""
+        total           = agg['total']
+        problem_count   = agg['problem_count']
+        overall_risk    = agg['overall_risk']
+        avg_luma        = agg['avg_mean_luma']
+        avg_uniformity  = agg['avg_uniformity']
+        avg_clip_bright = agg['avg_pct_clipped_bright']
+
+        system_msg = (
+            "You are an AR lighting specialist. Write in plain, natural sentences. "
+            "Do not use bullet points, lists, or markdown formatting. "
+            "Do not repeat the input data — interpret it and explain what it means for AR use. "
+            "Keep your response to 1-2 sentences, under 40 words total."
+        )
+
+        label_names = {
+            'overexposed':  'excessively bright',
+            'underexposed': 'too dark',
+            'poor':         'uneven illumination',
+        }
+        label_breakdown = agg.get('label_breakdown', {})
+        breakdown_parts = [
+            f"{count} {label_names.get(lbl, lbl)}"
+            for lbl, count in sorted(label_breakdown.items(), key=lambda x: -x[1])
+        ]
+        breakdown_text = ' and '.join(breakdown_parts) if breakdown_parts else 'problematic'
+
+        user_msg = (
+            f"An AR session was evaluated across {total} camera frames. "
+            f"{problem_count} frames had lighting problems ({breakdown_text}). "
+            f"Average brightness: {avg_luma:.0f}/255, uniformity: {avg_uniformity:.0%}, "
+            f"overexposed pixels: {avg_clip_bright:.0%}. Overall risk: {overall_risk}. "
+            f"In 1-2 short sentences, explain what this means for AR and what the user should do:"
+        )
+
+        # Formato Phi-3
+        prompt = f"<|system|>\n{system_msg}<|end|>\n<|user|>\n{user_msg}<|end|>\n<|assistant|>\n"
+        return prompt
+
+    def _clean_response(self, text: str) -> str:
+        """Trunca na última frase completa para evitar cortes mid-sentence."""
+        last_end = max(text.rfind('.'), text.rfind('!'), text.rfind('?'))
+        if last_end > 20:  # Garante que haja conteúdo mínimo
+            return text[:last_end + 1].strip()
+        return text.strip()
+
+    def _call_model(self, prompt: str, max_new_tokens: int = None) -> str:
         """Gera explicação com Phi-3 (otimizado)"""
         inputs = self.tokenizer(
             prompt,
@@ -159,12 +212,12 @@ class PhiARModel(ARDiagnosticModel):
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=self.max_tokens,
+                max_new_tokens=max_new_tokens if max_new_tokens is not None else self.max_tokens,
                 temperature=self.temperature,
                 top_p=self.top_p,
                 do_sample=True if self.temperature > 0 else False,
                 pad_token_id=self.tokenizer.pad_token_id,
-                eos_token_id=self.tokenizer.eos_token_id
+                eos_token_id=self.eos_token_ids
             )
         
         # Decodifica apenas novos tokens
@@ -180,15 +233,15 @@ class PhiARModel(ARDiagnosticModel):
             else:
                 response = full_output.replace(prompt, "").strip()
         
-        return response
+        return self._clean_response(response)
     
     def _call_model_batch(self, prompts: List[str]) -> List[str]:
         """
         Processa múltiplos prompts em batch (TRUE BATCH INFERENCE)
-        
+
         Args:
-            prompts: Lista de prompts
-        
+            prompts: Lista de prompts individuais por frame (sem summary)
+
         Returns:
             Lista de explicações geradas
         """
@@ -212,7 +265,7 @@ class PhiARModel(ARDiagnosticModel):
         inputs = {k: v.to(device) for k, v in inputs.items()}
         
         # Geração em batch
-        with torch.no_grad():
+        with torch.inference_mode():
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=self.max_tokens,
@@ -220,7 +273,7 @@ class PhiARModel(ARDiagnosticModel):
                 top_p=self.top_p,
                 do_sample=True if self.temperature > 0 else False,
                 pad_token_id=self.tokenizer.pad_token_id,
-                eos_token_id=self.tokenizer.eos_token_id
+                eos_token_id=self.eos_token_ids
             )
         
         # Decodifica cada resposta
@@ -238,7 +291,7 @@ class PhiARModel(ARDiagnosticModel):
                 else:
                     response = full_output.strip()
             
-            responses.append(response)
+            responses.append(self._clean_response(response))
         
         logger.info(f"Phi-3 batch completed: {len(responses)} responses")
         return responses

@@ -1,30 +1,33 @@
 # AR Diagnostic MVP - Configuration
 # Illumination-only pipeline for Jetson deployment
-
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 models:
-  default: qwen  # Modelo padrão: 'qwen' ou 'phi'
-  device: cuda   # 'cuda', 'cpu', ou 'auto'
-  use_4bit: true # Quantização 4-bit (recomendado para Jetson)
-  enable_compile: true  # torch.compile() para +10-30% velocidade (requer PyTorch 2+ e demora 2-5min no startup)
+  default: phi             # Modelo padrão: 'qwen' ou 'phi'
+  device: cuda             # 'cuda', 'cpu', ou 'auto'
+  use_4bit: true           # Quantização 4-bit (recomendado para Jetson)
   warmup_on_startup: true  # Fazer warm-up automático no startup (recomendado)
   
   qwen:
     name: Qwen/Qwen2.5-0.5B-Instruct
-    max_tokens: 60    # Alinhado com projeto teste-slm-tcc (~40-50 tokens gerados)
+    max_tokens: 60          # Tokens para explicações individuais por frame (~40-50 tokens gerados)
+    summary_tokens: 150     # Tokens para o summary do ambiente (mais espaço para texto completo)
     temperature: 0.3
     top_p: 0.9
   
   phi:
     name: microsoft/Phi-3-mini-4k-instruct
-    max_tokens: 60
+    max_tokens: 120
+    summary_tokens: 200     # Tokens para o summary do ambiente
     temperature: 0.3
     top_p: 0.9
 
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Rule engine configuration
 # A classificação de iluminação é feita pelo IlluminationAnalyzer (pdi.illumination)
 # que considera clipping, luminância média e score de forma integrada
 rule_engine: {}
 
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # PDI analysis parameters
 pdi:
   illumination:
@@ -42,6 +45,7 @@ pdi:
     good: 0.7                           # Score >= 0.7 é "adequate"
     min_acceptable: 0.5                 # Score >= 0.5 é "acceptable"
 
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # API Configuration
 api:
   max_batch_size: 10

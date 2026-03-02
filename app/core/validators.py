@@ -6,9 +6,12 @@ Validadores de saída do LLM para prevenir alucinações
 from typing import Dict
 import logging
 
+# configura logger para este módulo
 logger = logging.getLogger(__name__)
 
-
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------ 
+# classe responsável por validar as saídas do modelo de linguagem
+# garantindo que as explicações sejam coerentes, relevantes e não contenham artefatos ou frases genéricas
 class OutputValidator:
     """
     Valida saídas do LLM para garantir qualidade
@@ -16,8 +19,13 @@ class OutputValidator:
     
     def __init__(self):
         """Inicializa validador com regras de qualidade"""
-        self.min_explanation_length = 30
-        self.max_explanation_length = 600
+
+        # explicações muito curtas geralmente não são úteis ou indicam que o modelo não entendeu o contexto
+        # explicações muito longas podem indicar que o modelo está divagando ou incluindo informações irrelevantes
+        self.min_explanation_length = 30    # tamanho mínimo de explicações válidas 
+        self.max_explanation_length = 600   # tamanho máximo de explicações válidas (ajustável conforme necessidade)
+
+        # frases genéricas ou de desculpas são sinais comuns de que o modelo não tem uma resposta concreta ou está alucinando, então são proibidas
         self.forbidden_phrases = [
             "I don't know",
             "I cannot",
@@ -27,18 +35,21 @@ class OutputValidator:
             "TODO",
             "PLACEHOLDER"
         ]
-    
-    def is_valid_explanation(self, text: str, metrics: Dict) -> bool:
+
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # método principal para validar explicações geradas pelo LLM, verificando comprimento, presença de frases proibidas e relevância do conteúdo     
+    def is_valid_explanation(self, text: str) -> bool:
         """
         Verifica se explicação do LLM é válida
         
         Args:
             text: Texto gerado pelo LLM
-            metrics: Métricas da cena
         
         Returns:
             True se explicação é válida
         """
+
+        # verifica se o texto é uma string não vazia
         if not text or not isinstance(text, str):
             logger.debug("Validation failed: text is empty or not string")
             return False
@@ -73,6 +84,8 @@ class OutputValidator:
         logger.debug("Validation passed!")
         return True
     
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------     
+    # método para sanitizar explicações, removendo artefatos, formatando o texto e garantindo que seja coerente e relevante
     def sanitize_explanation(self, text: str) -> str:
         """
         Remove artefatos e formata explicação
@@ -83,21 +96,26 @@ class OutputValidator:
         Returns:
             Texto limpo e formatado
         """
+
+        # verifica se o texto é uma string não vazia antes de tentar processar, para evitar erros
         if not text:
             return ""
         
-        # Remove espaços extras
+        # remove espaços extras
         text = " ".join(text.split())
         
-        # Remove quebras de linha múltiplas
+        # remove quebras de linha múltiplas
         text = text.replace("\n\n", "\n").strip()
         
-        # Garante ponto final
+        # garante ponto final
         if text and text[-1] not in '.!?':
             text += '.'
         
+        # retorna texto sanitizado
         return text
     
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------     
+    # método para validar métricas extraídas, garantindo que estejam no formato correto e dentro de ranges esperados
     def validate_metrics(self, metrics: Dict) -> bool:
         """
         Valida se métricas estão em formato correto
@@ -109,20 +127,20 @@ class OutputValidator:
             True se métricas são válidas
         """
         # Verifica presença de chaves obrigatórias
-        required_keys = ['illumination', 'illumination_label']
+        required_keys = ['illumination', 'illumination_label'] 
         
         for key in required_keys:
             if key not in metrics:
                 return False
         
-        # Verifica range de illumination
+        # Verifica range de illumination - deve ser um float entre 0 e 1
         illumination = metrics.get('illumination')
         if not isinstance(illumination, (int, float)):
             return False
         if not (0.0 <= illumination <= 1.0):
             return False
         
-        # Verifica label válido
+        # Verifica label válido - deve ser uma string com um dos valores esperados (underexposed, adequate, acceptable, overexposed, poor)
         valid_labels = ['underexposed', 'adequate', 'acceptable', 'overexposed', 'poor']
         if metrics.get('illumination_label') not in valid_labels:
             return False

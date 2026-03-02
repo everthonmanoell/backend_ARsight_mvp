@@ -22,7 +22,7 @@ class IlluminationPipeline:
     Pipeline simplificado para diagnóstico de iluminação
     """
     
-    def __init__(self, model_type: str = 'qwen', use_4bit: bool = True, device: str = 'cuda', enable_compile: bool = False):
+    def __init__(self, model_type: str = 'qwen', use_4bit: bool = True, device: str = 'cuda'):
         """
         Inicializa pipeline
         
@@ -30,12 +30,10 @@ class IlluminationPipeline:
             model_type: 'qwen' ou 'phi'
             use_4bit: Usar quantização 4-bit
             device: 'cuda', 'cpu', ou 'auto'
-            enable_compile: Usar torch.compile() para otimização (requer PyTorch 2.0+)
         """
         self.model_type = model_type
         self.use_4bit = use_4bit
         self.device = device
-        self.enable_compile = enable_compile
         
         # Carrega configurações
         config = Config()
@@ -60,7 +58,7 @@ class IlluminationPipeline:
             logger.info(f"Loading {self.model_type} model...")
             
             if self.model_type == 'qwen':
-                self.model = QwenARModel(use_4bit=self.use_4bit, device=self.device, enable_compile=self.enable_compile)
+                self.model = QwenARModel(use_4bit=self.use_4bit, device=self.device)
             elif self.model_type == 'phi':
                 self.model = PhiARModel(use_4bit=self.use_4bit, device=self.device)
             else:

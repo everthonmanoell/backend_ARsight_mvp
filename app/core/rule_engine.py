@@ -1,29 +1,30 @@
 """
 Rule Engine - MVP Illumination Only
 Lógica determinística para decisão PASS/FAIL baseada em iluminação
+uso: implementado como parte do modelo base, usado para avaliar métricas extraídas e gerar diagnóstico e recomendações
+- Avalia métricas de iluminação (luminância média, uniformidade, clipping) e classifica a condição de iluminação (underexposed, adequate, acceptable, overexposed, poor)
+- Gera diagnóstico PASS/FAIL e nível de risco (low, medium, high) baseado na classificação de iluminação
+- Fornece evidências formatadas para o modelo de linguagem e recomendações específicas para cada condição de iluminação
 """
 
 import logging
 from typing import Dict, List, Tuple
 
+# configura logger para este módulo
 logger = logging.getLogger(__name__)
 
-
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# classe principal do rule engine, responsável por avaliar as métricas extraídas e tomar decisões de diagnóstico AR
 class RuleEngine:
     """
     Rule-based decision engine para diagnóstico AR (illumination only)
     """
     
-    def __init__(self, thresholds: Dict = None):
-        """
-        Inicializa rule engine com thresholds configuráveis
-        
-        Args:
-            thresholds: Dicionário com thresholds do YAML
-        """
-        self.thresholds = thresholds or {}
-        logger.debug(f"RuleEngine initialized with thresholds: {self.thresholds}")
-    
+    def __init__(self):
+        logger.debug("RuleEngine initialized")
+
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------    
+    # método que avalia as métricas extraídas e retorna decisão, nível de risco e regras ativadas
     def evaluate(self, metrics: Dict) -> Tuple[str, str, List[str]]:
         """
         Avalia métricas e retorna decisão
@@ -37,11 +38,11 @@ class RuleEngine:
                 - risk_level: 'low',  'medium', 'high'
                 - triggered_rules: Lista de regras que falharam
         """
-        triggered_rules = []
+
+        # Lista de regras que falharam, usada para explicar o diagnóstico e dar recomendações específicas
+        triggered_rules = [] 
         
-        # Extrai label de iluminação do analisador PDI
-        # O IlluminationAnalyzer já faz a classificação completa considerando
-        # clipping, luminância média e score - confiamos nessa classificação
+        # Extrai label de iluminação do analisador PDI, que já integra várias features (luminância média, uniformidade, clipping) em uma classificação qualitativa
         illumination_label = metrics.get('illumination_label', 'unknown')
         
         # Regras de iluminação baseadas apenas no label do analisador
@@ -51,12 +52,17 @@ class RuleEngine:
             triggered_rules.append("Overexposed scene (too bright)")
         elif illumination_label == 'poor':
             triggered_rules.append("Poor illumination quality")
-        # 'adequate' e 'acceptable' são PASS
+        # os labels 'adequate' e 'acceptable' são PASS
         
+
         # Decisão final
+
+        # verificar se alguma regra falhou, se não, é PASS com risco baixo(low risk)
         if len(triggered_rules) == 0:
             status = 'pass'
             risk_level = 'low'
+
+        # se falhou, status é FAIL
         else:
             status = 'fail'
             # Risco alto se underexposed/overexposed, médio se poor
@@ -65,10 +71,15 @@ class RuleEngine:
             else:
                 risk_level = 'medium'
         
-        logger.debug(f"Evaluation: status={status}, risk={risk_level}, rules={triggered_rules}")
+        # loga detalhes da avaliação para debug
+        logger.debug(f"Evaluation: status={status}, risk={risk_level}, rules={triggered_rules}") 
         
+        # retorna status, nível de risco e regras ativadas para uso na explicação e recomendações
         return status, risk_level, triggered_rules
-    
+
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------    
+    # método para formatar métricas como evidências para o modelo de linguagem
+    # pode ser expandido para incluir mais detalhes ou formatação específica
     def get_evidence_metrics(self, metrics: Dict) -> Dict:
         """
         Retorna métricas formatadas como evidências
@@ -79,13 +90,19 @@ class RuleEngine:
         Returns:
             Dicionário com evidências formatadas
         """
-        illumination = metrics.get('illumination', 0.0)
+        # Score de qualidade de iluminação (0-1)
+        illumination = metrics.get('illumination', 0.0)  
+
+        # Label qualitativo de iluminação, já considerando clipping e luminância média                  
         illumination_label = metrics.get('illumination_label', 'unknown')
         
         return {
             'illumination': f"{illumination_label} ({illumination:.2f})"
         }
     
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------    
+    # método para construir recomendações baseadas nas regras ativadas ou status geral
+    # pode ser expandido para incluir recomendações mais específicas ou detalhadas
     def build_recommendations(self, triggered_rules: List[str], status: str = 'fail') -> List[str]:
         """
         Constrói recomendações baseadas nas regras ativadas ou status
@@ -97,6 +114,8 @@ class RuleEngine:
         Returns:
             Lista de recomendações
         """
+
+        # lista de recomendações a ser construída
         recommendations = []
         
         # Se PASS, dá recomendações positivas para manter condições
@@ -115,5 +134,5 @@ class RuleEngine:
                 recommendations.append("Avoid pointing camera directly at bright light sources")
             elif 'Poor illumination' in rule:
                 recommendations.append("Improve overall lighting uniformity and reduce shadows")
-        
-        return recommendations
+ 
+        return recommendations 
