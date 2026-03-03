@@ -74,9 +74,9 @@ class QwenARModel(ARDiagnosticModel):
             # Configuração de quantização 4-bit
             if self.use_4bit and self.device == 'cuda':
                 quantization_config = BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.float16,
-                    bnb_4bit_quant_type="nf4",
+                    load_in_4bit=True,   
+                    bnb_4bit_compute_dtype=torch.float16,  
+                    bnb_4bit_quant_type="nf4", 
                     bnb_4bit_use_double_quant=True,
                 )
                 
@@ -84,8 +84,8 @@ class QwenARModel(ARDiagnosticModel):
                     self.MODEL_NAME,
                     quantization_config=quantization_config,
                     device_map="auto",
-                    trust_remote_code=True,
-                    torch_dtype=torch.float16
+                    trust_remote_code=True, # necessário para modelos com código customizado no Hugging Face, como o Qwen, garantindo que as otimizações específicas do modelo sejam aplicadas corretamente
+                    torch_dtype=torch.float16  
                 )
                 logger.info("Model loaded with 4-bit quantization")
             else:
@@ -103,7 +103,7 @@ class QwenARModel(ARDiagnosticModel):
             # alinhando corretamente os tokens de entrada e permitindo uma geração mais eficiente e coerente, especialmente em batch.
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.MODEL_NAME,
-                trust_remote_code=True,
+                trust_remote_code=True, 
                 padding_side='left'  # Requerido para decoder-only em batch
             )
             
@@ -184,6 +184,7 @@ class QwenARModel(ARDiagnosticModel):
     # sobre a qualidade geral do ambiente AR, permitindo que ele gere um resumo mais informativo e útil para o usuário final
     def _build_summary_prompt(self, agg: Dict) -> str: 
         """Constrói prompt de sumarização do ambiente (ChatML format)"""
+
         total          = agg['total']                     # número total de frames analisados
         problem_count  = agg['problem_count']             # número de frames com problemas de iluminação
         dominant_label = agg['dominant_label']            # label dominante entre os frames problemáticos
@@ -278,7 +279,7 @@ class QwenARModel(ARDiagnosticModel):
             # calcula o número de tokens gerados subtraindo o comprimento dos tokens de entrada do comprimento total dos tokens de saída
             num_tokens = outputs[0].shape[0] - inputs['input_ids'].shape[1] 
 
-            logger.info(f"Geração SLM: {(t3-t2):.2f}s ({num_tokens} tokens)")
+            logger.info(f"Geração SLM(Qwen): {(t3-t2):.2f}s ({num_tokens} tokens)")
         
         # Decodifica APENAS os tokens novos (otimização crítica)
         t4 = time.time() # marca o início da decodificação para medir o tempo gasto nessa etapa
@@ -308,7 +309,7 @@ class QwenARModel(ARDiagnosticModel):
                 # último recurso: retorna a saída completa
                 response = full_output.strip()
         
-        return response
+        return self._clean_response(response)
     #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # método para processar múltiplos prompts em batch
     def _call_model_batch(self, prompts: List[str]) -> List[str]: 
@@ -333,7 +334,7 @@ class QwenARModel(ARDiagnosticModel):
 
         t0 = time.time() # marca o início da tokenização para medir o tempo gasto nessa etapa
 
-        ## tokeniza o prompt, convertendo o texto em uma sequência de tokens numéricos que o modelo pode entender 
+        # tokeniza o prompt, convertendo o texto em uma sequência de tokens numéricos que o modelo pode entender 
         # aplica padding para garantir que todos os prompts tenham o mesmo comprimento, permitindo o processamento em batch
         inputs = self.tokenizer(
             prompts,
@@ -385,7 +386,7 @@ class QwenARModel(ARDiagnosticModel):
         responses = [] 
 
         # itera sobre cada saída gerada e seus tokens de entrada correspondentes para processar cada resposta individualmente
-        for i, (output, input_ids) in enumerate(zip(outputs, inputs['input_ids'])): 
+        for output, input_ids in zip(outputs, inputs['input_ids']): 
             # Decodifica apenas os tokens novos
             input_length = len(input_ids)                                                        # comprimento dos tokens de entrada para identificar onde começa a resposta gerada
             generated_tokens = output[input_length:]                                             # extrai apenas os tokens gerados para o prompt atual
@@ -401,10 +402,11 @@ class QwenARModel(ARDiagnosticModel):
                 else:
                     response = full_output.strip()
             
-            responses.append(response)
+            responses.append(self._clean_response(response))
         
         t5 = time.time() # marca o fim da decodificação para calcular o tempo gasto nessa etapa
         
         logger.debug(f"Batch decoding: {(t5-t4)*1000:.1f}ms")
+        logger.info(f"Qwen batch completed: {len(responses)} responses")
         
         return responses

@@ -95,6 +95,15 @@ class ARDiagnosticModel(ABC):
         """
         pass
     #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # método para limpar a resposta do modelo, truncando na última frase completa para evitar cortes mid-sentence
+    def _clean_response(self, text: str) -> str:
+        """Trunca na última frase completa para evitar cortes mid-sentence."""
+        last_end = max(text.rfind('.'), text.rfind('!'), text.rfind('?'))
+        if last_end > 20:  # Garante que haja conteúdo mínimo
+            return text[:last_end + 1].strip()
+        return text.strip()
+    
+    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # método para gerar explicação usando o modelo de linguagem, com fallback para template em caso de falha
     def _generate_explanation(self, metrics: Dict, status: str, risk_level: str, triggered_rules: List[str]) -> str:
         """
