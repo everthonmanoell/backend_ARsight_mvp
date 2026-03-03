@@ -5,7 +5,6 @@ Simula o fluxo real: celular envia 10 frames -> servidor diagnostica em batch ->
 Uso:
     python tests/manual/test_pipeline.py
 """
-import cv2
 import json
 import sys
 import time
@@ -19,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent)) # Ajuste para acess
 from app.config.config import Config
 from app.pipeline.illumination_pipeline import IlluminationPipeline
 
-
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Imagens de teste (4 overexposed + 3 underexposed + 3 normal = 10)
 BATCH_IMAGES = [
     ("data/illumination/bright_overexposed/bright_image1.jpg", "overexposed"),
@@ -34,48 +33,57 @@ BATCH_IMAGES = [
     ("data/illumination/normal/normal_image3.jpg",             "adequate"),
 ]
 
-
-def load_image(path: str):
-    """Carrega imagem via OpenCV e converte para PIL RGB."""
-    img_cv = cv2.imread(path)
-    if img_cv is None:
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# método auxiliar para carregar uma imagem usando PIL, retornando None em caso de erro
+def load_image(path: str): 
+    """Carrega imagem via PIL."""
+    try:
+        return Image.open(path)
+    except Exception:
         return None
-    return Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
 
-
-def sep(char="-", width=80):
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# método auxiliar para imprimir uma linha separadora no console, melhorando a legibilidade dos logs durante o teste
+def sep(char="-", width=150): 
     print(char * width)
 
-
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 def main():
+
     sep("=")
     print("TESTE DO PIPELINE - TRUE BATCH (10 IMAGENS) + SUMMARY")
     sep("=")
 
-    # --- Inicializa pipeline ---
-    config         = Config()
-    model_type     = config.get("models.default", "qwen")
-    use_4bit       = config.get("models.use_4bit", True)
-    device         = config.get("models.device", "cuda")
-    enable_compile = config.get("models.enable_compile", False)
+    # Inicializa pipeline 
+    config         = Config()                               # Carrega configurações do arquivo YAML
+    model_type     = config.get("models.default", "qwen")   # Obtém tipo de modelo (qwen ou phi) a partir da configuração
+    use_4bit       = config.get("models.use_4bit", True)    # Verifica se a quantização 4-bit deve ser usada
+    device         = config.get("models.device", "cuda")    # Verifica qual dispositivo deve ser usado para inferência (cuda, cpu, ou auto)
 
-    print(f"\nConfig: model={model_type}  4bit={use_4bit}  device={device}  compile={enable_compile}")
+    print(f"\nConfig: model={model_type}  4bit={use_4bit}  device={device}") 
 
-    t_init = time.perf_counter()
-    pipeline = IlluminationPipeline(
-        model_type=model_type,
-        use_4bit=use_4bit,
-        device=device,
-        enable_compile=enable_compile,
-    )
-    pipeline._load_model()
+    t_init = time.perf_counter() # Inicia contagem de tempo para a inicialização do pipeline
+
+    # Inicializa o pipeline de diagnóstico com as configurações especificadas
+    pipeline = IlluminationPipeline(model_type=model_type, use_4bit=use_4bit, device=device) 
+
+    # Carrega o modelo SLM
+    pipeline._load_model() 
+
     print(f"Modelo carregado em {time.perf_counter() - t_init:.1f}s")
 
-    # --- Carrega imagens ---
+    # Carrega imagens
     print(f"\nCarregando {len(BATCH_IMAGES)} imagens...")
-    images, filenames, expected_labels = [], [], []
-    missing = []
 
+    # listas para armazenar as imagens carregadas, os nomes dos arquivos e os rótulos esperados
+    images, filenames, expected_labels = [], [], [] 
+
+    # lista para rastrear imagens que não foram encontradas, permitindo identificar problemas com os arquivos de teste antes de executar o pipeline
+    missing = [] 
+
+    # iterar sobre as imagens definidas em BATCH_IMAGES, tentando carregar cada uma usando a função load_image; 
+    # se a imagem for carregada com sucesso, ela é adicionada à lista de imagens, 
+    # caso contrário, seu caminho é adicionado à lista de missing para rastreamento de erros
     for path_str, label in BATCH_IMAGES:
         path = Path(path_str)
         img  = load_image(path_str)
@@ -99,36 +107,49 @@ def main():
     n = len(images)
     print(f"\n{n} imagem(ns) prontas para o batch")
 
-    # --- FASE 1: PDI ---
+    # FASE 1: PDI
     print()
     sep()
     print("FASE 1 - PDI (visao computacional)")
     sep()
 
-    t_pdi = time.perf_counter()
-    pdi_metrics = pipeline.extract_metrics_batch(images)
-    pdi_elapsed = time.perf_counter() - t_pdi
+    # Inicia contagem de tempo para a fase de PDI, permitindo medir o tempo gasto na extração de métricas de iluminação para o batch de imagens
+    t_pdi = time.perf_counter() 
+
+    # Extrai métricas de iluminação para o batch de imagens, retornando uma lista de dicionários com as métricas calculadas para cada imagem
+    pdi_metrics = pipeline.extract_metrics_batch(images) 
+
+    # Calcula o tempo total gasto na fase de PDI, permitindo avaliar a eficiência do pipeline na extração de métricas de iluminação para o batch de imagens
+    pdi_elapsed = time.perf_counter() - t_pdi 
 
     print(f"Metricas extraidas: {n} imagens em {pdi_elapsed*1000:.1f}ms  ({pdi_elapsed/n*1000:.1f}ms/img)\n")
 
+    # Imprime as métricas extraídas para cada imagem, incluindo o rótulo de iluminação previsto, a pontuação de iluminação e a média de brilho, 
     for i, (fname, m) in enumerate(zip(filenames, pdi_metrics)):
         print(f"  [{i+1:02d}] {fname:<35}  label={m['illumination_label']:<18}  "
               f"score={m['illumination']:.3f}  luma={m['mean_luma']:.1f}")
 
-    # --- FASE 2: LLM batch + summary (N+1 prompts num unico batch) ---
+    # FASE 2: SLM batch + summary (N+1 prompts num unico batch)
     print()
     sep()
-    print("FASE 2 - SLM / LLM (true batch: N diagnosticos + 1 summary)")
+    print("FASE 2 - SLM (true batch: N diagnosticos + 1 summary)")
     sep()
 
-    t_llm = time.perf_counter()
-    diagnoses, summary = pipeline.diagnose_from_metrics_batch_with_summary(pdi_metrics)
-    llm_elapsed = time.perf_counter() - t_llm
+    # Inicia contagem de tempo para a fase de SLM, permitindo medir o tempo gasto na geração dos diagnósticos e do resumo do ambiente usando o modelo de linguagem
+    t_slm = time.perf_counter() 
 
-    per_diag = llm_elapsed / n
-    print(f"{n} diagnosticos + 1 summary gerados em {llm_elapsed:.2f}s  ({per_diag*1000:.0f}ms/diagnostico)")
+    # Gera diagnósticos para o batch de métricas e um resumo do ambiente, retornando uma lista de diagnósticos individuais para cada imagem e um dicionário com o resumo geral do ambiente
+    diagnoses, summary = pipeline.diagnose_from_metrics_batch_with_summary(pdi_metrics) 
 
-    # --- Summary do ambiente ---
+    # Calcula o tempo total gasto na fase de SLM, permitindo avaliar a eficiência do modelo de linguagem na geração dos diagnósticos e do resumo para o batch de imagens
+    slm_elapsed = time.perf_counter() - t_slm 
+
+    # Calcula o tempo médio gasto por diagnóstico, permitindo avaliar se a meta de latência de 1 segundo por diagnóstico foi atingida
+    per_diag = slm_elapsed / n 
+
+    print(f"{n} diagnosticos + 1 summary gerados em {slm_elapsed:.2f}s  ({per_diag*1000:.0f}ms/diagnostico)")
+
+    # Summary do ambiente
     print()
     sep()
     print("SUMMARY DO AMBIENTE")
@@ -147,7 +168,7 @@ def main():
           f"clip_bright={mavg.get('pct_clipped_bright', 0):.3f}  "
           f"clip_dark={mavg.get('pct_clipped_dark', 0):.3f}")
 
-    # --- Resultados por frame ---
+    # Resultados por frame
     print()
     sep()
     print("RESULTADOS POR FRAME")
@@ -196,8 +217,8 @@ def main():
             },
         })
 
-    # --- Estatisticas ---
-    total_elapsed = pdi_elapsed + llm_elapsed
+    # Estatisticas e performance
+    total_elapsed = pdi_elapsed + slm_elapsed
     accuracy      = correct / n * 100
 
     print()
@@ -207,12 +228,12 @@ def main():
     print(f"\n  Imagens processadas : {n}")
     print(f"  Acuracia de label   : {correct}/{n}  ({accuracy:.1f}%)")
     print(f"\n  Tempo PDI total     : {pdi_elapsed*1000:.1f}ms  ({pdi_elapsed/n*1000:.1f}ms/img)")
-    print(f"  Tempo LLM total     : {llm_elapsed:.2f}s   ({per_diag*1000:.0f}ms/diagnostico)")
+    print(f"  Tempo SLM total     : {slm_elapsed:.2f}s   ({per_diag*1000:.0f}ms/diagnostico)")
     print(f"  Tempo total         : {total_elapsed:.2f}s")
     meta_ok = per_diag < 1.0
     print(f"  Meta < 1s/diagnost. : {'[OK] atingida' if meta_ok else '[!!] nao atingida'}  ({per_diag:.3f}s)")
 
-    # --- Salva JSON ---
+    # Salva JSON 
     output_dir  = Path("outputs")
     output_dir.mkdir(exist_ok=True)
     output_file = output_dir / f"pipeline_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -223,14 +244,13 @@ def main():
             "model":        model_type,
             "device":       device,
             "quantization": "4-bit" if use_4bit else "fp16/fp32",
-            "compile":      enable_compile,
             "batch_size":   n,
         },
         "performance": {
             "pdi_total_ms":        round(pdi_elapsed * 1000, 1),
             "pdi_per_image_ms":    round(pdi_elapsed / n * 1000, 1),
-            "llm_total_s":         round(llm_elapsed, 3),
-            "llm_per_diagnosis_s": round(per_diag, 3),
+            "slm_total_s":         round(slm_elapsed, 3),
+            "slm_per_diagnosis_s": round(per_diag, 3),
             "total_s":             round(total_elapsed, 3),
             "target_met":          meta_ok,
         },
@@ -262,6 +282,6 @@ def main():
     sep()
     print("\nTeste concluido!")
 
-
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 if __name__ == "__main__":
     main()

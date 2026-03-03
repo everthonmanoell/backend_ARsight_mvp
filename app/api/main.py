@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
         # realizar um warm-up durante a startup garante que o modelo esteja pronto para processar requests reais com latência otimizada desde o primeiro request
 
         if warmup_on_startup:
-            logger.info("\nStarting warm-up (1 run)...\n")
+            logger.info("Starting warm-up (1 run)...\n")
 
             warmup_start = time.time() # Inicia contagem de tempo para o warm-up, permitindo medir quanto tempo leva para carregar o modelo e realizar a primeira inferência
 

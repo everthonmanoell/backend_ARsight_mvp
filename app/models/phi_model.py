@@ -4,7 +4,7 @@ Modelo alternativo com maior qualidade
 """
 
 import logging
-from time import time
+import time
 from typing import Dict, List
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig

@@ -2,7 +2,7 @@
 # Illumination-only pipeline for Jetson deployment
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 models:
-  default: phi             # Modelo padrão: 'qwen' ou 'phi'
+  default: qwen             # Modelo padrão: 'qwen' ou 'phi'
   device: cuda             # 'cuda', 'cpu', ou 'auto'
   use_4bit: true           # Quantização 4-bit (recomendado para Jetson)
   warmup_on_startup: true  # Fazer warm-up automático no startup (recomendado)

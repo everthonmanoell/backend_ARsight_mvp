@@ -2,6 +2,7 @@
 GPU Diagnostic Test
 Verifica disponibilidade e configuração de CUDA/GPU
 uso: python tests/manual/test_gpu.py
+para ativar ambiente virtual: .venv\Scripts\activate 
 """
 import sys
 from pathlib import Path
