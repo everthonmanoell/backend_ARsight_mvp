@@ -21,7 +21,6 @@ class PhiARModel(ARDiagnosticModel):
     Características:
     - 3.8B parâmetros (maior qualidade)
     - ~2.5GB VRAM com quantização 4-bit
-    - ~1.8s por cena (GPU)
     - Alternativa ao Qwen para maior qualidade
     """
     
@@ -128,6 +127,7 @@ class PhiARModel(ARDiagnosticModel):
                 f"- Illumination Score: {illumination_score:.2f}\n"
                 f"- Mean Brightness: {mean_luma:.1f}/255\n"
                 f"- Uniformity: {uniformity:.2f}\n"
+                f"- Risk Level: {risk_level.upper()}\n"
                 f"Status: PASS\n\n"
                 f"Explain why these lighting conditions are optimal for AR applications:"
             )
@@ -139,6 +139,7 @@ class PhiARModel(ARDiagnosticModel):
                 f"- Illumination Score: {illumination_score:.2f}\n"
                 f"- Mean Brightness: {mean_luma:.1f}/255\n"
                 f"- Uniformity: {uniformity:.2f}\n"
+                f"- Risk Level: {risk_level.upper()}\n"
                 f"Status: FAIL\n"
                 f"Problems Detected: {rules_text}\n\n"
                 f"Explain how these lighting issues specifically impact AR tracking accuracy and visual quality:"
@@ -153,10 +154,12 @@ class PhiARModel(ARDiagnosticModel):
         """Constrói prompt de sumarização do ambiente (formato Phi-3)"""
         total           = agg['total']
         problem_count   = agg['problem_count']
+        dominant_label  = agg['dominant_label']
         overall_risk    = agg['overall_risk']
         avg_luma        = agg['avg_mean_luma']
         avg_uniformity  = agg['avg_uniformity']
         avg_clip_bright = agg['avg_pct_clipped_bright']
+        avg_clip_dark   = agg['avg_pct_clipped_dark']
 
         system_msg = (
             "You are an AR lighting specialist. Write in plain, natural sentences. "
@@ -180,8 +183,10 @@ class PhiARModel(ARDiagnosticModel):
         user_msg = (
             f"An AR session was evaluated across {total} camera frames. "
             f"{problem_count} frames had lighting problems ({breakdown_text}). "
+            f"Dominant issue: {label_names.get(dominant_label, dominant_label)}. "
             f"Average brightness: {avg_luma:.0f}/255, uniformity: {avg_uniformity:.0%}, "
-            f"overexposed pixels: {avg_clip_bright:.0%}. Overall risk: {overall_risk}. "
+            f"overexposed pixels: {avg_clip_bright:.0%}, underexposed pixels: {avg_clip_dark:.0%}. "
+            f"Overall risk: {overall_risk}. "
             f"In 1-2 short sentences, explain what this means for AR and what the user should do:"
         )
 
@@ -231,7 +236,8 @@ class PhiARModel(ARDiagnosticModel):
             if "<|assistant|>" in full_output:
                 response = full_output.split("<|assistant|>")[-1].strip()
             else:
-                response = full_output.replace(prompt, "").strip()
+                # último recurso: retorna a saída completa (replace(prompt) é frágil após skip_special_tokens)
+                response = full_output.strip()
         
         return self._clean_response(response)
     
