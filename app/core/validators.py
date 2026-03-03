@@ -1,6 +1,6 @@
 """
 Output Validators - MVP
-Validadores de saída do LLM para prevenir alucinações
+Validadores de saída do SLM para prevenir alucinações
 """
 
 from typing import Dict
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # garantindo que as explicações sejam coerentes, relevantes e não contenham artefatos ou frases genéricas
 class OutputValidator:
     """
-    Valida saídas do LLM para garantir qualidade
+    Valida saídas do SLM para garantir qualidade
     """
     
     def __init__(self):
@@ -37,13 +37,13 @@ class OutputValidator:
         ]
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # método principal para validar explicações geradas pelo LLM, verificando comprimento, presença de frases proibidas e relevância do conteúdo     
+    # método principal para validar explicações geradas pelo SLM, verificando comprimento, presença de frases proibidas e relevância do conteúdo     
     def is_valid_explanation(self, text: str) -> bool:
         """
-        Verifica se explicação do LLM é válida
+        Verifica se explicação do SLM é válida
         
         Args:
-            text: Texto gerado pelo LLM
+            text: Texto gerado pelo SLM
         
         Returns:
             True se explicação é válida
@@ -91,7 +91,7 @@ class OutputValidator:
         Remove artefatos e formata explicação
         
         Args:
-            text: Texto bruto do LLM
+            text: Texto bruto do SLM
         
         Returns:
             Texto limpo e formatado

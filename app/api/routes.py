@@ -7,7 +7,7 @@ import logging
 import os
 from typing import List, Optional
 from datetime import datetime
-from pathlib import Path
+import time as _time
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 from PIL import Image
@@ -16,115 +16,133 @@ import io
 from app.pipeline.illumination_pipeline import IlluminationPipeline
 from app.config.config import Config
 
+# configura logger para este módulo
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
 
-# Global pipeline instance (injected by main.py)
-_pipeline: Optional[IlluminationPipeline] = None
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# router específico para endpoints de diagnóstico
+router = APIRouter() 
+
+# Variável global para armazenar a instância do pipeline, que será configurada no startup da API e acessada pelos endpoints para realizar diagnósticos
+_pipeline: Optional[IlluminationPipeline] = None 
 
 
-def set_pipeline(pipeline: IlluminationPipeline):
+# método para configurar a instância global do pipeline, chamada durante o startup da API - setter para a variável global _pipeline
+def set_pipeline(pipeline: IlluminationPipeline): 
     """Set global pipeline instance"""
     global _pipeline
     _pipeline = pipeline
 
 
-def get_pipeline() -> IlluminationPipeline:
+# método para acessar a instância global do pipeline, garantindo que ele foi inicializado antes de ser usado - getter para a variável global _pipeline
+def get_pipeline() -> IlluminationPipeline: 
     """Get global pipeline instance"""
     if _pipeline is None:
         raise HTTPException(status_code=503, detail="Pipeline not initialized")
     return _pipeline
 
-
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# método auxiliar para validar e carregar uma imagem a partir do arquivo enviado, garantindo que o formato e tamanho são adequados antes de processar a imagem
 def _validate_image_file(file: UploadFile) -> Image.Image:
     """
-    Validate and load image from upload
+    Valida e carrega a imagem enviada
     
     Args:
-        file: Uploaded file
-        
+        file: arquivo enviado (UploadFile)
+    
     Returns:
         PIL Image
         
     Raises:
-        HTTPException: If file is invalid
+        HTTPException: se o arquivo for inválido
     """
-    # Check file extension
-    allowed_formats = ['jpg', 'jpeg', 'png', 'bmp']
+    config = Config()
+    allowed_formats: list = config.get('api.allowed_formats', ['jpg', 'jpeg', 'png', 'bmp'])
+    max_size: int         = config.get('api.max_image_size', 10 * 1024 * 1024)
+
+    # Checar se o formato do arquivo é permitido (baseado na extensão)
+    # se não for, lança uma exceção HTTP 400 indicando que o formato é inválido
     file_ext = file.filename.split('.')[-1].lower()
-    
     if file_ext not in allowed_formats:
         raise HTTPException(
-            status_code=400,
+            status_code=400, 
             detail=f"Invalid file format. Allowed: {', '.join(allowed_formats)}"
         )
     
-    # Read and validate image
+    # Ler e validar o conteúdo do arquivo, tentando abrir como imagem usando PIL; 
+    # se falhar, lança uma exceção HTTP 400 indicando que o arquivo é inválido
     try:
         contents = file.file.read()
         image = Image.open(io.BytesIO(contents))
         
-        # Validate image size
-        max_size = 10 * 1024 * 1024  # 10MB
         if len(contents) > max_size:
             raise HTTPException(
                 status_code=400,
-                detail=f"File too large. Max size: {max_size / 1024 / 1024}MB"
+                detail=f"File too large. Max size: {max_size / 1024 / 1024:.0f}MB"
             )
         
         return image
-        
+
+    # Em caso de qualquer erro durante a leitura ou validação da imagem, captura a exceção 
+    # e lança uma HTTPException com status 400 e detalhes do erro   
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
     finally:
         file.file.seek(0)
 
-
-@router.get("/")
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Root endpoint, fornece informações básicas sobre a API e seus endpoints disponíveis
+@router.get("/") 
 async def root():
-    """Root endpoint"""
     return {
         "message": "AR Diagnostic MVP - Illumination Analysis",
         "version": "0.1.0",
         "endpoints": {
-            "health": "GET  /health           — status da API e modelo carregado",
-            "diagnose_batch": "POST /diagnose/batch  — diagnóstico de 1-10 imagens (PDI + LLM)",
+            "health":         "GET  /health          — status da API e modelo carregado",
+            "diagnose_batch": "POST /diagnose/batch  — diagnóstico de 1-10 imagens (PDI + SLM)",
             "upload_batch":   "POST /upload/batch    — salva imagens em disco",
-            "docs":            "GET  /docs            — documentação interativa (Swagger)"
+            "docs":           "GET  /docs            — documentação interativa (Swagger)"
         }
     }
 
-
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# endpoint para verificar se a API está saudável, retornando status e informações sobre o modelo carregado
 @router.get("/health")
 async def health():
     """Health check endpoint"""
     try:
-        pipeline = get_pipeline()
+        # tenta acessar a instância do pipeline para verificar se está inicializada e funcional
+        pipeline = get_pipeline() 
+
+        # retorna um dicionário indicando que a API está saudável, junto com informações sobre o modelo carregado (tipo, dispositivo, quantização)
         return {
             "status": "healthy",
             "model": pipeline.model_type,
             "device": pipeline.device,
             "quantization": "4-bit" if pipeline.use_4bit else "fp16/fp32"
         }
+    
+    # caso ocorra qualquer exceção (como pipeline não inicializado), captura a exceção e retorna um JSON indicando que a API está com problemas
     except Exception as e:
         return JSONResponse(
             status_code=503,
-            content={"status": "unhealthy", "error": str(e)}
+            content={"status": "unhealthy", "error": str(e)} # inclui detalhes do erro
         )
 
-
-@router.post("/diagnose/batch")
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# endpoint principal para diagnóstico em batch, recebe uma lista de arquivos de imagem, processa cada um e retorna um resumo geral mais detalhes por frame
+@router.post("/diagnose/batch") 
 async def diagnose_batch(files: List[UploadFile] = File(...)):
     """
-    Diagnose multiple images in batch.
+    Diagnosticar um lote de imagens, retornando um resumo geral e detalhes por frame.
 
-    Returns a `summary` of the overall environment plus per-frame `frames` list.
-    The summary is generated by the LLM using aggregated PDI statistics (N+1 prompts
-    in a single batch forward pass — no extra latency cost).
+    Retorna um `summary` do ambiente geral e uma lista `frames` com resultados por quadro.
+    O summary é gerado pelo SLM usando estatísticas agregadas de PDI (N+1 prompts
+    em um único forward pass em batch — sem custo adicional de latência).
 
     Args:
-        files: List of image files (1-10)
+        files: Lista de arquivos de imagem (1-10)
 
     Returns:
         {
@@ -134,10 +152,13 @@ async def diagnose_batch(files: List[UploadFile] = File(...)):
                          triggered_rules, recommendations, metrics, status_code } ]
         }
     """
-    import time as _time
+    
 
     try:
-        max_batch_size = 10
+        # valida o número de arquivos enviados, garantindo que não exceda o limite configurado (default 10) 
+        # e que haja pelo menos um arquivo; caso contrário, lança uma HTTPException com status 400 e detalhes do erro
+        max_batch_size: int = Config().get('api.max_batch_size', 10)
+
         if len(files) > max_batch_size:
             raise HTTPException(
                 status_code=400,
@@ -146,24 +167,33 @@ async def diagnose_batch(files: List[UploadFile] = File(...)):
         if len(files) == 0:
             raise HTTPException(status_code=400, detail="No files provided")
 
-        pipeline = get_pipeline()
+        # acessa a instância global do pipeline para realizar o diagnóstico
+        pipeline = get_pipeline() 
 
-        # ── 1. Valida e carrega imagens ───────────────────────────────────────
-        valid_items: list = []   # (index_original, filename, PIL.Image)
+        # 1. Valida e carrega imagens 
+        # lista valid_items armazena tuplas de (índice original, nome do arquivo, imagem PIL) para os arquivos que foram validados com sucesso
+        valid_items: list = [] 
+
+        # lista error_frames armazena dicionários com detalhes dos arquivos que falharam na validação, incluindo índice, nome do arquivo, código de status HTTP e mensagem de erro
         error_frames: list = []
 
+        # iterar sobre os arquivos enviados, validando cada um usando a função _validate_image_file
         for i, file in enumerate(files):
             try:
                 image = _validate_image_file(file)
                 valid_items.append((i, file.filename, image))
-            except HTTPException as e:
+
+            # captura especificamente HTTPException para erros de validação de imagem, registrando o erro e adicionando um dicionário ao error_frames com detalhes do erro
+            except HTTPException as e: 
+                logger.error(f"Validation error for {file.filename}: {e.detail}")
                 error_frames.append({
                     'frame_index': i,
                     'filename':    file.filename,
                     'status_code': e.status_code,
                     'error':       e.detail
                 })
-            except Exception as e:
+            # captura qualquer outra exceção inesperada durante a validação
+            except Exception as e: 
                 logger.error(f"Error loading {file.filename}: {e}")
                 error_frames.append({
                     'frame_index': i,
@@ -172,22 +202,33 @@ async def diagnose_batch(files: List[UploadFile] = File(...)):
                     'error':       str(e)
                 })
 
-        success_frames: list = []
-        summary: dict = {}
-        t_start = _time.time()
+        # lista success_frames armazena dicionários com detalhes dos arquivos que foram processados com sucesso
+        success_frames: list = [] 
 
+        # dicionário summary armazena informações agregadas sobre o ambiente geral
+        summary: dict = {} 
+
+        t_start = _time.time() # registra o tempo de início do processamento para calcular o tempo total gasto no diagnóstico
+
+        # verifica se há itens válidos para processar; se houver, extrai os índices, nomes dos arquivos e imagens correspondentes para realizar o diagnóstico em batch usando o pipeline
         if valid_items:
             indices   = [idx for idx, _, _ in valid_items]
             filenames = [fn  for _, fn, _ in valid_items]
             images    = [img for _, _, img in valid_items]
 
             try:
-                # ── 2. PDI batch ─────────────────────────────────────────────
-                pdi_metrics = pipeline.extract_metrics_batch(images)
+                # 2. PDI batch 
 
-                # ── 3. LLM batch (N+1 prompts: N individuais + 1 summary) ───
-                diagnoses, summary = pipeline.diagnose_from_metrics_batch_with_summary(pdi_metrics)
+                # extrai métricas de para todas as imagens em um único batch, retornando uma lista de dicionários de métricas correspondentes a cada imagem
+                pdi_metrics = pipeline.extract_metrics_batch(images) 
 
+                # 3. SLM batch (N+1 prompts: N individuais + 1 summary)
+
+                # realiza o diagnóstico para todas as imagens em um único batch, retornando uma lista de diagnósticos individuais e um resumo geral do ambiente
+                diagnoses, summary = pipeline.diagnose_from_metrics_batch_with_summary(pdi_metrics) 
+
+                # itera sobre os resultados dos diagnósticos individuais, associando cada diagnóstico ao índice original e nome do arquivo correspondente, 
+                # e adicionando detalhes do diagnóstico e métricas ao dicionário resultante, que é adicionado à lista success_frames
                 for orig_idx, filename, pdi, result in zip(indices, filenames, pdi_metrics, diagnoses):
                     result['frame_index'] = orig_idx
                     result['filename']    = filename
@@ -204,35 +245,45 @@ async def diagnose_batch(files: List[UploadFile] = File(...)):
                     }
                     success_frames.append(result)
 
-            except Exception as e:
-                logger.error(f"Batch+summary inference failed, falling back to sequential: {e}")
-                for orig_idx, filename, image in valid_items:
-                    try:
-                        result = pipeline.diagnose(image)
+            # se ocorrer qualquer erro durante o processamento em batch (como falha na extração de métricas ou diagnóstico), captura a exceção e registra o erro, 
+            # tentando realizar um fallback para processar cada imagem individualmente
+            except Exception as e: 
+
+                logger.error(f"Batch+summary inference failed, falling back to sequential batch: {e}")
+
+                try:
+                    fb_images  = [img  for _, _, img  in valid_items]
+                    fb_indices = [idx  for idx, _, _  in valid_items]
+                    fb_names   = [name for _, name, _ in valid_items]
+                    fb_metrics = pipeline.extract_metrics_batch(fb_images)
+                    fb_diagnoses, summary = pipeline.diagnose_from_metrics_batch_with_summary(fb_metrics)
+                    for orig_idx, filename, result in zip(fb_indices, fb_names, fb_diagnoses):
                         result['frame_index'] = orig_idx
                         result['filename']    = filename
                         result['status_code'] = 200
                         success_frames.append(result)
-                    except Exception as e2:
-                        logger.error(f"Sequential fallback failed for {filename}: {e2}")
+                except Exception as e2: 
+                    logger.error(f"Sequential fallback also failed: {e2}")
+                    for orig_idx, filename, _ in valid_items:
                         error_frames.append({
                             'frame_index': orig_idx,
                             'filename':    filename,
                             'status_code': 500,
                             'error':       str(e2)
                         })
-                # Summary minimo quando batch falha
-                summary = {
-                    'overall_risk':   'unknown',
-                    'dominant_label': 'unknown',
-                    'problem_count':  0,
-                    'normal_count':   len(success_frames),
-                    'explanation':    'Summary unavailable due to inference error.',
-                    'recommendations': [],
-                    'metrics_avg':    {}
-                }
+                    summary = {
+                        'overall_risk':   'unknown',
+                        'dominant_label': 'unknown',
+                        'problem_count':  0,
+                        'normal_count':   0,
+                        'explanation':    'Summary unavailable due to inference error.',
+                        'recommendations': [],
+                        'metrics_avg':    {}
+                    }
 
-        processing_time_s = round(_time.time() - t_start, 3)
+        # calcula o tempo total gasto no processamento do lote, desde a validação das imagens até a geração dos diagnósticos e resumo, 
+        # e adiciona essa informação ao dicionário summary para fornecer contexto sobre a latência da API ao processar o lote de imagens
+        processing_time_s = round(_time.time() - t_start, 3) 
         summary['processing_time_s'] = processing_time_s
 
         # Frames ordenados pelo índice original
@@ -249,8 +300,9 @@ async def diagnose_batch(files: List[UploadFile] = File(...)):
         logger.error(f"Error processing batch: {e}")
         raise HTTPException(status_code=500, detail=f"Error processing batch: {str(e)}")
 
-
-@router.post("/upload/batch")
+#----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# endpoint para upload e salvamento de múltiplas imagens em disco, com validação de formato e tamanho, e retorno de informações sobre os arquivos processados
+@router.post("/upload/batch") 
 async def upload_batch(files: List[UploadFile] = File(...)):
     """
     Upload and save multiple images to disk
@@ -261,9 +313,11 @@ async def upload_batch(files: List[UploadFile] = File(...)):
     Returns:
         List of saved file info
     """
+
+    # valida o número de arquivos enviados, garantindo que não exceda o limite configurado (default 10) e que haja pelo menos um arquivo; 
+    # caso contrário, lança uma HTTPException com status 400 e detalhes do erro
     try:
-        # Validate batch size
-        max_batch_size = 10
+        max_batch_size: int = Config().get('api.max_batch_size', 10)
         if len(files) > max_batch_size:
             raise HTTPException(
                 status_code=400,
@@ -273,28 +327,31 @@ async def upload_batch(files: List[UploadFile] = File(...)):
         if len(files) == 0:
             raise HTTPException(status_code=400, detail="No files provided")
         
-        # Get upload directory from config
+        # acessa as configurações para determinar o diretório onde os arquivos serão salvos, criando o diretório se ele não existir
         config = Config()
         upload_dir = config.get('api.upload_dir', 'data/uploads')
         
-        # Create upload directory
+        # Criar diretório de upload se não existir
         os.makedirs(upload_dir, exist_ok=True)
         
-        # Process each file
+        # lista para armazenar os resultados do processamento de cada arquivo, incluindo informações sobre o nome original, nome salvo, caminho, tamanho e status do processamento
         results = []
+
+        # gera um timestamp para criar nomes de arquivos únicos, evitando sobrescritas e facilitando a organização dos arquivos salvos
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
+        # itera sobre os arquivos enviados, validando cada um usando a função _validate_image_file e salvando a imagem no diretório especificado; 
+        # para cada arquivo, gera um nome de arquivo único usando o timestamp e o nome original
         for i, file in enumerate(files):
             try:
-                # Validate file
+                # Valida arquivo
                 image = _validate_image_file(file)
                 
-                # Generate unique filename
-                file_ext = Path(file.filename).suffix
+                # Gera nome de arquivo único e caminho para salvar a imagem
                 saved_filename = f"{timestamp}_{i:02d}_{file.filename}"
                 saved_path = os.path.join(upload_dir, saved_filename)
                 
-                # Save image
+                # Salva imagem
                 image.save(saved_path)
                 
                 results.append({
@@ -320,6 +377,7 @@ async def upload_batch(files: List[UploadFile] = File(...)):
                     'error': str(e)
                 })
         
+        # retorna um resumo do processamento, incluindo o número total de arquivos processados, quantos foram salvos com sucesso e quantos apresentaram erros, junto com os detalhes de cada arquivo processado
         return {
             'total': len(files),
             'successful': sum(1 for r in results if r.get('status') == 'success'),

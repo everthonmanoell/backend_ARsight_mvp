@@ -1,18 +1,24 @@
 """
 Explanation Templates - MVP
-Templates de fallback para explicações quando LLM falha
+Templates de fallback para explicações quando SLM falha
 """
 
 from typing import Dict, List
 
-
+# classe que fornece templates de explicação para casos em que o modelo SLM falha ou não consegue gerar uma explicação adequada
 class ExplanationTemplates:
     """
-    Fornece templates de explicação para fallback
+    Fornece templates de explicação para fallback,
+    categorizados por status (pass/fail) e tipo de falha.
+
+    Garante que o sistema sempre possa fornecer feedback útil ao usuário.
     """
     
     def __init__(self):
         """Inicializa templates"""
+
+        # templates de sucesso - PASS
+        # o rule engine sempre retorna risk_level='low' quando status='pass'
         self.pass_templates = {
             'low': (
                 "The scene presents optimal illumination conditions for AR deployment with "
@@ -20,6 +26,7 @@ class ExplanationTemplates:
             )
         }
         
+        # templates de falha - FAIL 
         self.fail_templates = {
             'underexposed': (
                 "The scene is severely underexposed with insufficient lighting, resulting in poor feature visibility "
@@ -34,8 +41,9 @@ class ExplanationTemplates:
                 "negatively impacting AR tracking accuracy and anchor placement reliability."
             )
         }
-    
-    def get_template_explanation(
+    #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  
+    # método que seleciona o template de explicação apropriado com base no status, nível de risco, regras ativadas e métricas da cena
+    def get_template_explanation( 
         self,
         status: str,
         risk_level: str,
@@ -54,6 +62,8 @@ class ExplanationTemplates:
         Returns:
             Explicação formatada
         """
+
+        # verifica se o status é 'pass' — risk_level é sempre 'low' conforme o rule engine
         if status == 'pass':
             return self.pass_templates['low']
         

@@ -5,6 +5,7 @@ Análise de iluminação da cena
 import logging
 import cv2
 import numpy as np
+from PIL import Image as PILImage
 
 # configura logger para este módulo
 logger = logging.getLogger(__name__)
@@ -27,7 +28,19 @@ class IlluminationAnalyzer:
 
     #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # método que analisa a imagem e retorna score + detalhes
-    def analyze(self, image: np.ndarray) -> tuple[float, dict]:
+    # aceita PIL.Image ou np.ndarray (BGR); a conversão PIL→BGR é responsabilidade deste módulo
+    def analyze(self, image) -> tuple[float, dict]:
+
+        # Converte PIL.Image para numpy BGR se necessário
+        if isinstance(image, PILImage.Image):
+            image_np = np.array(image)
+            if len(image_np.shape) == 2:        # Grayscale
+                image = cv2.cvtColor(image_np, cv2.COLOR_GRAY2BGR)
+            elif image_np.shape[2] == 4:        # RGBA
+                image = cv2.cvtColor(image_np, cv2.COLOR_RGBA2BGR)
+            else:                               # RGB
+                image = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+
         # Verifica se a imagem é válida, se não for, retorna score zero e detalhes vazios
         if image is None or image.size == 0:
             return 0.0, {

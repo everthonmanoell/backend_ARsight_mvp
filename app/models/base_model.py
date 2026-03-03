@@ -319,7 +319,7 @@ class ARDiagnosticModel(ABC):
     # método para diagnóstico em batch com geração de summary do ambiente usando um único forward pass (N+1 prompts)
     def diagnose_batch_with_summary(self, metrics_list: List[Dict]): 
         """
-        Diagnostica N cenas + gera summary do ambiente num unico batch LLM (N+1 prompts).
+        Diagnostica N cenas + gera summary do ambiente num unico batch SLM (N+1 prompts).
 
         Returns:
             tuple (individual_results: List[Dict], summary: Dict)
