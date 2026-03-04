@@ -9,9 +9,9 @@ models:
   
   qwen:
     name: Qwen/Qwen2.5-0.5B-Instruct
-    max_tokens: 60          # Tokens para explicações individuais por frame (~40-50 tokens gerados)
+    max_tokens: 100         # Tokens para explicações individuais por frame (~60-80 tokens gerados)
     summary_tokens: 150     # Tokens para o summary do ambiente (mais espaço para texto completo)
-    temperature: 0.3
+    temperature: 0.4
     top_p: 0.9
   
   phi:

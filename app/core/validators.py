@@ -36,6 +36,20 @@ class OutputValidator:
             "PLACEHOLDER"
         ]
 
+        # alucinações comuns do Qwen 0.5B — afirmações fisicamente incorretas ou hardware/dados inventados
+        self.hallucination_phrases = [
+            'overheat',           # sensores não superaquecem por brilho
+            'viewfinder',         # AR não usa viewfinder óptico
+            'led bulb',           # dados inventados sobre hardware
+            'infrared',           # não mencionado nos dados
+            'laser',              # não mencionado nos dados
+            'eye strain',         # fora do escopo da análise técnica
+            'visual fatigue',     # fora do escopo da análise técnica
+            'eye health',         # fora do escopo da análise técnica
+            'headlight',          # não relacionado a AR
+            'halo effect',        # não mencionado nos dados
+        ]
+
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # método principal para validar explicações geradas pelo SLM, verificando comprimento, presença de frases proibidas e relevância do conteúdo     
     def is_valid_explanation(self, text: str) -> bool:
@@ -68,6 +82,12 @@ class OutputValidator:
         for phrase in self.forbidden_phrases:
             if phrase.lower() in text_lower:
                 logger.debug(f"Validation failed: forbidden phrase found: '{phrase}'")
+                return False
+        
+        # Verifica alucinações comuns (hardware inventado, afirmações fisicamente incorretas)
+        for phrase in self.hallucination_phrases:
+            if phrase.lower() in text_lower:
+                logger.debug(f"Validation failed: hallucination detected: '{phrase}'")
                 return False
         
         # Verifica se menciona contexto de iluminação
@@ -106,6 +126,10 @@ class OutputValidator:
         
         # remove quebras de linha múltiplas
         text = text.replace("\n\n", "\n").strip()
+        
+        # remove qualificadores vagos que podem contradizer o diagnóstico real
+        for filler in ['high-quality, ', 'high-quality ', 'low-quality, ', 'low-quality ']:
+            text = text.replace(filler, '')
         
         # garante ponto final
         if text and text[-1] not in '.!?':

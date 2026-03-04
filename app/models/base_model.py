@@ -6,6 +6,7 @@ Classe abstrata para modelos de diagnóstico (illumination only)
 from abc import ABC, abstractmethod
 from typing import Dict, List
 import logging
+import re
 from collections import Counter
 
 from app.core.rule_engine import RuleEngine
@@ -98,9 +99,14 @@ class ARDiagnosticModel(ABC):
     # método para limpar a resposta do modelo, truncando na última frase completa para evitar cortes mid-sentence
     def _clean_response(self, text: str) -> str:
         """Trunca na última frase completa para evitar cortes mid-sentence."""
-        last_end = max(text.rfind('.'), text.rfind('!'), text.rfind('?'))
-        if last_end > 20:  # Garante que haja conteúdo mínimo
-            return text[:last_end + 1].strip()
+        # Primário: pontuação final após letra/)/" (evita decimais "0." e marcadores "2.")
+        matches = list(re.finditer(r'(?<=[a-zA-Z\)\u201d"])[.!?]', text))
+        if matches and matches[-1].end() > 20:
+            return text[:matches[-1].end()].strip()
+        # Secundário: qualquer pontuação seguida de espaço (provável fim de frase)
+        matches2 = list(re.finditer(r'[.!?]\s', text))
+        if matches2 and matches2[-1].start() > 20:
+            return text[:matches2[-1].start() + 1].strip()
         return text.strip()
     
     #------------------------------------------------------------------------------------------------------------------------------------------------------------------------

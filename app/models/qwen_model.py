@@ -124,12 +124,10 @@ class QwenARModel(ARDiagnosticModel):
         
         # System prompt - específico sobre iluminação (versão MVP focada, pode ser expandida com mais detalhes técnicos ou instruções específicas para o modelo)
 
-        # system_msg define o papel do modelo como um especialista em iluminação para AR, orientando-o a analisar as condições de iluminação 
+        # system_msg define o papel do modelo — instrução curta e direta para modelos pequenos
         system_msg = (
-            "You are an AR lighting specialist. Analyze the illumination conditions and explain "
-            "how they affect AR tracking, object recognition, and user experience. "
-            "Be specific about lighting quality factors like brightness, contrast, and uniformity. "
-            "Keep your explanation under 50 words. Stay factual and technical."
+            "You analyze lighting for AR applications. "
+            "Write 1-2 plain sentences. No lists. No markdown. Under 50 words."
         )
         
         # Extrai evidências
@@ -138,33 +136,31 @@ class QwenARModel(ARDiagnosticModel):
         mean_luma = metrics.get('mean_luma', 0.0)                         # brilho médio (0-255)
         uniformity = metrics.get('uniformity', 0.0)                       # uniformidade (0-1)
         
-        # User prompt define o conteúdo específico para o modelo, incluindo as métricas de iluminação e o status geral
-        # solicita uma explicação sobre como essas condições de iluminação impactam a experiência AR, mantendo a resposta técnica e concisa
+        # Pré-digere a análise: diz ao modelo O QUE acontece em vez de esperar que ele infira
+        # Modelos pequenos (0.5B) aderem melhor a completar uma narrativa do que a raciocinar sobre métricas
         if status == 'pass':
             user_msg = (
-                f"Lighting Analysis:\n"
-                f"- Quality: {illumination_label.upper()}\n"
-                f"- Illumination Score: {illumination_score:.2f}\n"
-                f"- Mean Brightness: {mean_luma:.1f}/255\n"
-                f"- Uniformity: {uniformity:.2f}\n"
-                f"- Risk Level: {risk_level.upper()}\n"
-                f"Status: PASS\n\n"
-                f"Explain why these lighting conditions are optimal for AR applications:"
+                f"This scene has {illumination_label} lighting (brightness {mean_luma:.0f}/255, "
+                f"uniformity {uniformity:.0%}). "
+                f"The lighting is adequate for AR — good contrast and feature visibility. "
+                f"Explain why this helps AR tracking:"
             )
 
-        # status 'fail' inclui as regras que falharam para fornecer contexto adicional ao modelo sobre os problemas específicos detectados
+        # status 'fail' — prompt diretivo que já descreve a causa, modelo só precisa elaborar
         else: 
             rules_text = '; '.join(triggered_rules)
+            # Mapeia label para causa concreta do impacto no AR
+            cause_map = {
+                'overexposed': 'Excessive brightness washes out visual features and reduces contrast',
+                'underexposed': 'Insufficient light causes noise and makes features hard to detect',
+                'poor': 'Uneven lighting creates inconsistent contrast across the scene',
+            }
+            cause = cause_map.get(illumination_label, 'Poor lighting degrades image quality')
             user_msg = (
-                f"Lighting Analysis:\n"
-                f"- Quality: {illumination_label.upper()}\n"
-                f"- Illumination Score: {illumination_score:.2f}\n"
-                f"- Mean Brightness: {mean_luma:.1f}/255\n"
-                f"- Uniformity: {uniformity:.2f}\n"
-                f"- Risk Level: {risk_level.upper()}\n"
-                f"Status: FAIL\n"
-                f"Problems Detected: {rules_text}\n\n"
-                f"Explain how these lighting issues specifically impact AR tracking accuracy and visual quality:"
+                f"This scene is {illumination_label} (brightness {mean_luma:.0f}/255, "
+                f"uniformity {uniformity:.0%}). "
+                f"{cause}, which harms AR tracking. "
+                f"Explain the impact on AR performance:"
             )
         
         # Formato ChatML para Qwen: uma lista de mensagens com roles (system, user) que orientam o modelo sobre o contexto e a tarefa
@@ -189,42 +185,52 @@ class QwenARModel(ARDiagnosticModel):
         problem_count  = agg['problem_count']             # número de frames com problemas de iluminação
         dominant_label = agg['dominant_label']            # label dominante entre os frames problemáticos
         overall_risk   = agg['overall_risk']              # risco geral do ambiente baseado na análise de todos os frames
-        avg_luma       = agg['avg_mean_luma']             # brilho médio agregado de todos os frames, fornecendo uma visão geral da luminosidade do ambiente
-        avg_uniformity = agg['avg_uniformity']            # uniformidade média agregada, indicando o quão uniforme é a iluminação no ambiente
-        avg_clip_bright = agg['avg_pct_clipped_bright']   # porcentagem média de pixels superexpostos, indicando a extensão do problema de brilho excessivo no ambiente
-        avg_clip_dark   = agg['avg_pct_clipped_dark']     # porcentagem média de pixels subexpostos, indicando a extensão do problema de escuridão excessiva no ambiente
 
         system_msg = (
-            "You are an AR lighting specialist. Write in plain, natural sentences. "
-            "Do not use bullet points, lists, or markdown formatting. "
-            "Do not repeat the input data — interpret it and explain what it means for AR use. "
-            "Keep your response to 1-2 sentences, under 40 words total."
+            "You summarize lighting conditions for AR. "
+            "Write 1-2 plain sentences. No lists. No markdown. Under 50 words."
         )
 
-        # Formata o texto do user prompt para fornecer um resumo claro e conciso da qualidade geral do ambiente de iluminação, 
-        # destacando os principais problemas detectados, as métricas agregadas e o risco geral, e solicitando uma explicação 
-        # sobre o impacto dessas condições na experiência AR, mantendo a resposta técnica e acessível para o usuário final
+        # Pré-digere o contexto para o modelo — em vez de métricas brutas, fornece a conclusão já interpretada
+        # para que o modelo apenas gere texto natural explicando o impacto no AR
         label_names = {
             'overexposed':  'excessively bright',
             'underexposed': 'too dark',
-            'poor':         'uneven illumination',
+            'poor':         'unevenly lit',
         }
         label_breakdown = agg.get('label_breakdown', {})
-        breakdown_parts = [ 
-            f"{count} {label_names.get(lbl, lbl)}"
+        breakdown_parts = [
+            f"{count} were {label_names.get(lbl, lbl)}"
             for lbl, count in sorted(label_breakdown.items(), key=lambda x: -x[1])
         ]
-        breakdown_text = ' and '.join(breakdown_parts) if breakdown_parts else 'problematic'
+        breakdown_text = ' and '.join(breakdown_parts) if breakdown_parts else 'had problems'
 
-        user_msg = (
-            f"An AR session was evaluated across {total} camera frames. "
-            f"{problem_count} frames had lighting problems ({breakdown_text}). "
-            f"Dominant issue: {label_names.get(dominant_label, dominant_label)}. "
-            f"Average brightness: {avg_luma:.0f}/255, uniformity: {avg_uniformity:.0%}, "
-            f"overexposed pixels: {avg_clip_bright:.0%}, underexposed pixels: {avg_clip_dark:.0%}. "
-            f"Overall risk: {overall_risk}. "
-            f"In 1-2 short sentences, explain what this means for AR and what the user should do:"
-        )
+        normal_count = total - problem_count
+
+        # Constrói narrativa pré-digerida baseada no risco geral
+        if overall_risk == 'high':
+            risk_narrative = (
+                f"Out of {total} frames, {problem_count} had lighting problems ({breakdown_text}). "
+                f"Only {normal_count} frames had acceptable lighting. "
+                f"The main issue is {label_names.get(dominant_label, dominant_label)} scenes. "
+                f"This is a high-risk environment for AR — "
+                f"explain why and suggest what the user should adjust:"
+            )
+        elif overall_risk == 'medium':
+            risk_narrative = (
+                f"Out of {total} frames, {problem_count} had lighting problems ({breakdown_text}). "
+                f"{normal_count} frames were acceptable. "
+                f"This is a moderate-risk environment for AR — "
+                f"explain what should be improved:"
+            )
+        else:
+            risk_narrative = (
+                f"Out of {total} frames analyzed, {normal_count} had good lighting. "
+                f"The environment is suitable for AR. "
+                f"Explain why the lighting supports good AR performance:"
+            )
+
+        user_msg = risk_narrative
 
         messages = [
             {"role": "system", "content": system_msg},
