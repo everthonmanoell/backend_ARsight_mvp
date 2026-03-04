@@ -470,7 +470,31 @@ class ARDiagnosticModel(ABC):
         #----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         # Sanitiza o texto do summary para garantir coerência e legibilidade, mesmo em casos de falha na geração ou necessidade de fallback para template
-        summary_text = self.validator.sanitize_explanation(summary_response) 
+        summary_text = self._clean_response(summary_response) if summary_response else ""
+
+        # Valida summary com as mesmas regras de alucinação dos frames individuais
+        if not self.validator.is_valid_explanation(summary_text):
+            logger.debug(f"Summary failed validation, generating fallback")
+            # Fallback determinístico para summary baseado nas estatísticas agregadas
+            label_desc = {
+                'overexposed': 'excessive brightness',
+                'underexposed': 'insufficient lighting',
+                'poor': 'uneven illumination',
+            }
+            dominant_desc = label_desc.get(dominant_label, 'lighting issues')
+            if problem_count > 0:
+                summary_text = (
+                    f"{problem_count} out of {n} frames showed {dominant_desc}, "
+                    f"creating a {overall_risk}-risk environment for AR tracking. "
+                    f"Adjusting the lighting conditions is recommended to improve AR performance."
+                )
+            else:
+                summary_text = (
+                    f"All {n} frames showed adequate lighting conditions, "
+                    f"providing a suitable environment for reliable AR tracking."
+                )
+        
+        summary_text = self.validator.sanitize_explanation(summary_text)
 
         # Recomendações deduplicadas de todos os frames problemáticos
 

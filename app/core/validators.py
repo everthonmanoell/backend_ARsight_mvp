@@ -5,6 +5,7 @@ Validadores de saída do SLM para prevenir alucinações
 
 from typing import Dict
 import logging
+import re
 
 # configura logger para este módulo
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ class OutputValidator:
             "PLACEHOLDER"
         ]
 
-        # alucinações comuns do Qwen 0.5B — afirmações fisicamente incorretas ou hardware/dados inventados
+        # alucinações comuns do Qwen 0.5B / Phi-3 — afirmações fisicamente incorretas ou hardware/dados inventados
         self.hallucination_phrases = [
             'overheat',           # sensores não superaquecem por brilho
             'viewfinder',         # AR não usa viewfinder óptico
@@ -48,6 +49,9 @@ class OutputValidator:
             'eye health',         # fora do escopo da análise técnica
             'headlight',          # não relacionado a AR
             'halo effect',        # não mencionado nos dados
+            'polarizing filter',  # hardware inventado
+            'uv filter',          # hardware inventado
+            'sensor overheat',    # fisicamente incorreto
         ]
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -126,6 +130,10 @@ class OutputValidator:
         
         # remove quebras de linha múltiplas
         text = text.replace("\n\n", "\n").strip()
+        
+        # corrige tokens corrompidos do Phi-3 (ex: "scene'limpact" → "scene's", "system'ieves'" → "system's")
+        text = re.sub(r"(\w)'[a-z]{3,}'", r"\1's", text)   # "system'ieves'" → "system's"
+        text = re.sub(r"(\w)'[a-z]{4,}\b", r"\1's", text)  # "scene'limpact" → "scene's"
         
         # remove qualificadores vagos que podem contradizer o diagnóstico real
         for filler in ['high-quality, ', 'high-quality ', 'low-quality, ', 'low-quality ']:
