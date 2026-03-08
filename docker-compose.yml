@@ -15,11 +15,9 @@ services:
     environment:
       - TRANSFORMERS_CACHE=/app/models/cache
       - PYTHONUNBUFFERED=1
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    # JetPack 4.6.x (L4T R32.7.x) usa nvidia-container-runtime
+    # "runtime: nvidia" é a forma correta para JetPack 4.6 / Docker < 19.03
+    runtime: nvidia
     restart: unless-stopped

@@ -2,20 +2,31 @@
 
 Guia completo para deploy do AR Diagnostic MVP na NVIDIA Jetson.
 
-## ✅ Hardware Testado
+## ✅ Hardware Suportado
 
-- **Jetson Nano** - 4GB RAM, CUDA 10.2
-- **Jetson Xavier NX** - 8GB RAM, CUDA 11.4 (recomendado)
-- **Jetson AGX Orin** - 32GB RAM, CUDA 11.4
+| Hardware | RAM | JetPack | L4T | CUDA | Status |
+|---|---|---|---|---|---|
+| **Jetson Nano** | 4GB | **4.6.x** (L4T R32.7.x) | R32.7 | 10.2 | ✅ Testado |
+| Jetson Xavier NX | 8GB | 5.0+ (L4T R35.x) | R35 | 11.4 | Compatível |
+| Jetson AGX Orin | 32GB | 5.0+ (L4T R35.x) | R35 | 11.4 | Compatível |
+
+> **⚠️ Importante:** JetPack 5.x **não existe** para o Jetson Nano. O Nano usa exclusivamente JetPack 4.6.x.
+
+## ⚠️ Limitações do Jetson Nano (JetPack 4.6)
+
+| Limitação | Detalhe |
+|---|---|
+| **Sem quantização 4-bit** | `bitsandbytes` requer GPU compute ≥ 7.5 (Turing+). Nano = Maxwell (compute **5.3**). |
+| **Apenas modelo Qwen** | Phi-3 Mini (3.8B params) ocupa ~7.6 GB em fp16 — não cabe nos 4 GB do Nano. Qwen 0.5B ocupa ~1 GB em fp16. |
+| **Python 3.8** | Ubuntu 18.04 do L4T tem Python 3.6 por padrão. O projeto requer 3.8+ (instalado pelo Dockerfile). |
+| **PyTorch 1.10** | Versão máxima disponível via wheel oficial NVIDIA para CUDA 10.2 / aarch64. |
 
 ## 📋 Pré-requisitos
 
-### 1. JetPack SDK
+### 1. Verificar JetPack instalado
 ```bash
-# Verifica versão JetPack
-sudo apt-cache show nvidia-jetpack
-
-# Recomendado: JetPack 5.0+ (L4T R35.x)
+sudo apt-cache show nvidia-jetpack | grep "^Version" | head -1
+# Esperado: Version: 4.6.x-bXX
 ```
 
 ### 2. Docker + NVIDIA Container Runtime
@@ -28,36 +39,62 @@ sudo apt-get install -y docker.io
 sudo usermod -aG docker $USER
 newgrp docker
 
-# Instala NVIDIA Container Runtime
+# Instala NVIDIA Container Runtime (JetPack 4.6 usa nvidia-container-runtime, não toolkit)
 sudo apt-get install -y nvidia-container-runtime
 
-# Testa GPU no Docker
-docker run --rm --gpus all nvcr.io/nvidia/l4t-base:r35.2.1 nvidia-smi
+# Configura Docker para usar o runtime NVIDIA por padrão
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json <<EOF
+{
+  "runtimes": {
+    "nvidia": {
+      "path": "nvidia-container-runtime",
+      "runtimeArgs": []
+    }
+  }
+}
+EOF
+sudo systemctl restart docker
+
+# Testa GPU no Docker — use a tag r32.7.1 (não r35.x, que não existe no Nano)
+docker run --rm --runtime=nvidia nvcr.io/nvidia/l4t-base:r32.7.1 nvidia-smi
+```
+
+## 🖥️ Transferindo o projeto para a Jetson
+
+Você **precisa** ter o código na Jetson. Escolha uma opção:
+
+### Opção A: Git Clone (recomendado)
+```bash
+# Na Jetson
+git clone <seu-repo-url> backend_tcc_mvp
+cd backend_tcc_mvp
+```
+
+### Opção B: SCP do desktop para a Jetson
+```bash
+# No desktop (substitua <jetson-ip> pelo IP da sua Jetson)
+scp -r /caminho/para/backend_tcc_mvp das9@<jetson-ip>:~/backend_tcc_mvp
+```
+
+### Opção C: rsync (sincronização incremental)
+```bash
+# No desktop
+rsync -avz --exclude='__pycache__' --exclude='*.pyc' \
+  /caminho/para/backend_tcc_mvp/ das9@<jetson-ip>:~/backend_tcc_mvp/
 ```
 
 ## 🚀 Deployment
 
-### Opção 1: Docker (Recomendado)
+### Opção 1: Docker Compose (Recomendado)
 
 ```bash
-# Clone repositório
-git clone <your-repo-url> backend_tcc_mvp
-cd backend_tcc_mvp
+# Na Jetson, dentro da pasta do projeto
+cd ~/backend_tcc_mvp
 
-# Build imagem para Jetson
-docker build -f docker/Dockerfile.jetson -t ar-diagnostic-mvp:jetson .
+# Build — a primeira vez leva vários minutos (download da imagem base ~2GB)
+docker-compose build
 
-# Run com GPU
-docker run --rm --gpus all \
-  -p 8000:8000 \
-  -v $(pwd)/data:/app/data \
-  -v $(pwd)/logs:/app/logs \
-  ar-diagnostic-mvp:jetson
-```
-
-### Opção 2: Docker Compose
-
-```bash
 # Inicia serviço
 docker-compose up -d
 
@@ -68,57 +105,59 @@ docker-compose logs -f
 docker-compose down
 ```
 
+### Opção 2: Docker direto
+
+```bash
+# Build imagem para Jetson Nano
+docker build -f docker/Dockerfile.jetson -t ar-diagnostic-mvp:jetson-nano .
+
+# Run com GPU via nvidia-container-runtime
+docker run --rm \
+  --runtime=nvidia \
+  -e NVIDIA_VISIBLE_DEVICES=all \
+  -p 8000:8000 \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/logs:/app/logs \
+  ar-diagnostic-mvp:jetson-nano
+```
+
 ### Opção 3: Instalação Nativa
 
 ```bash
-# Instala Python 3.10+
-sudo apt-get install python3.10 python3-pip
+# Python 3.8 (Ubuntu 18.04)
+sudo apt-get install python3.8 python3.8-dev python3.8-distutils python3-pip
 
-# Instala Poetry
-curl -sSL https://install.python-poetry.org | python3 -
+# PyTorch 1.10 para Jetson Nano (wheel oficial NVIDIA — CUDA 10.2, aarch64, Python 3.8)
+# Referência: https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
+python3.8 -m pip install \
+  https://developer.download.nvidia.com/compute/redist/jp/v461/pytorch/torch-1.10.0a0+git36449ea-cp38-cp38-linux_aarch64.whl
 
-# Instala dependências
-poetry install
+# Dependências da aplicação (sem torch/bitsandbytes)
+python3.8 -m pip install -r requirements-jetson.txt
 
 # Roda API
-poetry run ar-api
+python3.8 -m uvicorn app.api.main:app --host 0.0.0.0 --port 8000
 ```
 
-## ⚙️ Configuração
+## ⚙️ Configuração (já ajustada para o Nano)
 
-### GPU vs CPU
-
-Edite `app/config/thresholds.yaml`:
+O `app/config/thresholds.yaml` já está configurado corretamente para o Jetson Nano:
 
 ```yaml
 models:
-  device: cuda  # Use GPU (recomendado)
-  # device: cpu   # Fallback se GPU não disponível
-  use_4bit: true  # Quantização 4-bit (economiza VRAM)
+  default: qwen       # Único modelo viável no Nano (0.5B params, ~1 GB fp16)
+  device: cuda        # Usa GPU
+  use_4bit: false     # DESABILITADO — Maxwell (compute 5.3) não suporta bitsandbytes
 ```
 
-### Modelo Padrão
-
-```yaml
-models:
-  default: qwen  # Qwen 0.5B (mais rápido, menos VRAM)
-  # default: phi  # Phi-3 Mini (maior qualidade, mais VRAM)
-```
-
-### Thresholds de Iluminação
-
-```yaml
-rule_engine:
-  illumination:
-    underexposed_threshold: 0.35
-    overexposed_threshold: 0.75
-```
+> **Nunca habilite `use_4bit: true` no Nano.** O `bitsandbytes` travará na inicialização.
 
 ## 🧪 Validação
 
 ### 1. Teste de GPU
 ```bash
-python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
+python3.8 -c "import torch; print('CUDA disponível:', torch.cuda.is_available()); print('Versão CUDA:', torch.version.cuda)"
+# Esperado: CUDA disponível: True  |  Versão CUDA: 10.2
 ```
 
 ### 2. Health Check
@@ -129,64 +168,61 @@ curl http://localhost:8000/health
 ### 3. Teste com Imagem
 ```bash
 curl -X POST http://localhost:8000/diagnose \
-  -F "file=@data/illumination/adequate/normal_image1.jpg"
+  -F "file=@data/illumination/normal/normal_image1.jpg"
 ```
 
-### 4. Batch Test
-```bash
-python tests/test_illumination_batch.py
-```
+## 📊 Performance Esperada — Jetson Nano (4GB, JetPack 4.6)
 
-## 📊 Performance
+| Modelo | Quantização | VRAM | Latência estimada |
+|--------|-------------|------|-------------------|
+| **Qwen 0.5B** | fp16 (sem 4-bit) | ~1 GB | ~4–6 s |
+| Phi-3 Mini | — | **não cabe** | ❌ |
 
-### Jetson Xavier NX (8GB)
-
-| Modelo | Quantização | Latência | VRAM | Throughput |
-|--------|-------------|----------|------|------------|
-| Qwen 0.5B | 4-bit | ~1.2s | 800MB | 0.83 img/s |
-| Phi-3 Mini | 4-bit | ~1.8s | 1.2GB | 0.56 img/s |
-
-### Jetson Nano (4GB)
-
-| Modelo | Quantização | Latência | VRAM | Throughput |
-|--------|-------------|----------|------|------------|
-| Qwen 0.5B | 4-bit | ~3.5s | 800MB | 0.29 img/s |
-| Phi-3 Mini | 4-bit | ~6.0s | 1.2GB | 0.17 img/s |
-
-**Recomendação:** Use **Qwen 0.5B** para melhor throughput.
+> A latência é maior que a documentada anteriormente (que assumia 4-bit em hardware mais novo).
 
 ## 🐛 Troubleshooting
 
-### Erro: CUDA out of memory
-
-**Solução 1:** Reduz batch size
-```yaml
-api:
-  max_batch_size: 5  # Reduz de 10 para 5
+### Erro: `nvidia-smi` não encontrado dentro do container
+```bash
+# Verifique se o runtime NVIDIA está configurado
+docker info | grep -i runtime
+# Deve listar: Runtimes: nvidia runc
 ```
 
-**Solução 2:** Usa CPU
+### Erro: `Error response from daemon: Unknown runtime specified nvidia`
+```bash
+# Reinstale e reconfigure o runtime
+sudo apt-get install --reinstall nvidia-container-runtime
+sudo systemctl restart docker
+```
+
+### Erro: `bitsandbytes` / `CUDA Setup failed`
+O `bitsandbytes` **não é compatível** com o Jetson Nano. Verifique:
 ```yaml
+# app/config/thresholds.yaml
 models:
-  device: cpu
+  use_4bit: false   # Deve ser false
 ```
 
-### Erro: Model not found
-
-**Solução:** Pre-download modelos
-```python
-from transformers import AutoModelForCausalLM
-
-# Qwen
-AutoModelForCausalLM.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
-
-# Phi
-AutoModelForCausalLM.from_pretrained("microsoft/Phi-3-mini-4k-instruct")
+### Erro: `CUDA out of memory`
+O Nano tem memória compartilhada (CPU+GPU). Libere processos:
+```bash
+# Verifica o que está usando memória
+sudo tegrastats
+# Mata processos pesados se necessário
+sudo systemctl stop <serviço-pesado>
 ```
 
-### Erro: Permission denied (Docker)
+### Erro: `ModuleNotFoundError: No module named 'torch'`
+```bash
+# Confirma versão Python usada
+python3.8 -c "import torch; print(torch.__version__)"
+# Se falhar, reinstale o wheel
+python3.8 -m pip install \
+  https://developer.download.nvidia.com/compute/redist/jp/v461/pytorch/torch-1.10.0a0+git36449ea-cp38-cp38-linux_aarch64.whl
+```
 
-**Solução:**
+### Erro: `Permission denied` (Docker)
 ```bash
 sudo usermod -aG docker $USER
 newgrp docker
@@ -194,63 +230,34 @@ newgrp docker
 
 ## 🔒 Segurança
 
-### Firewall (Produção)
+### Firewall
 ```bash
-# Permite apenas localhost
-sudo ufw allow from 127.0.0.1 to any port 8000
-
-# Ou permite rede local
+# Permite apenas rede local
 sudo ufw allow from 192.168.0.0/16 to any port 8000
-```
-
-### HTTPS (Nginx Reverse Proxy)
-```bash
-# Instala Nginx
-sudo apt-get install nginx
-
-# Configura SSL
-sudo apt-get install certbot python3-certbot-nginx
-sudo certbot --nginx -d your-domain.com
+sudo ufw enable
 ```
 
 ## 📈 Monitoramento
 
-### Logs
 ```bash
-# Docker
+# Stats em tempo real da Jetson (CPU, GPU, RAM, temperatura)
+sudo tegrastats
+
+# Logs do container
 docker logs -f ar-diagnostic-mvp
 
-# Nativo
-tail -f logs/ar_diagnostic_mvp.log
-```
-
-### GPU Usage
-```bash
-# Real-time GPU monitoring
-watch -n 1 nvidia-smi
-```
-
-### System Stats
-```bash
-sudo tegrastats  # Jetson-specific tool
+# Uso de memória do modelo
+docker stats ar-diagnostic-mvp
 ```
 
 ## 🔄 Atualização
 
 ```bash
-# Pull latest changes
+# Na Jetson
+cd ~/backend_tcc_mvp
 git pull origin main
 
-# Rebuild Docker image
+# Rebuild e restart
 docker-compose build
-
-# Restart service
 docker-compose restart
 ```
-
-## 📞 Suporte
-
-Para problemas ou dúvidas:
-1. Verifique logs: `docker logs ar-diagnostic-mvp`
-2. Teste GPU: `python -c "import torch; print(torch.cuda.is_available())"`
-3. Valide config: `cat app/config/thresholds.yaml`

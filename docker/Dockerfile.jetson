@@ -1,34 +1,44 @@
-FROM nvcr.io/nvidia/l4t-pytorch:r35.2.1-pth2.0-py3
+# ─────────────────────────────────────────────────────────────────────────────
+# Jetson Nano — JetPack 4.6.x  (L4T R32.7.x · CUDA 10.2 · Ubuntu 18.04)
+#
+# ⚠️  NÃO compatível com JetPack 5.x (Xavier NX / AGX Orin usam r35.x)
+# ─────────────────────────────────────────────────────────────────────────────
+FROM nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    python3-pip \
-    libopencv-dev \
-    python3-opencv \
+# ── Sistema: Python 3.8 (base tem 3.6; transformers >= 4.47 exige >= 3.8) ───
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.8 \
+    python3.8-dev \
+    python3.8-distutils \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY requirements.txt .
+# pip para Python 3.8
+RUN curl -sS https://bootstrap.pypa.io/pip/3.8/get-pip.py | python3.8
 
-# Install Python dependencies
-RUN pip3 install --no-cache-dir -r requirements.txt
+# ── PyTorch 1.10 — wheel oficial NVIDIA para Python 3.8 + CUDA 10.2 ────────
+# Referência: https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
+RUN python3.8 -m pip install --no-cache-dir \
+    https://developer.download.nvidia.com/compute/redist/jp/v461/pytorch/torch-1.10.0a0+git36449ea-cp38-cp38-linux_aarch64.whl
 
-# Copy application
+# ── Dependências da aplicação ────────────────────────────────────────────────
+COPY requirements-jetson.txt .
+RUN python3.8 -m pip install --no-cache-dir -r requirements-jetson.txt
+
+# ── Aplicação ────────────────────────────────────────────────────────────────
 COPY app/ ./app/
 COPY data/ ./data/
 
-# Create directories
 RUN mkdir -p logs data/uploads
 
-# Expose port
 EXPOSE 8000
 
-# Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV TRANSFORMERS_CACHE=/app/models/cache
+# Expõe a GPU para o container no nvidia-container-runtime (JetPack 4.6)
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-# Run API
-CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python3.8", "-m", "uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
