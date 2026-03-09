@@ -40,12 +40,17 @@ class Config:
         """
         # usando caminho customizado se fornecido, senão procura arquivo padrão
         if config_path is None:
-            # Procura arquivo padrão
-            current_dir = Path(__file__).parent 
-            config_path = current_dir / 'thresholds.yaml'
+            # Permite sobrescrever o arquivo de config via variável de ambiente
+            # Útil para injetar thresholds.jetson.yaml no Docker sem alterar o código
+            env_config = os.environ.get('AR_CONFIG_FILE')
+            if env_config:
+                config_path = Path(env_config)
+            else:
+                current_dir = Path(__file__).parent
+                config_path = current_dir / 'thresholds.yaml'
         
-        with open(config_path, 'r') as f:            # Carrega o arquivo YAML
-            self._config = yaml.safe_load(f)         # Armazena as configurações em um dicionário
+        with open(config_path, 'r', encoding='utf-8') as f:  # Carrega o arquivo YAML
+            self._config = yaml.safe_load(f)               # Armazena as configurações em um dicionário
 
     #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # método para acessar valores de configuração usando chaves hierárquicas (ex: 'models.default')

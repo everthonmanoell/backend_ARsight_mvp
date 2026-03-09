@@ -1,0 +1,301 @@
+{
+  "metadata": {
+    "timestamp": "2026-03-09T13:01:36.090597",
+    "environment": "legion",
+    "model": "phi",
+    "device": "cuda",
+    "quantization": "4-bit",
+    "batch_size": 10
+  },
+  "performance": {
+    "pdi_total_ms": 3691.5,
+    "pdi_per_image_ms": 369.1,
+    "slm_total_s": 148.923,
+    "slm_per_diagnosis_s": 14.892,
+    "total_s": 152.615,
+    "target_met": false
+  },
+  "statistics": {
+    "total": 10,
+    "correct": 10,
+    "accuracy": 100.0
+  },
+  "summary": {
+    "overall_risk": "high",
+    "dominant_label": "overexposed",
+    "problem_count": 7,
+    "normal_count": 3,
+    "explanation": "Excessive brightness in AR can cause overexposure, leading to loss of detail and contrast, which hinders object recognition and tracking. Users should adjust the scene's brightness levels to ensure a balanced environment for AR to function effectively.",
+    "recommendations": [
+      "Reduce direct lighting or use diffusers to soften harsh light",
+      "Avoid pointing camera directly at bright light sources",
+      "Increase ambient lighting or use supplemental light sources",
+      "Position light sources to evenly illuminate the scene",
+      "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+      "Ensure consistent lighting throughout the AR session to preserve quality"
+    ],
+    "metrics_avg": {
+      "mean_brightness": 0.4973,
+      "mean_luma": 126.81,
+      "uniformity": 0.6687,
+      "pct_clipped_bright": 0.1294,
+      "pct_clipped_dark": 0.1149
+    }
+  },
+  "frames": [
+    {
+      "frame_index": 0,
+      "filename": "bright_image1.jpg",
+      "expected_label": "overexposed",
+      "status": "fail",
+      "risk_level": "high",
+      "label_correct": true,
+      "explanation": "Overexposure in this scene diminishes the contrast between objects and the background, making it difficult for AR systems to accurately track and overlay digital content due to the loss of visual detail.",
+      "triggered_rules": [
+        "Overexposed scene (too bright)"
+      ],
+      "recommendations": [
+        "Reduce direct lighting or use diffusers to soften harsh light",
+        "Avoid pointing camera directly at bright light sources"
+      ],
+      "metrics": {
+        "illumination_score": 0.7876,
+        "illumination_label": "overexposed",
+        "mean_brightness": 0.4941,
+        "mean_luma": 125.99,
+        "std_luma": 79.89,
+        "uniformity": 0.6119,
+        "pct_clipped_dark": 0.0001,
+        "pct_clipped_bright": 0.1802
+      }
+    },
+    {
+      "frame_index": 1,
+      "filename": "bright_image2.jpg",
+      "expected_label": "overexposed",
+      "status": "fail",
+      "risk_level": "high",
+      "label_correct": true,
+      "explanation": "Overexposure in this scene leads to a loss of detail and contrast, which is critical for AR applications that rely on visual features for accurate tracking and overlaying digital content.",
+      "triggered_rules": [
+        "Overexposed scene (too bright)"
+      ],
+      "recommendations": [
+        "Reduce direct lighting or use diffusers to soften harsh light",
+        "Avoid pointing camera directly at bright light sources"
+      ],
+      "metrics": {
+        "illumination_score": 0.2435,
+        "illumination_label": "overexposed",
+        "mean_brightness": 0.8876,
+        "mean_luma": 226.34,
+        "std_luma": 56.33,
+        "uniformity": 0.8007,
+        "pct_clipped_dark": 0.0,
+        "pct_clipped_bright": 0.5483
+      }
+    },
+    {
+      "frame_index": 2,
+      "filename": "bright_image3.jpg",
+      "expected_label": "overexposed",
+      "status": "fail",
+      "risk_level": "high",
+      "label_correct": true,
+      "explanation": "Overexposure in this scene leads to a loss of detail and contrast, which is detrimental to AR tracking as it relies on clear visual cues to accurately overlay digital content onto the real world.",
+      "triggered_rules": [
+        "Overexposed scene (too bright)"
+      ],
+      "recommendations": [
+        "Reduce direct lighting or use diffusers to soften harsh light",
+        "Avoid pointing camera directly at bright light sources"
+      ],
+      "metrics": {
+        "illumination_score": 0.1516,
+        "illumination_label": "overexposed",
+        "mean_brightness": 0.9401,
+        "mean_luma": 239.72,
+        "std_luma": 21.76,
+        "uniformity": 0.9168,
+        "pct_clipped_dark": 0.0,
+        "pct_clipped_bright": 0.5106
+      }
+    },
+    {
+      "frame_index": 3,
+      "filename": "bright_image4.jpg",
+      "expected_label": "overexposed",
+      "status": "fail",
+      "risk_level": "high",
+      "label_correct": true,
+      "explanation": "Overexposure in this scene leads to a loss of detail and contrast, which are critical for accurate AR object recognition and tracking, ultimately degrading the user experience.",
+      "triggered_rules": [
+        "Overexposed scene (too bright)"
+      ],
+      "recommendations": [
+        "Reduce direct lighting or use diffusers to soften harsh light",
+        "Avoid pointing camera directly at bright light sources"
+      ],
+      "metrics": {
+        "illumination_score": 0.3968,
+        "illumination_label": "overexposed",
+        "mean_brightness": 0.7797,
+        "mean_luma": 198.83,
+        "std_luma": 10.87,
+        "uniformity": 0.9482,
+        "pct_clipped_dark": 0.0,
+        "pct_clipped_bright": 0.0
+      }
+    },
+    {
+      "frame_index": 4,
+      "filename": "dark_image1.jpg",
+      "expected_label": "underexposed",
+      "status": "fail",
+      "risk_level": "high",
+      "label_correct": true,
+      "explanation": "Underexposure in this scene leads to increased noise, which can obscure critical features necessary for accurate AR tracking, resulting in a poor user experience.",
+      "triggered_rules": [
+        "Underexposed scene (too dark)"
+      ],
+      "recommendations": [
+        "Increase ambient lighting or use supplemental light sources",
+        "Position light sources to evenly illuminate the scene"
+      ],
+      "metrics": {
+        "illumination_score": 0.2175,
+        "illumination_label": "underexposed",
+        "mean_brightness": 0.0899,
+        "mean_luma": 22.92,
+        "std_luma": 20.62,
+        "uniformity": 0.5264,
+        "pct_clipped_dark": 0.0446,
+        "pct_clipped_bright": 0.0
+      }
+    },
+    {
+      "frame_index": 5,
+      "filename": "dark_image2.jpg",
+      "expected_label": "underexposed",
+      "status": "fail",
+      "risk_level": "high",
+      "label_correct": true,
+      "explanation": "Underexposure leads to increased noise, making feature detection for AR tracking difficult and potentially causing inaccura串cies in overlaying virtual objects.",
+      "triggered_rules": [
+        "Underexposed scene (too dark)"
+      ],
+      "recommendations": [
+        "Increase ambient lighting or use supplemental light sources",
+        "Position light sources to evenly illuminate the scene"
+      ],
+      "metrics": {
+        "illumination_score": 0.2617,
+        "illumination_label": "underexposed",
+        "mean_brightness": 0.1454,
+        "mean_luma": 37.07,
+        "std_luma": 44.45,
+        "uniformity": 0.4547,
+        "pct_clipped_dark": 0.3845,
+        "pct_clipped_bright": 0.0
+      }
+    },
+    {
+      "frame_index": 6,
+      "filename": "dark_image3.jpg",
+      "expected_label": "underexposed",
+      "status": "fail",
+      "risk_level": "high",
+      "label_correct": true,
+      "explanation": "Underexposure in this scene leads to increased noise levels, making it difficult for AR systems to accurately track features, thus degrading the overall performance and reliability of the AR application.",
+      "triggered_rules": [
+        "Underexposed scene (too dark)"
+      ],
+      "recommendations": [
+        "Increase ambient lighting or use supplemental light sources",
+        "Position light sources to evenly illuminate the scene"
+      ],
+      "metrics": {
+        "illumination_score": 0.1593,
+        "illumination_label": "underexposed",
+        "mean_brightness": 0.096,
+        "mean_luma": 24.47,
+        "std_luma": 49.86,
+        "uniformity": 0.3292,
+        "pct_clipped_dark": 0.6786,
+        "pct_clipped_bright": 0.0
+      }
+    },
+    {
+      "frame_index": 7,
+      "filename": "normal_image1.jpg",
+      "expected_label": "adequate",
+      "status": "pass",
+      "risk_level": "low",
+      "label_correct": true,
+      "explanation": "Adequate lighting ensures clear visibility of features, which is crucial for AR tracking as it relies on recognizing and mapping these features to overlay digital content accurately.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "metrics": {
+        "illumination_score": 0.7337,
+        "illumination_label": "adequate",
+        "mean_brightness": 0.4179,
+        "mean_luma": 106.57,
+        "std_luma": 72.13,
+        "uniformity": 0.5964,
+        "pct_clipped_dark": 0.0377,
+        "pct_clipped_bright": 0.0549
+      }
+    },
+    {
+      "frame_index": 8,
+      "filename": "normal_image2.jpg",
+      "expected_label": "acceptable",
+      "status": "pass",
+      "risk_level": "low",
+      "label_correct": true,
+      "explanation": "The scene's lighting, with a brightness of 162/255 and uniformity of 77%, ensures that AR tracking can accurately detect features by providing sufficient contrast and visibility, which are crucial for the AR system to map and overlay digital content onto the real world effectively.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "metrics": {
+        "illumination_score": 0.6685,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.6349,
+        "mean_luma": 161.9,
+        "std_luma": 48.53,
+        "uniformity": 0.7694,
+        "pct_clipped_dark": 0.0025,
+        "pct_clipped_bright": 0.0
+      }
+    },
+    {
+      "frame_index": 9,
+      "filename": "normal_image3.jpg",
+      "expected_label": "adequate",
+      "status": "pass",
+      "risk_level": "low",
+      "label_correct": true,
+      "explanation": "Adequate lighting ensures that AR tracking algorithms can accurately detect features and maintain a consistent experience, as sufficient brightness and uniformity prevent shadows and overexposure that could hinder object recognition.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "metrics": {
+        "illumination_score": 0.797,
+        "illumination_label": "adequate",
+        "mean_brightness": 0.4876,
+        "mean_luma": 124.34,
+        "std_luma": 45.2,
+        "uniformity": 0.7334,
+        "pct_clipped_dark": 0.0008,
+        "pct_clipped_bright": 0.0
+      }
+    }
+  ]
+}
