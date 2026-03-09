@@ -28,8 +28,10 @@ RUN curl -sS https://bootstrap.pypa.io/pip/3.8/get-pip.py | python3.8
 
 # ── PyTorch 1.10 — wheel oficial NVIDIA para Python 3.8 + CUDA 10.2 ────────
 # Referência: https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
-RUN python3.8 -m pip install --no-cache-dir \
-    https://developer.download.nvidia.com/compute/redist/jp/v461/pytorch/torch-1.10.0a0+git36449ea-cp38-cp38-linux_aarch64.whl
+
+# # PyTorch já vem na imagem base nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3
+# RUN python3.8 -m pip install --no-cache-dir \
+#     https://developer.download.nvidia.com/compute/redist/jp/v461/pytorch/torch-1.10.0a0+git36449ea-cp38-cp38-linux_aarch64.whl
 
 # ── Dependências da aplicação ────────────────────────────────────────────────
 COPY requirements-jetson.txt .
