@@ -233,14 +233,16 @@ def main():
     meta_ok = per_diag < 1.0
     print(f"  Meta < 1s/diagnost. : {'[OK] atingida' if meta_ok else '[!!] nao atingida'}  ({per_diag:.3f}s)")
 
-    # Salva JSON 
-    output_dir  = Path("outputs")
-    output_dir.mkdir(exist_ok=True)
+    # Salva JSON
+    env         = config.get("environment", "legion")  # 'jetson' ou 'legion'
+    output_dir  = Path("outputs") / env
+    output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / f"pipeline_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
     output = {
         "metadata": {
             "timestamp":    datetime.now().isoformat(),
+            "environment":  env,
             "model":        model_type,
             "device":       device,
             "quantization": "4-bit" if use_4bit else "fp16/fp32",

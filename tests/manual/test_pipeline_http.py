@@ -175,14 +175,17 @@ print(f"  Tempo SLM (server)   : {slm_time:.2f}s   ({slm_time/n*1000:.0f}ms/diag
 print(f"  Meta < 1s/diagnóst.  : {'[OK] atingida' if meta_ok else '[!!] não atingida'}  ({slm_time/n:.3f}s)")
 
 # 7. Salva JSON
-output_dir  = Path("outputs")
-output_dir.mkdir(exist_ok=True)
+from app.config.config import Config as _Config
+env         = _Config().get("environment", "legion")  # 'jetson' ou 'legion'
+output_dir  = Path("outputs") / env
+output_dir.mkdir(parents=True, exist_ok=True)
 output_file = output_dir / f"pipeline_http_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
 
 output = {
     "metadata": {
-        "timestamp":   datetime.now().isoformat(),
-        "server":      BASE_URL,
+        "timestamp":    datetime.now().isoformat(),
+        "environment":  env,
+        "server":       BASE_URL,
         "model":       h.get("model"),
         "device":      h.get("device"),
         "quantization": h.get("quantization"),

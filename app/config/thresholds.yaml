@@ -46,6 +46,11 @@ pdi:
     min_acceptable: 0.5                 # Score >= 0.5 é "acceptable"
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# Ambiente de execução — define subdiretório de saída dos resultados JSON
+# 'jetson' -> outputs/jetson/   'legion' -> outputs/legion/
+environment: legion
+
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # API Configuration
 api:
   max_batch_size: 10

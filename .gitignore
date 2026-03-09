@@ -42,7 +42,6 @@ htmlcov/
 # Data
 data/uploads/*
 !data/uploads/.gitkeep
-outputs/
 logs/
 
 # Models cache
