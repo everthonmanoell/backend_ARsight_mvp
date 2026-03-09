@@ -2,6 +2,7 @@
 Illumination Analysis
 Análise de iluminação da cena
 """
+from __future__ import annotations  # compatibilidade de tipagem com Python 3.8
 import logging
 import cv2
 import numpy as np
