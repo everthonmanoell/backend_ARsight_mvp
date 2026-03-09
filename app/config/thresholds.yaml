@@ -2,7 +2,7 @@
 # Illumination-only pipeline for Jetson deployment
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 models:
-  default: phi            # Legion: Qwen 0.5B default (mais rápido); trocar para 'phi' para maior qualidade
+  default: qwen            # Legion: Qwen 0.5B default (mais rápido); trocar para 'phi' para maior qualidade
   device: cuda             # 'cuda', 'cpu', ou 'auto'
   use_4bit: true           # Legion: 4-bit com bitsandbytes (compute >= 7.5 OK no Legion)
   warmup_on_startup: true  # Fazer warm-up automático no startup (recomendado)
