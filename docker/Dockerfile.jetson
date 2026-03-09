@@ -14,7 +14,7 @@ WORKDIR /app
 #     python3.8-distutils \
 #     curl \
 #     && rm -rf /var/lib/apt/lists/*
-RUN rm -f /etc/apt/sources.list.d/*kitware* \
+RUN find /etc/apt/ -type f \( -name "*.list" -o -name "*.sources" \) -exec sed -i '/apt\.kitware\.com/d' {} \; \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         python3.8 \
