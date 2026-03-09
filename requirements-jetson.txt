@@ -35,5 +35,6 @@ opencv-python-headless==4.8.1.78
 
 # LLM — torch instalado via wheel NVIDIA no Dockerfile
 transformers==4.46.3
+huggingface-hub==0.26.2
 accelerate==0.27.2
 # bitsandbytes: OMITIDO (incompatível com compute 5.3 do Jetson Nano)
