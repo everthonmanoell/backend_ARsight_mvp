@@ -40,13 +40,15 @@ RUN python3.8 -m pip install --no-cache-dir -r requirements-jetson.txt
 # ── Aplicação ────────────────────────────────────────────────────────────────
 COPY app/ ./app/
 COPY data/ ./data/
+COPY tests/ ./tests/
 
 RUN mkdir -p logs data/uploads
 
 EXPOSE 8000
 
 ENV PYTHONUNBUFFERED=1
-ENV TRANSFORMERS_CACHE=/app/models/cache
+# ENV TRANSFORMERS_CACHE=/app/models/cache
+ENV HF_HOME=/app/models/cache
 # Expõe a GPU para o container no nvidia-container-runtime (JetPack 4.6)
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
