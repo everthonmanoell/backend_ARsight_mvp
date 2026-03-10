@@ -38,3 +38,8 @@ transformers==4.46.3
 huggingface-hub==0.26.2
 accelerate==0.27.2
 # bitsandbytes: OMITIDO (incompatível com compute 5.3 do Jetson Nano)
+
+# Quantização INT8 via optimum-quanto: pure PyTorch, sem restrição de compute CUDA
+# Compatível com Jetson Nano (Maxwell/compute 5.3)
+# Alternativa ao bitsandbytes para ambientes sem suporte a INT4 nativo
+optimum[quanto]
