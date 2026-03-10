@@ -142,6 +142,8 @@ class QwenARModel(ARDiagnosticModel):
             # Libera cache CUDA após carregamento para maximizar VRAM disponível para inferência
             if self.device == 'cuda':
                 torch.cuda.empty_cache()
+                # Permite acumulações internas em FP16 nas multiplicações de matriz — pequeno ganho em Maxwell
+                torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = True
                 logger.info(f"VRAM após carga: {torch.cuda.memory_allocated()/1e9:.2f} GB alocados")
             
             # Carrega tokenizer(responsável por converter texto em tokens numéricos que o modelo pode processar)
