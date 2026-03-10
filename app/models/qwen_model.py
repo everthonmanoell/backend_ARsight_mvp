@@ -15,7 +15,7 @@ from app.config.config import Config
 # optimum-quanto: quantização INT8 pure-PyTorch, sem restrição de compute CUDA
 # Compatível com Jetson Nano (Maxwell/compute 5.3) ao contrário do bitsandbytes
 try:
-    from optimum.quanto import quantize, freeze, qint8
+    from optimum.quanto import quantize, qint8
     _QUANTO_AVAILABLE = True
 except ImportError:
     _QUANTO_AVAILABLE = False
@@ -131,8 +131,8 @@ class QwenARModel(ARDiagnosticModel):
                 if _QUANTO_AVAILABLE:
                     logger.info("Applying INT8 quantization via optimum-quanto...")
                     quantize(self.model, weights=qint8)
-                    freeze(self.model)     # converte os pesos quantizados para formato fixo (não treinável)
-                    logger.info("INT8 quantization applied and model frozen.")
+                    # freeze() omitido: requer torch.compile/tracing não disponível no PyTorch 1.10 (Jetson Nano)
+                    logger.info("INT8 quantization applied (unfrozen, compatible with JetPack 4.6).")
                 else:
                     logger.warning(
                         "use_int8=true mas 'optimum-quanto' não está instalado. "
