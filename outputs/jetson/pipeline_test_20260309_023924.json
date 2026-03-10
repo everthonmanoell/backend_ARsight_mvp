@@ -2,6 +2,7 @@
   "metadata": {
     "timestamp": "2026-03-09T02:39:24.181625",
     "model": "qwen",
+    "environment": "jetson",
     "device": "cuda",
     "quantization": "fp16/fp32",
     "batch_size": 10
