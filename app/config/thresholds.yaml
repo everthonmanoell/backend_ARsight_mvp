@@ -5,6 +5,9 @@ models:
   default: qwen            # Legion: Qwen 0.5B default (mais rápido); trocar para 'phi' para maior qualidade
   device: cuda             # 'cuda', 'cpu', ou 'auto'
   use_4bit: true           # Legion: 4-bit com bitsandbytes (compute >= 7.5 OK no Legion)
+  use_int8: false          # Legion: não usar optimum-quanto (bitsandbytes 4-bit já é superior aqui)
+  greedy_decoding: false   # Legion: manter sampling com temperature/top_p para variedade nas respostas
+  prompt_max_length: 512   # Legion: 512 tokens (GPU tem memória abundante, sem necessidade de cortar)
   warmup_on_startup: true  # Fazer warm-up automático no startup (recomendado)
   
   qwen:

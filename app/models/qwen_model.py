@@ -12,6 +12,14 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from app.models.base_model import ARDiagnosticModel
 from app.config.config import Config
 
+# optimum-quanto: quantização INT8 pure-PyTorch, sem restrição de compute CUDA
+# Compatível com Jetson Nano (Maxwell/compute 5.3) ao contrário do bitsandbytes
+try:
+    from optimum.quanto import quantize, qint8
+    _QUANTO_AVAILABLE = True
+except ImportError:
+    _QUANTO_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 # classe específica para o modelo Qwen 0.5B, com otimizações para baixa latência e uso eficiente de VRAM, ideal para Jetson Nano/Xavier NX
@@ -57,9 +65,24 @@ class QwenARModel(ARDiagnosticModel):
 
         # Top-p sampling (nucleus sampling) é uma técnica de geração onde o modelo considera apenas os tokens mais prováveis que juntos somam uma probabilidade p (ex: 0.9)
         # para manter uma geração focada com alguma diversidade foi usado 0.85
-        self.top_p = config.get('models.qwen.top_p', 0.85) 
+        self.top_p = config.get('models.qwen.top_p', 0.85)
+
+        # Greedy decoding: desativa amostragem aleatória (do_sample=False), eliminando o overhead do top_p/softmax sampling.
+        # Resultado mais determinístico e consideravelmente mais rápido, especialmente em GPUs com baixo throughput como a Jetson Nano.
+        self.greedy_decoding = config.get('models.greedy_decoding', False)
+
+        # Comprimento máximo do prompt em tokens. Prompts no Jetson são pequenos (< 150 tokens tipicamente);
+        # reduzir de 512 para 256 evita alocações desnecessárias e reduz tempo de tokenização/atenção.
+        self.prompt_max_length = config.get('models.prompt_max_length', 512)
+
+        # Flag para quantização INT8 via optimum-quanto (compatível com Maxwell/compute 5.3)
+        self.use_int8 = config.get('models.use_int8', False)
         
-        logger.info(f"Generation params: max_tokens={self.max_tokens}, summary_max_tokens={self.summary_max_tokens}, temp={self.temperature}, top_p={self.top_p}")
+        logger.info(
+            f"Generation params: max_tokens={self.max_tokens}, summary_max_tokens={self.summary_max_tokens}, "
+            f"temp={self.temperature}, top_p={self.top_p}, greedy={self.greedy_decoding}, "
+            f"prompt_max_length={self.prompt_max_length}, use_int8={self.use_int8}"
+        )
         
         # Carrega modelo
         self._load_model()
@@ -97,6 +120,31 @@ class QwenARModel(ARDiagnosticModel):
                     torch_dtype=torch.float32 if self.device == 'cpu' else torch.float16
                 )
                 logger.info(f"Model loaded on {self.device}")
+
+            # Colocar modelo em modo de inferência (desativa dropout, batch norm em modo treino, etc.)
+            self.model.eval()
+
+            # Quantização INT8 via optimum-quanto: reduz uso de memória ~50% e diminui pressão na
+            # largura de banda de memória durante geração — compatível com qualquer compute CUDA (incluindo Maxwell).
+            # Deve ser aplicado APÓS o carregamento e ANTES do freeze para que os pesos sejam quantizados in-place.
+            if self.use_int8 and self.device == 'cuda':
+                if _QUANTO_AVAILABLE:
+                    logger.info("Applying INT8 quantization via optimum-quanto...")
+                    quantize(self.model, weights=qint8)
+                    # freeze() omitido: requer torch.compile/tracing não disponível no PyTorch 1.10 (Jetson Nano)
+                    logger.info("INT8 quantization applied (unfrozen, compatible with JetPack 4.6).")
+                else:
+                    logger.warning(
+                        "use_int8=true mas 'optimum-quanto' não está instalado. "
+                        "Execute: pip install optimum[quanto]  — rodando em FP16 sem quantização."
+                    )
+
+            # Libera cache CUDA após carregamento para maximizar VRAM disponível para inferência
+            if self.device == 'cuda':
+                torch.cuda.empty_cache()
+                # Permite acumulações internas em FP16 nas multiplicações de matriz — pequeno ganho em Maxwell
+                torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = True
+                logger.info(f"VRAM após carga: {torch.cuda.memory_allocated()/1e9:.2f} GB alocados")
             
             # Carrega tokenizer(responsável por converter texto em tokens numéricos que o modelo pode processar)
             # O parâmetro padding_side='left' é crucial para modelos decoder-only, garantindo que o padding seja adicionado à esquerda dos prompts,
@@ -233,7 +281,7 @@ class QwenARModel(ARDiagnosticModel):
             prompt,              # texto do prompt a ser tokenizado
             return_tensors="pt", # retorna tensores PyTorch para compatibilidade com o modelo
             truncation=True,     # limita o prompt a um comprimento máximo para evitar erros de entrada muito longa
-            max_length=512       # comprimento máximo do prompt
+            max_length=self.prompt_max_length  # comprimento máximo configurável (256 para Jetson, 512 para desktop)
         )
         
         # Move para device do modelo - CPU ou GPU
@@ -250,13 +298,18 @@ class QwenARModel(ARDiagnosticModel):
 
             t2 = time.time() # marca o início da geração para medir o tempo gasto nessa etapa
 
+            # Greedy decoding (greedy_decoding=True): do_sample=False elimina o overhead de top_p/softmax
+            # sampling, tornando a geração mais rápida e determinística — ideal para Jetson Nano.
+            # Quando greedy=False, usa amostragem com temperature/top_p para mais diversidade.
+            use_sampling = (not self.greedy_decoding) and (self.temperature > 0)
+
             # gera a resposta do modelo com base nos inputs tokenizados
             outputs = self.model.generate( 
                 **inputs,                                                                               # passa os tensores de entrada para o modelo
                 max_new_tokens=max_new_tokens if max_new_tokens is not None else self.max_tokens,       # define o número máximo de tokens a serem gerados
-                temperature=self.temperature,                                                           # controla a aleatoriedade da geração
-                top_p=self.top_p,                                                                       # controla a diversidade da geração usando nucleus sampling
-                do_sample=True if self.temperature > 0 else False,                                      # ativa a amostragem se a temperatura for maior que 0
+                temperature=self.temperature if use_sampling else 1.0,                                  # ignorado quando do_sample=False
+                top_p=self.top_p if use_sampling else 1.0,                                              # ignorado quando do_sample=False
+                do_sample=use_sampling,                                                                 # False = greedy decoding (mais rápido)
                 pad_token_id=self.tokenizer.pad_token_id,                                               # define o token de padding 
                 eos_token_id=self.tokenizer.eos_token_id                                                # define o token de end-of-sequence para indicar quando a geração deve parar
             )
@@ -327,7 +380,7 @@ class QwenARModel(ARDiagnosticModel):
             prompts,
             return_tensors="pt",
             truncation=True,
-            max_length=512,
+            max_length=self.prompt_max_length,  # comprimento máximo configurável (256 para Jetson, 512 para desktop)
             padding=True,              # Padding para alinhar tamanhos
             return_attention_mask=True # Garante que o modelo ignore os tokens de padding durante a geração, mantendo a eficiência/qualidade das respostas mesmo com prompts de comprimentos variados
         )
@@ -344,13 +397,16 @@ class QwenARModel(ARDiagnosticModel):
         with torch.inference_mode():
             t2 = time.time() # marca o início da geração para medir o tempo gasto nessa etapa
 
+            # Greedy decoding no batch: mesma lógica do _call_model — elimina overhead de sampling
+            use_sampling = (not self.greedy_decoding) and (self.temperature > 0)
+
             # gera as respostas para todos os prompts em paralelo, otimizando o tempo de inferência quando há múltiplos frames a serem processados
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=self.max_tokens,
-                temperature=self.temperature,
-                top_p=self.top_p,
-                do_sample=True if self.temperature > 0 else False,
+                temperature=self.temperature if use_sampling else 1.0,
+                top_p=self.top_p if use_sampling else 1.0,
+                do_sample=use_sampling,            # False = greedy decoding (mais rápido)
                 pad_token_id=self.tokenizer.pad_token_id,
                 eos_token_id=self.tokenizer.eos_token_id
             )

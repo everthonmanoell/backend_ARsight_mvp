@@ -1,19 +1,23 @@
 # AR Diagnostic MVP - Configuration (Jetson Nano / JetPack 4.6.x)
 # ⚠️  NÃO alterar use_4bit para true: bitsandbytes requer compute >= 7.5 (Nano = 5.3 Maxwell)
 # ⚠️  NÃO trocar modelo para phi: Phi-3 Mini ~3.8B não cabe em 4GB VRAM sem quantização 4-bit
+# ✅  use_int8: usa optimum-quanto (pure PyTorch, sem restrição de compute) — ~50% menos memória banda
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 models:
   default: qwen            # Único modelo viável no Jetson Nano (0.5B, ~1GB VRAM em fp16)
   device: cuda             # 'cuda', 'cpu', ou 'auto'
   use_4bit: false          # ⚠️  DESABILITADO: bitsandbytes não funciona no Jetson (compute 5.3 Maxwell)
+  use_int8: false          # ⚠️  DESABILITADO: freeze() incompatível com PyTorch 1.10; sem freeze, INT8 é ~3x mais lento que FP16
+  greedy_decoding: true    # ✅  Decoding guloso (do_sample=False): elimina overhead do top_p/sampling — maior ganho de velocidade single-token
+  prompt_max_length: 256   # Comprimento máximo do prompt em tokens (prompts Jetson são pequenos; 256 evita alocação desnecessária)
   warmup_on_startup: true  # Fazer warm-up automático no startup (recomendado)
   
   qwen:
     name: Qwen/Qwen2.5-0.5B-Instruct
-    max_tokens: 100         # Tokens para explicações individuais por frame (~60-80 tokens gerados)
-    summary_tokens: 150     # Tokens para o summary do ambiente (mais espaço para texto completo)
-    temperature: 0.4
-    top_p: 0.9
+    max_tokens: 40          # ✅  Reduzido de 60→40: prompt já instrui "under 50 words"; EOS dispara antes — máximo impede espera desnecessária
+    summary_tokens: 50      # ✅  Reduzido de 80→50: summary de 1-2 frases cabe em 50 tokens; ganho linear de tempo
+    temperature: 0.4        # Ignorado quando greedy_decoding=true
+    top_p: 0.9              # Ignorado quando greedy_decoding=true
   
   phi:
     name: microsoft/Phi-3-mini-4k-instruct

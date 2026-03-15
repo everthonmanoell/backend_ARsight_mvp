@@ -12,6 +12,7 @@ services:
       - ./data:/app/data
       - ./logs:/app/logs
       - ./models/cache:/app/models/cache
+      - ./outputs:/app/outputs
     environment:
       - TRANSFORMERS_CACHE=/app/models/cache
       - PYTHONUNBUFFERED=1
