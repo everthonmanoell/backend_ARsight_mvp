@@ -1,0 +1,314 @@
+{
+  "metadata": {
+    "timestamp": "2026-03-15T20:34:22.377345",
+    "environment": "legion",
+    "model": "qwen",
+    "device": "cuda",
+    "quantization": "4-bit",
+    "batch_size": 10,
+    "batch_folder": "20260315_143447"
+  },
+  "performance": {
+    "pdi_total_ms": 136.4,
+    "pdi_per_image_ms": 13.6,
+    "slm_total_s": 18.425,
+    "slm_per_diagnosis_s": 1.842,
+    "total_s": 18.561,
+    "target_met": false
+  },
+  "statistics": {
+    "total": 10,
+    "correct": 10,
+    "accuracy": 100.0
+  },
+  "summary": {
+    "overall_risk": "high",
+    "dominant_label": "underexposed",
+    "problem_count": 1,
+    "normal_count": 9,
+    "explanation": "1 out of 10 frames showed insufficient lighting, creating a high-risk environment for AR tracking. Adjusting the lighting conditions is recommended to improve AR performance.",
+    "recommendations": [
+      {
+        "condition": "adequate_acceptable",
+        "frames": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          8,
+          9
+        ],
+        "count": 9,
+        "actions": [
+          "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+          "Ensure consistent lighting throughout the AR session to preserve quality"
+        ]
+      },
+      {
+        "condition": "underexposed",
+        "frames": [
+          7
+        ],
+        "count": 1,
+        "actions": [
+          "Increase ambient lighting or use supplemental light sources",
+          "Position light sources to evenly illuminate the scene"
+        ]
+      }
+    ],
+    "metrics_avg": {
+      "mean_brightness": 0.2995,
+      "mean_luma": 76.38,
+      "uniformity": 0.6392,
+      "pct_clipped_bright": 0.0289,
+      "pct_clipped_dark": 0.0051
+    }
+  },
+  "frames": [
+    {
+      "frame_index": 0,
+      "filename": "frame_00.jpg",
+      "expected_label": "acceptable",
+      "status": "pass",
+      "risk_level": "low",
+      "label_correct": true,
+      "explanation": "The good lighting conditions in this scene allow for effective AR feature tracking and detection due to their high illumination levels and uniform brightness across the entire scene. This uniformity minimizes the risk of pixelation that can occur with lower light levels, which is crucial for accurate AR interaction.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "metrics": {
+        "illumination_score": 0.5574,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.3157,
+        "mean_luma": 80.5,
+        "std_luma": 41.09,
+        "uniformity": 0.6621,
+        "pct_clipped_dark": 0.0139,
+        "pct_clipped_bright": 0.0225
+      }
+    },
+    {
+      "frame_index": 1,
+      "filename": "frame_01.jpg",
+      "expected_label": "acceptable",
+      "status": "pass",
+      "risk_level": "low",
+      "label_correct": true,
+      "explanation": "The good lighting conditions in this scene allow for successful AR feature tracking and detection, but there were also some challenges with illumination and pixelization that could have impacted performance. The overall assessment is considered \"acceptable,\" indicating that the lighting setup supports the AR experience while addressing potential issues.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "metrics": {
+        "illumination_score": 0.5563,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.3146,
+        "mean_luma": 80.23,
+        "std_luma": 41.42,
+        "uniformity": 0.6595,
+        "pct_clipped_dark": 0.0149,
+        "pct_clipped_bright": 0.023
+      }
+    },
+    {
+      "frame_index": 2,
+      "filename": "frame_02.jpg",
+      "expected_label": "acceptable",
+      "status": "pass",
+      "risk_level": "low",
+      "label_correct": true,
+      "explanation": "The scene presents optimal illumination conditions for AR deployment with adequate lighting levels, ensuring stable tracking and reliable anchor placement.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "metrics": {
+        "illumination_score": 0.5602,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.3155,
+        "mean_luma": 80.46,
+        "std_luma": 42.52,
+        "uniformity": 0.6542,
+        "pct_clipped_dark": 0.0084,
+        "pct_clipped_bright": 0.0294
+      }
+    },
+    {
+      "frame_index": 3,
+      "filename": "frame_03.jpg",
+      "expected_label": "acceptable",
+      "status": "pass",
+      "risk_level": "low",
+      "label_correct": true,
+      "explanation": "The good lighting conditions in this scene contribute to successful AR feature tracking by providing adequate illumination levels that allow for accurate object recognition, even with minimal ambient light. The uniform brightness across all objects is beneficial as it ensures that no single point of light dominates the view, reducing the risk of false detections caused by glare or other sources of light. This uniformity also helps in maintaining high contrast between different objects, which enhances the overall visual clarity of the scene.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "metrics": {
+        "illumination_score": 0.5479,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.3076,
+        "mean_luma": 78.43,
+        "std_luma": 39.85,
+        "uniformity": 0.6631,
+        "pct_clipped_dark": 0.0009,
+        "pct_clipped_bright": 0.0261
+      }
+    },
+    {
+      "frame_index": 4,
+      "filename": "frame_04.jpg",
+      "expected_label": "acceptable",
+      "status": "pass",
+      "risk_level": "low",
+      "label_correct": true,
+      "explanation": "The good lighting conditions in the scene provide sufficient illumination to ensure accurate AR feature tracking and detection. The uniformly distributed light ensures that all AR elements can see each other without any significant interference from ambient light sources. This uniformity is crucial for smooth operation of AR features such as motion blur, color correction, and depth perception. However, the low brightness level might lead to some pixel clipping, which could result in artifacts if not addressed.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "metrics": {
+        "illumination_score": 0.5168,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.2807,
+        "mean_luma": 71.59,
+        "std_luma": 40.71,
+        "uniformity": 0.6375,
+        "pct_clipped_dark": 0.0021,
+        "pct_clipped_bright": 0.0243
+      }
+    },
+    {
+      "frame_index": 5,
+      "filename": "frame_05.jpg",
+      "expected_label": "acceptable",
+      "status": "pass",
+      "risk_level": "low",
+      "label_correct": true,
+      "explanation": "The good lighting conditions in the scene contribute to effective AR feature tracking by providing sufficient illumination and maintaining consistent levels of brightness across all surfaces. This uniformity helps ensure that AR features can accurately detect objects within the scene, improving overall AR performance. However, it's important to note that while this is generally beneficial, any slight variations in light distribution could potentially introduce artifacts or errors into the tracking process, which might be mitigated if the lighting conditions remain stable over time.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "metrics": {
+        "illumination_score": 0.5141,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.2768,
+        "mean_luma": 70.58,
+        "std_luma": 41.97,
+        "uniformity": 0.6271,
+        "pct_clipped_dark": 0.002,
+        "pct_clipped_bright": 0.0269
+      }
+    },
+    {
+      "frame_index": 6,
+      "filename": "frame_06.jpg",
+      "expected_label": "acceptable",
+      "status": "pass",
+      "risk_level": "low",
+      "label_correct": true,
+      "explanation": "The lighting assessment indicates that the scene has good lighting conditions but is not yet fully optimized for AR features such as depth perception and motion blur, which are critical components of AR's performance. The uneven uniformity in illumination across the scene suggests that there might be areas where light levels are too low to ensure smooth AR experience, while other areas may have insufficient light causing artifacts or poor image quality.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "metrics": {
+        "illumination_score": 0.5244,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.2767,
+        "mean_luma": 70.56,
+        "std_luma": 47.06,
+        "uniformity": 0.5999,
+        "pct_clipped_dark": 0.0016,
+        "pct_clipped_bright": 0.034
+      }
+    },
+    {
+      "frame_index": 7,
+      "filename": "frame_07.jpg",
+      "expected_label": "underexposed",
+      "status": "fail",
+      "risk_level": "high",
+      "label_correct": true,
+      "explanation": "The underexposure of the scene is a significant issue that can negatively impact both AR feature tracking and AR performance due to several factors: 1. **Underexposure**: This means that the light levels in the scene are too low for effective illumination, which is crucial for accurate AR features such as depth perception, motion tracking, and other visual cues.",
+      "triggered_rules": [
+        "Underexposed scene (too dark)"
+      ],
+      "recommendations": [
+        "Increase ambient lighting or use supplemental light sources",
+        "Position light sources to evenly illuminate the scene"
+      ],
+      "metrics": {
+        "illumination_score": 0.482,
+        "illumination_label": "underexposed",
+        "mean_brightness": 0.2401,
+        "mean_luma": 61.23,
+        "std_luma": 48.65,
+        "uniformity": 0.5573,
+        "pct_clipped_dark": 0.0046,
+        "pct_clipped_bright": 0.0324
+      }
+    },
+    {
+      "frame_index": 8,
+      "filename": "frame_08.jpg",
+      "expected_label": "acceptable",
+      "status": "pass",
+      "risk_level": "low",
+      "label_correct": true,
+      "explanation": "The good quality of lighting in the scene supports AR's ability to accurately track and detect objects within it, as well as the subsequent AR experience. The high illumination score indicates that the lighting conditions are sufficient for both the AR system to function optimally and for the user to perceive the environment clearly. This combination allows for smooth AR interaction, including accurate object recognition, which is crucial for successful AR applications.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "metrics": {
+        "illumination_score": 0.5534,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.3096,
+        "mean_luma": 78.95,
+        "std_luma": 41.77,
+        "uniformity": 0.654,
+        "pct_clipped_dark": 0.0014,
+        "pct_clipped_bright": 0.0304
+      }
+    },
+    {
+      "frame_index": 9,
+      "filename": "frame_09.jpg",
+      "expected_label": "acceptable",
+      "status": "pass",
+      "risk_level": "low",
+      "label_correct": true,
+      "explanation": "The good lighting conditions in this scene allow for smooth AR feature tracking without significant issues such as pixel clipping due to insufficient illumination. This uniform lighting ensures that all AR elements can see each other clearly, facilitating smoother interactions with the environment. The relatively low brightness level of 91/255 indicates balanced light distribution across the entire scene, which is crucial for maintaining visual fidelity.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "metrics": {
+        "illumination_score": 0.6133,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.3578,
+        "mean_luma": 91.24,
+        "std_luma": 43.45,
+        "uniformity": 0.6774,
+        "pct_clipped_dark": 0.0009,
+        "pct_clipped_bright": 0.0397
+      }
+    }
+  ]
+}

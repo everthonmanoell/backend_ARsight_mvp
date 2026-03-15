@@ -12,21 +12,95 @@ from app.config.config import Config
 def main():
     # Testa com imagem de exemplo
     test_images = [
-        "data/illumination/bright_overexposed/bright_image1.jpg",
-        "data/illumination/bright_overexposed/bright_image2.jpg",
-        "data/illumination/bright_overexposed/bright_image3.jpg",
-        "data/illumination/bright_overexposed/bright_image4.jpg",
-        "data/illumination/bright_overexposed/bright_image5.jpg",
-        "data/illumination/dark_underexposed/dark_image1.jpg",
-        "data/illumination/dark_underexposed/dark_image2.jpg",
-        "data/illumination/dark_underexposed/dark_image3.jpg",
-        "data/illumination/dark_underexposed/dark_image4.jpg",
-        "data/illumination/dark_underexposed/dark_image5.jpg",
-        "data/illumination/normal/normal_image1.jpg",
-        "data/illumination/normal/normal_image2.jpg",
-        "data/illumination/normal/normal_image3.jpg",
-        "data/illumination/normal/normal_image4.jpg",
-        "data/illumination/normal/normal_image5.jpg"
+        # "data/illumination/bright_overexposed/bright_image1.jpg",
+        # "data/illumination/bright_overexposed/bright_image2.jpg",
+        # "data/illumination/bright_overexposed/bright_image3.jpg",
+        # "data/illumination/bright_overexposed/bright_image4.jpg",
+        # "data/illumination/bright_overexposed/bright_image5.jpg",
+        # "data/illumination/dark_underexposed/dark_image1.jpg",
+        # "data/illumination/dark_underexposed/dark_image2.jpg",
+        # "data/illumination/dark_underexposed/dark_image3.jpg",
+        # "data/illumination/dark_underexposed/dark_image4.jpg",
+        # "data/illumination/dark_underexposed/dark_image5.jpg",
+        # "data/illumination/normal/normal_image1.jpg",
+        # "data/illumination/normal/normal_image2.jpg",
+        # "data/illumination/normal/normal_image3.jpg",
+        # "data/illumination/normal/normal_image4.jpg",
+        # "data/illumination/normal/normal_image5.jpg"
+
+        # imagens dos batchs de upload
+        # -----------------------------------------------------------------
+        # 20260315_143220 - BATCH 1
+        # "data/uploads/20260315_143220/frame_00.jpg",
+        # "data/uploads/20260315_143220/frame_01.jpg",
+        # "data/uploads/20260315_143220/frame_02.jpg",
+        # "data/uploads/20260315_143220/frame_03.jpg",
+        # "data/uploads/20260315_143220/frame_04.jpg",
+        # "data/uploads/20260315_143220/frame_05.jpg",
+        # "data/uploads/20260315_143220/frame_06.jpg",
+        # "data/uploads/20260315_143220/frame_07.jpg",
+        # "data/uploads/20260315_143220/frame_08.jpg",
+        # "data/uploads/20260315_143220/frame_09.jpg",
+
+        # 20260315_143447 - BATCH 2
+        # "data/uploads/20260315_143447/frame_00.jpg",
+        # "data/uploads/20260315_143447/frame_01.jpg",
+        # "data/uploads/20260315_143447/frame_02.jpg",
+        # "data/uploads/20260315_143447/frame_03.jpg",
+        # "data/uploads/20260315_143447/frame_04.jpg",
+        # "data/uploads/20260315_143447/frame_05.jpg",
+        # "data/uploads/20260315_143447/frame_06.jpg",
+        # "data/uploads/20260315_143447/frame_07.jpg",
+        # "data/uploads/20260315_143447/frame_08.jpg",
+        # "data/uploads/20260315_143447/frame_09.jpg"
+
+        # 20260315_143615 - BATCH 3
+        # "data/uploads/20260315_143615/frame_00.jpg",
+        # "data/uploads/20260315_143615/frame_01.jpg",
+        # "data/uploads/20260315_143615/frame_02.jpg",
+        # "data/uploads/20260315_143615/frame_03.jpg",
+        # "data/uploads/20260315_143615/frame_04.jpg",
+        # "data/uploads/20260315_143615/frame_05.jpg",
+        # "data/uploads/20260315_143615/frame_06.jpg",
+        # "data/uploads/20260315_143615/frame_07.jpg",
+        # "data/uploads/20260315_143615/frame_08.jpg",
+        # "data/uploads/20260315_143615/frame_09.jpg"
+
+        # 20260315_143747 - BATCH 4
+        # "data/uploads/20260315_143747/frame_00.jpg",
+        # "data/uploads/20260315_143747/frame_01.jpg",
+        # "data/uploads/20260315_143747/frame_02.jpg",
+        # "data/uploads/20260315_143747/frame_03.jpg",
+        # "data/uploads/20260315_143747/frame_04.jpg",
+        # "data/uploads/20260315_143747/frame_05.jpg",
+        # "data/uploads/20260315_143747/frame_06.jpg",
+        # "data/uploads/20260315_143747/frame_07.jpg",
+        # "data/uploads/20260315_143747/frame_08.jpg",
+        # "data/uploads/20260315_143747/frame_09.jpg"
+
+        # 20260315_175638 - BATCH 5
+        # "data/uploads/20260315_175638/frame_00.jpg",
+        # "data/uploads/20260315_175638/frame_01.jpg",
+        # "data/uploads/20260315_175638/frame_02.jpg",
+        # "data/uploads/20260315_175638/frame_03.jpg",
+        # "data/uploads/20260315_175638/frame_04.jpg",
+        # "data/uploads/20260315_175638/frame_05.jpg",
+        # "data/uploads/20260315_175638/frame_06.jpg",
+        # "data/uploads/20260315_175638/frame_07.jpg",
+        # "data/uploads/20260315_175638/frame_08.jpg",
+        # "data/uploads/20260315_175638/frame_09.jpg"
+
+        # 20260315_180200 - BATCH 6
+        "data/uploads/20260315_180200/frame_00.jpg",
+        "data/uploads/20260315_180200/frame_01.jpg",
+        "data/uploads/20260315_180200/frame_02.jpg",
+        "data/uploads/20260315_180200/frame_03.jpg",
+        "data/uploads/20260315_180200/frame_04.jpg",
+        "data/uploads/20260315_180200/frame_05.jpg",
+        "data/uploads/20260315_180200/frame_06.jpg",
+        "data/uploads/20260315_180200/frame_07.jpg",
+        "data/uploads/20260315_180200/frame_08.jpg",
+        "data/uploads/20260315_180200/frame_09.jpg"
     ]
     
     # Carrega config do YAML

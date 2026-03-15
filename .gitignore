@@ -39,11 +39,6 @@ poetry.lock
 htmlcov/
 *.log
 
-# Data
-data/uploads/*
-!data/uploads/.gitkeep
-logs/
-
 # Models cache
 models/cache/
 .cache/

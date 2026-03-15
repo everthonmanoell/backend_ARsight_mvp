@@ -10,7 +10,7 @@ from datetime import datetime
 import time as _time
 from fastapi import APIRouter, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
-from PIL import Image
+from PIL import Image, ImageOps
 import io
 
 from app.pipeline.illumination_pipeline import IlluminationPipeline
@@ -75,6 +75,9 @@ def _validate_image_file(file: UploadFile) -> Image.Image:
     try:
         contents = file.file.read()
         image = Image.open(io.BytesIO(contents))
+        
+        # Aplica rotação EXIF para corrigir a orientação da imagem conforme metadados da câmera
+        image = ImageOps.exif_transpose(image)
         
         if len(contents) > max_size:
             raise HTTPException(
@@ -329,27 +332,28 @@ async def upload_batch(files: List[UploadFile] = File(...)):
         
         # acessa as configurações para determinar o diretório onde os arquivos serão salvos, criando o diretório se ele não existir
         config = Config()
-        upload_dir = config.get('api.upload_dir', 'data/uploads')
+        upload_base_dir = config.get('api.upload_dir', 'data/uploads')
         
-        # Criar diretório de upload se não existir
-        os.makedirs(upload_dir, exist_ok=True)
+        # gera um timestamp para criar uma pasta específica para este batch, organizando uploads em subpastas
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        batch_dir = os.path.join(upload_base_dir, timestamp)
+        
+        # Criar diretório de batch se não existir
+        os.makedirs(batch_dir, exist_ok=True)
         
         # lista para armazenar os resultados do processamento de cada arquivo, incluindo informações sobre o nome original, nome salvo, caminho, tamanho e status do processamento
         results = []
-
-        # gera um timestamp para criar nomes de arquivos únicos, evitando sobrescritas e facilitando a organização dos arquivos salvos
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # itera sobre os arquivos enviados, validando cada um usando a função _validate_image_file e salvando a imagem no diretório especificado; 
-        # para cada arquivo, gera um nome de arquivo único usando o timestamp e o nome original
+        # itera sobre os arquivos enviados, validando cada um usando a função _validate_image_file e salvando a imagem no diretório do batch; 
+        # para cada arquivo, gera um nome padronizado frame_00.jpg, frame_01.jpg, etc
         for i, file in enumerate(files):
             try:
                 # Valida arquivo
                 image = _validate_image_file(file)
                 
-                # Gera nome de arquivo único e caminho para salvar a imagem
-                saved_filename = f"{timestamp}_{i:02d}_{file.filename}"
-                saved_path = os.path.join(upload_dir, saved_filename)
+                # Gera nome padronizado frame_00.jpg, frame_01.jpg, etc
+                saved_filename = f"frame_{i:02d}.jpg"
+                saved_path = os.path.join(batch_dir, saved_filename)
                 
                 # Salva imagem
                 image.save(saved_path)
@@ -377,8 +381,10 @@ async def upload_batch(files: List[UploadFile] = File(...)):
                     'error': str(e)
                 })
         
-        # retorna um resumo do processamento, incluindo o número total de arquivos processados, quantos foram salvos com sucesso e quantos apresentaram erros, junto com os detalhes de cada arquivo processado
+        # retorna um resumo do processamento, incluindo o batch_id (timestamp), número total de arquivos processados, quantos foram salvos com sucesso e quantos apresentaram erros, junto com os detalhes de cada arquivo processado
         return {
+            'batch_id': timestamp,
+            'batch_folder': batch_dir,
             'total': len(files),
             'successful': sum(1 for r in results if r.get('status') == 'success'),
             'failed': sum(1 for r in results if r.get('status') != 'success'),

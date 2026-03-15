@@ -372,16 +372,17 @@ class ARDiagnosticModel(ABC):
         # (ex: se houver alguma cena com risco 'high', o risco geral será 'high')
         overall_risk = max(risk_levels, key=lambda r: risk_priority.get(r, 0)) 
 
-        # condição dominante entre as cenas problemáticas, determinada pela moda dos labels de iluminação
-        # (ex: se a maioria das cenas problemáticas for 'overexposed', a condição dominante será 'overexposed')
-        dominant_label = Counter(labels).most_common(1)[0][0] if labels else 'unknown'
-        
-        # contagem total de cenas processadas, usada para calcular proporção de problemas e informar o summary
-        n = len(metrics_list) 
-
         # Contagem por categoria de problema (apenas frames com status=fail)
         problem_labels = [m.get('illumination_label', 'unknown') for m, (s, _, __) in zip(metrics_list, evaluations) if s == 'fail']
         label_breakdown = dict(Counter(problem_labels))
+
+        # condição dominante entre as cenas PROBLEMÁTICAS APENAS (não contabiliza frames bons)
+        # (ex: se a maioria das cenas problemáticas for 'overexposed', a condição dominante será 'overexposed')
+        # se não houver frames com problema, mantém a etiqueta mais frequente geral
+        dominant_label = Counter(problem_labels).most_common(1)[0][0] if problem_labels else Counter(labels).most_common(1)[0][0] if labels else 'unknown'
+        
+        # contagem total de cenas processadas, usada para calcular proporção de problemas e informar o summary
+        n = len(metrics_list)
 
         # estatísticas agregadas para o prompt de summary, integrando contagem total, contagem de problemas, condição dominante e risco geral
         agg = { 
@@ -469,47 +470,79 @@ class ARDiagnosticModel(ABC):
         # Fase 7: Montar summary do ambiente 
         #----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-        # Sanitiza o texto do summary para garantir coerência e legibilidade, mesmo em casos de falha na geração ou necessidade de fallback para template
+        # Sanitiza o texto do summary para garantir coerência e legibilidade
         summary_text = self._clean_response(summary_response) if summary_response else ""
 
-        # Valida summary com as mesmas regras de alucinação dos frames individuais
+        # VALIDAÇÃO: Verifica alucinações e qualidade, mas permite geração natural
         if not self.validator.is_valid_explanation(summary_text):
             logger.debug(f"Summary failed validation, generating fallback")
-            # Fallback determinístico para summary baseado nas estatísticas agregadas
+            # Fallback simples - gera uma descrição baseada nos dados agregados
+            # Mas o modelo agora terá a chance de gerar texto natural primeiro
             label_desc = {
                 'overexposed': 'excessive brightness',
                 'underexposed': 'insufficient lighting',
                 'poor': 'uneven illumination',
             }
             dominant_desc = label_desc.get(dominant_label, 'lighting issues')
+            
             if problem_count > 0:
+                modal_verb = 'could' if overall_risk == 'high' else 'may'
                 summary_text = (
-                    f"{problem_count} out of {n} frames showed {dominant_desc}, "
-                    f"creating a {overall_risk}-risk environment for AR tracking. "
-                    f"Adjusting the lighting conditions is recommended to improve AR performance."
+                    f"The scene exhibits {dominant_desc}, which {modal_verb} affect AR performance. "
+                    f"Improved lighting conditions would enhance tracking stability and accuracy."
                 )
             else:
                 summary_text = (
-                    f"All {n} frames showed adequate lighting conditions, "
-                    f"providing a suitable environment for reliable AR tracking."
+                    f"The scene offers suitable lighting conditions that can support reliable AR tracking and interaction."
                 )
         
         summary_text = self.validator.sanitize_explanation(summary_text)
 
-        # Recomendações deduplicadas de todos os frames problemáticos
+        # Recomendações agrupadas por condição de iluminação (underexposed, acceptable, overexposed, etc)
+        # Estrutura: [ { "condition": "adequate_acceptable", "frames": [0,1,5,...], "count": 9, "actions": [...] }, ... ]
 
-        # set para rastrear recomendações já adicionadas, garantindo que o summary forneça uma lista clara e concisa de ações recomendadas sem repetições
-        seen_recs = set() 
+        # dicionário para agrupar frame indices e ações por illumination_label
+        rec_by_condition = {}  
 
-        # lista para armazenar recomendações finais, construída a partir das regras ativadas em cada cena problemáticas
-        # garante que o summary forneça uma visão abrangente das ações recomendadas para melhorar a qualidade do ambiente AR
-        all_recs  = []   
+        # iterar sobre cada frame para coletar suas métricas, recomendações e índice
+        for idx, (metrics, (status, risk, rules), result) in enumerate(zip(metrics_list, evaluations, results)):
+            
+            # obtém o label de iluminação (acceptable, adequate, underexposed, overexposed, etc)
+            condition = metrics.get('illumination_label', 'unknown')
 
-        for status, risk, rules in evaluations:
+            # agrupa "adequate" e "acceptable" em um único label para recomendações
+            # ambos representam condições OK para AR
+            if condition in ['adequate', 'acceptable']:
+                condition = 'adequate_acceptable'
+
+            # inicializa a entrada para essa condição se não existir
+            if condition not in rec_by_condition:
+                rec_by_condition[condition] = {
+                    'frames': [],
+                    'actions_set': set()
+                }
+
+            # adiciona o índice do frame para essa condição
+            rec_by_condition[condition]['frames'].append(idx)
+
+            # coleta as ações recomendadas para essa condição (deduplicação com set)
             for rec in self.rule_engine.build_recommendations(rules, status):
-                if rec not in seen_recs:
-                    seen_recs.add(rec)
-                    all_recs.append(rec)
+                rec_by_condition[condition]['actions_set'].add(rec)
+
+        # converte o dicionário em array ordenado de recomendações por condição
+        # ordena por condição para garantir consistência (optimal, overexposed, underexposed)
+        condition_order = ['adequate_acceptable', 'overexposed', 'underexposed', 'poor', 'unknown']
+        recommendations_by_condition = []
+
+        for condition in condition_order:
+            if condition in rec_by_condition:
+                data = rec_by_condition[condition]
+                recommendations_by_condition.append({
+                    'condition': condition,
+                    'frames': sorted(data['frames']),
+                    'count': len(data['frames']),
+                    'actions': sorted(list(data['actions_set']))  # ordena ações para consistência
+                })
 
         summary = {
             'overall_risk':   overall_risk,
@@ -517,7 +550,7 @@ class ARDiagnosticModel(ABC):
             'problem_count':  problem_count,
             'normal_count':   n - problem_count,
             'explanation':    summary_text,
-            'recommendations': all_recs,
+            'recommendations': recommendations_by_condition,
             'metrics_avg': {
                 'mean_brightness':   round(agg['avg_mean_luma'] / 255.0, 4),
                 'mean_luma':         round(agg['avg_mean_luma'], 2),

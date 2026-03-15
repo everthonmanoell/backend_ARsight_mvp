@@ -179,7 +179,7 @@ class QwenARModel(ARDiagnosticModel):
     # método para construir o prompt de sumarização do ambiente, agregando as métricas e avaliações de múltiplos frames para fornecer um contexto mais amplo ao modelo 
     # sobre a qualidade geral do ambiente AR, permitindo que ele gere um resumo mais informativo e útil para o usuário final
     def _build_summary_prompt(self, agg: Dict) -> str: 
-        """Constrói prompt de sumarização do ambiente (ChatML format)"""
+        """Constrói prompt de sumarização do ambiente (ChatML format) - Generar naturalmente com validações"""
 
         total          = agg['total']                     # número total de frames analisados
         problem_count  = agg['problem_count']             # número de frames com problemas de iluminação
@@ -187,50 +187,31 @@ class QwenARModel(ARDiagnosticModel):
         overall_risk   = agg['overall_risk']              # risco geral do ambiente baseado na análise de todos os frames
 
         system_msg = (
-            "You summarize lighting conditions for AR. "
-            "Write 1-2 plain sentences. No lists. No markdown. Under 50 words."
+            "You are an expert AR lighting analyst. Generate a concise, natural assessment of the scene's lighting quality. "
+            "Use cautious language (could, may, can) when discussing potential impacts on AR. "
+            "Be professional but conversational. Keep response under 50 words."
         )
 
-        # Pré-digere o contexto para o modelo — em vez de métricas brutas, fornece a conclusão já interpretada
-        # para que o modelo apenas gere texto natural explicando o impacto no AR
+        # Descrição amigável do contexto
         label_names = {
             'overexposed':  'excessively bright',
             'underexposed': 'too dark',
             'poor':         'unevenly lit',
         }
-        label_breakdown = agg.get('label_breakdown', {})
-        breakdown_parts = [
-            f"{count} were {label_names.get(lbl, lbl)}"
-            for lbl, count in sorted(label_breakdown.items(), key=lambda x: -x[1])
-        ]
-        breakdown_text = ' and '.join(breakdown_parts) if breakdown_parts else 'had problems'
-
-        normal_count = total - problem_count
-
-        # Constrói narrativa pré-digerida baseada no risco geral
-        if overall_risk == 'high':
-            risk_narrative = (
-                f"Out of {total} frames, {problem_count} had lighting problems ({breakdown_text}). "
-                f"Only {normal_count} frames had acceptable lighting. "
-                f"The main issue is {label_names.get(dominant_label, dominant_label)} scenes. "
-                f"This is a high-risk environment for AR — "
-                f"explain why and suggest what the user should adjust:"
-            )
-        elif overall_risk == 'medium':
-            risk_narrative = (
-                f"Out of {total} frames, {problem_count} had lighting problems ({breakdown_text}). "
-                f"{normal_count} frames were acceptable. "
-                f"This is a moderate-risk environment for AR — "
-                f"explain what should be improved:"
+        
+        dominant_label_name = label_names.get(dominant_label, dominant_label)
+        
+        if problem_count > 0:
+            user_msg = (
+                f"Analyze this scene: {problem_count} frames with {dominant_label_name} conditions detected. "
+                f"Overall risk: {overall_risk}. Provide a natural summary of how this affects AR tracking. "
+                f"Be concise and use cautious language."
             )
         else:
-            risk_narrative = (
-                f"Out of {total} frames analyzed, {normal_count} had good lighting. "
-                f"The environment is suitable for AR. "
-                f"Explain why the lighting supports good AR performance:"
+            user_msg = (
+                f"Analyze this scene: All {total} frames show adequate lighting. "
+                f"Provide a positive summary of the scene's suitability for AR applications."
             )
-
-        user_msg = risk_narrative
 
         messages = [
             {"role": "system", "content": system_msg},

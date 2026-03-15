@@ -4,6 +4,12 @@ Simula o fluxo real: celular envia 10 frames -> servidor diagnostica em batch ->
 
 Uso:
     python tests/manual/test_pipeline.py
+
+Instrucoes:
+    1. Descomente APENAS UM batch de imagens abaixo
+    2. Execute o script
+    3. O JSON será salvo em outputs/{environment}/ com o nome da pasta incluído nos metadados
+    4. Comente o batch anterior e descomente o próximo para testar
 """
 import json
 import sys
@@ -19,18 +25,91 @@ from app.config.config import Config
 from app.pipeline.illumination_pipeline import IlluminationPipeline
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# Imagens de teste (4 overexposed + 3 underexposed + 3 normal = 10)
+# BANCOS DE IMAGENS POR BATCH - Descomente APENAS UM batch por vez
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Batch 1: 20260315_143220
+# BATCH_IMAGES = [
+#     ("data/uploads/20260315_143220/frame_00.jpg", "adequate"),
+#     ("data/uploads/20260315_143220/frame_01.jpg", "adequate"),
+#     ("data/uploads/20260315_143220/frame_02.jpg", "acceptable"),
+#     ("data/uploads/20260315_143220/frame_03.jpg", "acceptable"),
+#     ("data/uploads/20260315_143220/frame_04.jpg", "acceptable"),
+#     ("data/uploads/20260315_143220/frame_05.jpg", "adequate"),
+#     ("data/uploads/20260315_143220/frame_06.jpg", "adequate"),
+#     ("data/uploads/20260315_143220/frame_07.jpg", "adequate"),
+#     ("data/uploads/20260315_143220/frame_08.jpg", "adequate"),
+#     ("data/uploads/20260315_143220/frame_09.jpg", "adequate"),
+# ]
+
+# Batch 2: 20260315_143447 (descomente para testar)
+# BATCH_IMAGES = [
+#     ("data/uploads/20260315_143447/frame_00.jpg", "acceptable"),
+#     ("data/uploads/20260315_143447/frame_01.jpg", "acceptable"),
+#     ("data/uploads/20260315_143447/frame_02.jpg", "acceptable"),
+#     ("data/uploads/20260315_143447/frame_03.jpg", "acceptable"),
+#     ("data/uploads/20260315_143447/frame_04.jpg", "acceptable"),
+#     ("data/uploads/20260315_143447/frame_05.jpg", "acceptable"),
+#     ("data/uploads/20260315_143447/frame_06.jpg", "acceptable"),
+#     ("data/uploads/20260315_143447/frame_07.jpg", "underexposed"),
+#     ("data/uploads/20260315_143447/frame_08.jpg", "acceptable"),
+#     ("data/uploads/20260315_143447/frame_09.jpg", "acceptable"),
+# ]
+
+# Batch 3: 20260315_143615 (descomente para testar)
+# BATCH_IMAGES = [
+#     ("data/uploads/20260315_143615/frame_00.jpg", "adequate"),
+#     ("data/uploads/20260315_143615/frame_01.jpg", "adequate"),
+#     ("data/uploads/20260315_143615/frame_02.jpg", "adequate"),
+#     ("data/uploads/20260315_143615/frame_03.jpg", "adequate"),
+#     ("data/uploads/20260315_143615/frame_04.jpg", "adequate"),
+#     ("data/uploads/20260315_143615/frame_05.jpg", "adequate"),
+#     ("data/uploads/20260315_143615/frame_06.jpg", "adequate"),
+#     ("data/uploads/20260315_143615/frame_07.jpg", "adequate"),
+#     ("data/uploads/20260315_143615/frame_08.jpg", "adequate"),
+#     ("data/uploads/20260315_143615/frame_09.jpg", "overexposed"),
+# ]
+
+# Batch 4: 20260315_143747 (descomente para testar)
+# BATCH_IMAGES = [
+#     ("data/uploads/20260315_143747/frame_00.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_01.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_02.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_03.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_04.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_05.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_06.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_07.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_08.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_09.jpg", "acceptable"),
+# ]
+
+# Batch 5: 20260315_175638 (descomente para testar)
+# BATCH_IMAGES = [
+#     ("data/uploads/20260315_175638/frame_00.jpg", "underexposed"),
+#     ("data/uploads/20260315_175638/frame_01.jpg", "underexposed"),
+#     ("data/uploads/20260315_175638/frame_02.jpg", "underexposed"),
+#     ("data/uploads/20260315_175638/frame_03.jpg", "underexposed"),
+#     ("data/uploads/20260315_175638/frame_04.jpg", "underexposed"),
+#     ("data/uploads/20260315_175638/frame_05.jpg", "underexposed"),
+#     ("data/uploads/20260315_175638/frame_06.jpg", "underexposed"),
+#     ("data/uploads/20260315_175638/frame_07.jpg", "underexposed"),
+#     ("data/uploads/20260315_175638/frame_08.jpg", "underexposed"),
+#     ("data/uploads/20260315_175638/frame_09.jpg", "underexposed"),
+# ]
+
+# Batch 6: 20260315_180200 (descomente para testar)
 BATCH_IMAGES = [
-    ("data/illumination/bright_overexposed/bright_image1.jpg", "overexposed"),
-    ("data/illumination/bright_overexposed/bright_image2.jpg", "overexposed"),
-    ("data/illumination/bright_overexposed/bright_image3.jpg", "overexposed"),
-    ("data/illumination/bright_overexposed/bright_image4.jpg", "overexposed"),
-    ("data/illumination/dark_underexposed/dark_image1.jpg",    "underexposed"),
-    ("data/illumination/dark_underexposed/dark_image2.jpg",    "underexposed"),
-    ("data/illumination/dark_underexposed/dark_image3.jpg",    "underexposed"),
-    ("data/illumination/normal/normal_image1.jpg",             "adequate"),
-    ("data/illumination/normal/normal_image2.jpg",             "acceptable"),
-    ("data/illumination/normal/normal_image3.jpg",             "adequate"),
+    ("data/uploads/20260315_180200/frame_00.jpg", "adequate"),
+    ("data/uploads/20260315_180200/frame_01.jpg", "adequate"),
+    ("data/uploads/20260315_180200/frame_02.jpg", "adequate"),
+    ("data/uploads/20260315_180200/frame_03.jpg", "adequate"),
+    ("data/uploads/20260315_180200/frame_04.jpg", "adequate"),
+    ("data/uploads/20260315_180200/frame_05.jpg", "adequate"),
+    ("data/uploads/20260315_180200/frame_06.jpg", "underexposed"),
+    ("data/uploads/20260315_180200/frame_07.jpg", "underexposed"),
+    ("data/uploads/20260315_180200/frame_08.jpg", "underexposed"),
+    ("data/uploads/20260315_180200/frame_09.jpg", "underexposed"),
 ]
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -54,13 +133,23 @@ def main():
     print("TESTE DO PIPELINE - TRUE BATCH (10 IMAGENS) + SUMMARY")
     sep("=")
 
+    # Extrai o nome da pasta de batch (if available)
+    batch_folder_name = None
+    if BATCH_IMAGES:
+        first_path = BATCH_IMAGES[0][0]  # Pega o primeiro caminho
+        # Extrai o nome da pasta pai se for um upload (ex: data/uploads/20260315_143220/frame_00.jpg)
+        if "uploads" in first_path:
+            batch_folder_name = Path(first_path).parent.name
+    
     # Inicializa pipeline 
     config         = Config()                               # Carrega configurações do arquivo YAML
     model_type     = config.get("models.default", "qwen")   # Obtém tipo de modelo (qwen ou phi) a partir da configuração
     use_4bit       = config.get("models.use_4bit", True)    # Verifica se a quantização 4-bit deve ser usada
     device         = config.get("models.device", "cuda")    # Verifica qual dispositivo deve ser usado para inferência (cuda, cpu, ou auto)
 
-    print(f"\nConfig: model={model_type}  4bit={use_4bit}  device={device}") 
+    print(f"\nConfig: model={model_type}  4bit={use_4bit}  device={device}")
+    if batch_folder_name:
+        print(f"Batch:  {batch_folder_name}") 
 
     t_init = time.perf_counter() # Inicia contagem de tempo para a inicialização do pipeline
 
@@ -247,6 +336,7 @@ def main():
             "device":       device,
             "quantization": "4-bit" if use_4bit else "fp16/fp32",
             "batch_size":   n,
+            "batch_folder": batch_folder_name or "unknown",
         },
         "performance": {
             "pdi_total_ms":        round(pdi_elapsed * 1000, 1),

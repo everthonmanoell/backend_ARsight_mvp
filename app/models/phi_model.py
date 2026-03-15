@@ -125,48 +125,49 @@ class PhiARModel(ARDiagnosticModel):
     #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # método para construir o prompt de diagnóstico para o modelo, formatado para Phi-3, incluindo mensagens do sistema e do usuário, e evidências extraídas das métricas de iluminação
     def _build_prompt(self, metrics: Dict, status: str, risk_level: str, triggered_rules: List[str]) -> str:
-        """Constrói prompt para Phi-3"""
+        """Constrói prompt para Phi-3 - Geração livre com contexto claro"""
         
-        # System prompt - específico sobre iluminação (versão MVP focada, pode ser expandida com mais detalhes técnicos ou instruções específicas para o modelo)
-
-        # system_msg define o papel do modelo — instrução curta e direta para modelos pequenos
+        # System prompt - instruções gerais para análise de iluminação em AR
         system_msg = (
-            "You analyze lighting for AR applications. "
-            "Write 1-2 plain sentences. No lists. No markdown. Under 50 words."
+            "You are an expert AR lighting analyst. Analyze the given metrics and generate a concise, "
+            "natural explanation (2-3 sentences) about how the lighting affects AR feature tracking and AR performance. "
+            "Be specific and direct. Avoid generic statements. No lists or markdown."
         )
         
         # Extrai evidências
         illumination_label = metrics.get('illumination_label', 'unknown')  # label qualitativo (underexposed, adequate, acceptable, overexposed, poor)
         illumination_score = metrics.get('illumination', 0.0)              # score numérico (0-1)
         mean_luma = metrics.get('mean_luma', 0.0)                          # brilho médio (0-255)
+        std_luma = metrics.get('std_luma', 0.0)                            # desvio padrão do brilho
         uniformity = metrics.get('uniformity', 0.0)                        # uniformidade (0-1)
+        pct_clipped_bright = metrics.get('pct_clipped_bright', 0.0)        # percentual de clipping de brilho
+        pct_clipped_dark = metrics.get('pct_clipped_dark', 0.0)            # percentual de clipping de escuridão
         
-        # Pré-digere a análise: diz ao modelo O QUE acontece em vez de esperar que ele infira
-        # Modelos pequenos (0.5B-3.8B) aderem melhor a completar uma narrativa do que a raciocinar sobre métricas
-        if status == 'pass':
-            user_msg = (
-                f"This scene has {illumination_label} lighting (brightness {mean_luma:.0f}/255, "
-                f"uniformity {uniformity:.0%}). "
-                f"The lighting is adequate for AR — good contrast and feature visibility. "
-                f"Explain why this helps AR tracking:"
-            )
-
-        # status 'fail' — prompt diretivo que já descreve a causa, modelo só precisa elaborar
+        # Mapeamento de interpretação de métricas em linguagem natural
+        # Ajuda o modelo a entender se as condições são boas ou ruins
+        status_text = "GOOD - lighting conditions support AR" if status == 'pass' else "PROBLEMATIC - lighting issues detected"
+        
+        # Mapeia uniformidade para descrição
+        if uniformity > 0.7:
+            uniformity_desc = "very uniform (consistent across the scene)"
+        elif uniformity > 0.6:
+            uniformity_desc = "fairly uniform (mostly consistent)"
         else:
-            rules_text = '; '.join(triggered_rules)
-            # Mapeia label para causa concreta do impacto no AR
-            cause_map = {
-                'overexposed': 'Excessive brightness washes out visual features and reduces contrast',
-                'underexposed': 'Insufficient light causes noise and makes features hard to detect',
-                'poor': 'Uneven lighting creates inconsistent contrast across the scene',
-            }
-            cause = cause_map.get(illumination_label, 'Poor lighting degrades image quality')
-            user_msg = (
-                f"This scene is {illumination_label} (brightness {mean_luma:.0f}/255, "
-                f"uniformity {uniformity:.0%}). "
-                f"{cause}, which harms AR tracking. "
-                f"Explain the impact on AR performance:"
-            )
+            uniformity_desc = "uneven (varying significantly)"
+        
+        # Mapeia clipping para descrição
+        clipping_desc = "minimal clipping" if (pct_clipped_bright < 0.01 and pct_clipped_dark < 0.01) else "some pixel clipping detected"
+        
+        # Fornece dados interpretados ao modelo
+        # Modelo tem contexto claro sobre PASS/FAIL e o que as métricas significam
+        user_msg = (
+            f"AR Scene Lighting Assessment:\n"
+            f"Status: {status_text}\n"
+            f"Classification: {illumination_label}\n"
+            f"Mean brightness: {mean_luma:.0f}/255 | Uniformity: {uniformity_desc}\n"
+            f"Illumination score: {illumination_score:.2f} | Pixel issues: {clipping_desc}\n\n"
+            f"Explain specifically how these conditions affect AR feature tracking and detection:"
+        )
         
         # Phi-3 usa formato específico: <|system|> para mensagens do sistema, <|user|> para mensagens do usuário, e <|assistant|> para a resposta do modelo
         prompt = f"<|system|>\n{system_msg}<|end|>\n<|user|>\n{user_msg}<|end|>\n<|assistant|>\n"
@@ -177,58 +178,39 @@ class PhiARModel(ARDiagnosticModel):
     # método para construir o prompt de sumarização do ambiente, agregando as métricas e avaliações de múltiplos frames para fornecer um contexto mais amplo ao modelo 
     # sobre a qualidade geral do ambiente AR, permitindo que ele gere um resumo mais informativo e útil para o usuário final
     def _build_summary_prompt(self, agg: Dict) -> str:
-        """Constrói prompt de sumarização do ambiente (formato Phi-3)"""
+        """Constrói prompt de sumarização do ambiente (formato Phi-3) - Geração livre sem pré-digestão"""
 
         total          = agg['total']                     # número total de frames analisados
         problem_count  = agg['problem_count']             # número de frames com problemas de iluminação
         dominant_label = agg['dominant_label']            # label dominante entre os frames problemáticos
         overall_risk   = agg['overall_risk']              # risco geral do ambiente baseado na análise de todos os frames
+        avg_mean_luma  = agg.get('avg_mean_luma', 0)     # brilho médio agregado
+        avg_uniformity = agg.get('avg_uniformity', 0)    # uniformidade média agregada
+        label_breakdown = agg.get('label_breakdown', {}) # contagem de cada tipo de condição de iluminação
 
         system_msg = (
-            "You summarize lighting conditions for AR. "
-            "Write 1-2 plain sentences. No lists. No markdown. Under 50 words."
+            "You are an expert AR lighting analyst. Generate a comprehensive, natural assessment of the overall scene's lighting quality. "
+            "Analyze the aggregate metrics and explain how these lighting conditions impact the entire AR environment's suitability. "
+            "Use professional language with cautious modality when discussing AR performance impacts. Write 3-4 sentences. No lists."
         )
-
-        # Pré-digere o contexto para o modelo — em vez de métricas brutas, fornece a conclusão já interpretada
-        # para que o modelo apenas gere texto natural explicando o impacto no AR
-        label_names = {
-            'overexposed':  'excessively bright',
-            'underexposed': 'too dark',
-            'poor':         'unevenly lit',
-        }
-        label_breakdown = agg.get('label_breakdown', {})
-        breakdown_parts = [
-            f"{count} were {label_names.get(lbl, lbl)}"
-            for lbl, count in sorted(label_breakdown.items(), key=lambda x: -x[1])
-        ]
-        breakdown_text = ' and '.join(breakdown_parts) if breakdown_parts else 'had problems'
-
-        normal_count = total - problem_count
-
-        # Constrói narrativa pré-digerida baseada no risco geral
-        if overall_risk == 'high':
-            risk_narrative = (
-                f"Out of {total} frames, {problem_count} had lighting problems ({breakdown_text}). "
-                f"Only {normal_count} frames had acceptable lighting. "
-                f"The main issue is {label_names.get(dominant_label, dominant_label)} scenes. "
-                f"This is a high-risk environment for AR — "
-                f"explain why and suggest what the user should adjust:"
-            )
-        elif overall_risk == 'medium':
-            risk_narrative = (
-                f"Out of {total} frames, {problem_count} had lighting problems ({breakdown_text}). "
-                f"{normal_count} frames were acceptable. "
-                f"This is a moderate-risk environment for AR — "
-                f"explain what should be improved:"
-            )
-        else:
-            risk_narrative = (
-                f"Out of {total} frames analyzed, {normal_count} had good lighting. "
-                f"The environment is suitable for AR. "
-                f"Explain why the lighting supports good AR performance:"
-            )
-
-        user_msg = risk_narrative
+        
+        # Fornece dados agregados brutos ao modelo e deixa ele gerar a análise livremente
+        # Não pré-digere a conclusão - deixa o modelo analisar os dados e gerar sua própria síntese
+        breakdown_text = ", ".join([f"{lbl}: {count}" for lbl, count in label_breakdown.items()]) or "all normal"
+        
+        user_msg = (
+            f"Analyze the aggregate lighting metrics from {total} AR scene frames:\n"
+            f"- Overall frames analyzed: {total}\n"
+            f"- Frames with lighting issues: {problem_count}\n"
+            f"- Frames with acceptable lighting: {total - problem_count}\n"
+            f"- Dominant issue type: {dominant_label if problem_count > 0 else 'none'}\n"
+            f"- Issue breakdown: {breakdown_text}\n"
+            f"- Average brightness: {avg_mean_luma:.1f}/255\n"
+            f"- Average uniformity: {avg_uniformity:.1%}\n"
+            f"- Overall risk level: {overall_risk}\n\n"
+            f"Provide a comprehensive analysis of how these aggregate lighting conditions affect the entire AR environment's performance, "
+            f"tracking reliability, and usability. What are the critical factors and recommendations?"
+        )
 
         # Formato Phi-3
         prompt = f"<|system|>\n{system_msg}<|end|>\n<|user|>\n{user_msg}<|end|>\n<|assistant|>\n"
