@@ -12,17 +12,17 @@ models:
   
   qwen:
     name: Qwen/Qwen2.5-0.5B-Instruct
-    max_tokens: 100         # Tokens para explicações individuais por frame (~60-80 tokens gerados)
-    summary_tokens: 150     # Tokens para o summary do ambiente (mais espaço para texto completo)
-    temperature: 0.4
-    top_p: 0.9
+    max_tokens: 100         # BASELINE EXACT (achieved 6.39s)
+    summary_tokens: 150
+    temperature: 0.3
+    top_p: 0.85
   
   phi:
     name: microsoft/Phi-3-mini-4k-instruct
-    max_tokens: 120
-    summary_tokens: 200     # Tokens para o summary do ambiente
+    max_tokens: 120         # BASELINE EXACT
+    summary_tokens: 200
     temperature: 0.3
-    top_p: 0.9
+    top_p: 0.85
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Rule engine configuration

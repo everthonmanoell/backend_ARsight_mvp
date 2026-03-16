@@ -47,16 +47,13 @@ class PhiARModel(ARDiagnosticModel):
         
         # Carrega configurações de geração do YAML
         config = Config()
-        self.max_tokens = config.get('models.phi.max_tokens', 120)
-        self.summary_max_tokens = config.get('models.phi.summary_tokens', 200)
+        self.max_tokens = config.get('models.phi.max_tokens', 35)
+        self.summary_max_tokens = config.get('models.phi.summary_tokens', 50)
 
-        # Temperatura mais baixa para respostas mais focadas e consistentes, ideal para explicações técnicas
-        # A temperatura num modelo de linguagem controla a aleatoriedade da geração: valores mais baixos resultam em respostas mais determinísticas e focadas, 
-        # enquanto valores mais altos geram respostas mais variadas e criativas. 
-        self.temperature = config.get('models.phi.temperature', 0.4)
+        # Temperatura 
+        self.temperature = config.get('models.phi.temperature', 0.3)
 
-        # Top-p sampling (nucleus sampling) é uma técnica de geração onde o modelo considera apenas os tokens mais prováveis que juntos somam uma probabilidade p (ex: 0.9)
-        # para manter uma geração focada com alguma diversidade foi usado 0.85
+        # Top-p
         self.top_p = config.get('models.phi.top_p', 0.85)
         
         logger.info(f"Generation params: max_tokens={self.max_tokens}, summary_max_tokens={self.summary_max_tokens}, temp={self.temperature}, top_p={self.top_p}")
@@ -123,96 +120,78 @@ class PhiARModel(ARDiagnosticModel):
             logger.error(f"Error loading model: {e}")
             raise
     #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # método para construir o prompt de diagnóstico para o modelo, formatado para Phi-3, incluindo mensagens do sistema e do usuário, e evidências extraídas das métricas de iluminação
+    # método para construir o prompt de diagnóstico para o modelo, formatado para Phi-3
     def _build_prompt(self, metrics: Dict, status: str, risk_level: str, triggered_rules: List[str]) -> str:
-        """Constrói prompt para Phi-3 - Geração livre com contexto claro"""
+        """Constrói prompt para Phi-3 com template diversity"""
         
-        # System prompt - instruções gerais para análise de iluminação em AR
-        system_msg = (
-            "You are an expert AR lighting analyst. Analyze the given metrics and generate a concise, "
-            "natural explanation (2-3 sentences) about how the lighting affects AR feature tracking and AR performance. "
-            "Be specific and direct. Avoid generic statements. No lists or markdown."
-        )
+        import random
         
-        # Extrai evidências
-        illumination_label = metrics.get('illumination_label', 'unknown')  # label qualitativo (underexposed, adequate, acceptable, overexposed, poor)
-        illumination_score = metrics.get('illumination', 0.0)              # score numérico (0-1)
-        mean_luma = metrics.get('mean_luma', 0.0)                          # brilho médio (0-255)
-        std_luma = metrics.get('std_luma', 0.0)                            # desvio padrão do brilho
-        uniformity = metrics.get('uniformity', 0.0)                        # uniformidade (0-1)
-        pct_clipped_bright = metrics.get('pct_clipped_bright', 0.0)        # percentual de clipping de brilho
-        pct_clipped_dark = metrics.get('pct_clipped_dark', 0.0)            # percentual de clipping de escuridão
+        system_msg = "Analyze AR lighting. One sentence only."
         
-        # Mapeamento de interpretação de métricas em linguagem natural
-        # Ajuda o modelo a entender se as condições são boas ou ruins
-        status_text = "GOOD - lighting conditions support AR" if status == 'pass' else "PROBLEMATIC - lighting issues detected"
+        illumination_label = metrics.get('illumination_label', 'unknown')
+        illumination_score = metrics.get('illumination', 0.0)
+        mean_luma = metrics.get('mean_luma', 0.0)
+        uniformity = metrics.get('uniformity', 0.0)
         
-        # Mapeia uniformidade para descrição
-        if uniformity > 0.7:
-            uniformity_desc = "very uniform (consistent across the scene)"
-        elif uniformity > 0.6:
-            uniformity_desc = "fairly uniform (mostly consistent)"
+        # Template variety to avoid repetition
+        if status == 'pass':
+            pass_templates = [
+                f"Scene has {illumination_label} lighting (brightness {mean_luma:.0f}/255). This supports AR tracking well.",
+                f"The {illumination_label} conditions are adequate for AR applications.",
+                f"Lighting is {illumination_label} ({mean_luma:.0f}/255 brightness): suitable for AR.",
+                f"Scene shows {illumination_label} lighting that meets AR requirements.",
+            ]
+            user_msg = random.choice(pass_templates)
         else:
-            uniformity_desc = "uneven (varying significantly)"
+            cause_map = {
+                'overexposed': 'excessive brightness reduces contrast and features',
+                'underexposed': 'insufficient light increases noise and detection difficulty',
+                'poor': 'uneven lighting creates inconsistent contrast',
+            }
+            cause = cause_map.get(illumination_label, 'poor lighting degrades quality')
+            
+            fail_templates = [
+                f"Scene is {illumination_label} (brightness {mean_luma:.0f}/255): {cause.split(':')[0].lower()} impacts AR.",
+                f"The {illumination_label} conditions create AR challenges with {cause}.",
+                f"Detected {illumination_label} scene: {cause}.",
+                f"Lighting issue detected ({illumination_label}): {cause}.",
+            ]
+            user_msg = random.choice(fail_templates)
         
-        # Mapeia clipping para descrição
-        clipping_desc = "minimal clipping" if (pct_clipped_bright < 0.01 and pct_clipped_dark < 0.01) else "some pixel clipping detected"
-        
-        # Fornece dados interpretados ao modelo
-        # Modelo tem contexto claro sobre PASS/FAIL e o que as métricas significam
-        user_msg = (
-            f"AR Scene Lighting Assessment:\n"
-            f"Status: {status_text}\n"
-            f"Classification: {illumination_label}\n"
-            f"Mean brightness: {mean_luma:.0f}/255 | Uniformity: {uniformity_desc}\n"
-            f"Illumination score: {illumination_score:.2f} | Pixel issues: {clipping_desc}\n\n"
-            f"Explain specifically how these conditions affect AR feature tracking and detection:"
-        )
-        
-        # Phi-3 usa formato específico: <|system|> para mensagens do sistema, <|user|> para mensagens do usuário, e <|assistant|> para a resposta do modelo
         prompt = f"<|system|>\n{system_msg}<|end|>\n<|user|>\n{user_msg}<|end|>\n<|assistant|>\n"
         
         return prompt
     
     #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # método para construir o prompt de sumarização do ambiente, agregando as métricas e avaliações de múltiplos frames para fornecer um contexto mais amplo ao modelo 
-    # sobre a qualidade geral do ambiente AR, permitindo que ele gere um resumo mais informativo e útil para o usuário final
+    # método para construir o prompt de sumarização do ambiente
     def _build_summary_prompt(self, agg: Dict) -> str:
-        """Constrói prompt de sumarização do ambiente (formato Phi-3) - Geração livre sem pré-digestão"""
-
-        total          = agg['total']                     # número total de frames analisados
-        problem_count  = agg['problem_count']             # número de frames com problemas de iluminação
-        dominant_label = agg['dominant_label']            # label dominante entre os frames problemáticos
-        overall_risk   = agg['overall_risk']              # risco geral do ambiente baseado na análise de todos os frames
-        avg_mean_luma  = agg.get('avg_mean_luma', 0)     # brilho médio agregado
-        avg_uniformity = agg.get('avg_uniformity', 0)    # uniformidade média agregada
-        label_breakdown = agg.get('label_breakdown', {}) # contagem de cada tipo de condição de iluminação
-
-        system_msg = (
-            "You are an expert AR lighting analyst. Generate a comprehensive, natural assessment of the overall scene's lighting quality. "
-            "Analyze the aggregate metrics and explain how these lighting conditions impact the entire AR environment's suitability. "
-            "Use professional language with cautious modality when discussing AR performance impacts. Write 3-4 sentences. No lists."
-        )
+        """Constrói prompt de sumarização com template diversity"""
         
-        # Fornece dados agregados brutos ao modelo e deixa ele gerar a análise livremente
-        # Não pré-digere a conclusão - deixa o modelo analisar os dados e gerar sua própria síntese
-        breakdown_text = ", ".join([f"{lbl}: {count}" for lbl, count in label_breakdown.items()]) or "all normal"
-        
-        user_msg = (
-            f"Analyze the aggregate lighting metrics from {total} AR scene frames:\n"
-            f"- Overall frames analyzed: {total}\n"
-            f"- Frames with lighting issues: {problem_count}\n"
-            f"- Frames with acceptable lighting: {total - problem_count}\n"
-            f"- Dominant issue type: {dominant_label if problem_count > 0 else 'none'}\n"
-            f"- Issue breakdown: {breakdown_text}\n"
-            f"- Average brightness: {avg_mean_luma:.1f}/255\n"
-            f"- Average uniformity: {avg_uniformity:.1%}\n"
-            f"- Overall risk level: {overall_risk}\n\n"
-            f"Provide a comprehensive analysis of how these aggregate lighting conditions affect the entire AR environment's performance, "
-            f"tracking reliability, and usability. What are the critical factors and recommendations?"
-        )
+        import random
 
-        # Formato Phi-3
+        total = agg['total']
+        problem_count = agg['problem_count']
+        dominant_label = agg['dominant_label']
+
+        system_msg = "One sentence summary of AR lighting quality."
+
+        if problem_count > 0:
+            summary_templates = [
+                f"Scene analysis: {problem_count}/{total} frames are {dominant_label}, affecting AR tracking quality.",
+                f"Detected {problem_count} problematic frames ({dominant_label}) out of {total}: impacts AR performance.",
+                f"The {dominant_label} conditions in {problem_count}/{total} frames compromise AR tracking.",
+                f"{problem_count} out of {total} frames show {dominant_label} lighting unsuitable for reliable AR.",
+            ]
+            user_msg = random.choice(summary_templates)
+        else:
+            summary_templates = [
+                f"All {total} frames show adequate lighting: ideal for AR applications.",
+                f"Scene-wide analysis: all {total} frames are properly lit for AR tracking.",
+                f"No lighting issues detected in {total} frames: AR conditions are optimal.",
+                f"All {total} frames meet AR lighting requirements perfectly.",
+            ]
+            user_msg = random.choice(summary_templates)
+
         prompt = f"<|system|>\n{system_msg}<|end|>\n<|user|>\n{user_msg}<|end|>\n<|assistant|>\n"
 
         return prompt

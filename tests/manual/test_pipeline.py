@@ -4,12 +4,6 @@ Simula o fluxo real: celular envia 10 frames -> servidor diagnostica em batch ->
 
 Uso:
     python tests/manual/test_pipeline.py
-
-Instrucoes:
-    1. Descomente APENAS UM batch de imagens abaixo
-    2. Execute o script
-    3. O JSON será salvo em outputs/{environment}/ com o nome da pasta incluído nos metadados
-    4. Comente o batch anterior e descomente o próximo para testar
 """
 import json
 import sys
@@ -42,21 +36,21 @@ from app.pipeline.illumination_pipeline import IlluminationPipeline
 #     ("data/uploads/20260315_143220/frame_09.jpg", "adequate"),
 # ]
 
-# Batch 2: 20260315_143447 (descomente para testar)
-# BATCH_IMAGES = [
-#     ("data/uploads/20260315_143447/frame_00.jpg", "acceptable"),
-#     ("data/uploads/20260315_143447/frame_01.jpg", "acceptable"),
-#     ("data/uploads/20260315_143447/frame_02.jpg", "acceptable"),
-#     ("data/uploads/20260315_143447/frame_03.jpg", "acceptable"),
-#     ("data/uploads/20260315_143447/frame_04.jpg", "acceptable"),
-#     ("data/uploads/20260315_143447/frame_05.jpg", "acceptable"),
-#     ("data/uploads/20260315_143447/frame_06.jpg", "acceptable"),
-#     ("data/uploads/20260315_143447/frame_07.jpg", "underexposed"),
-#     ("data/uploads/20260315_143447/frame_08.jpg", "acceptable"),
-#     ("data/uploads/20260315_143447/frame_09.jpg", "acceptable"),
-# ]
+# Batch 2: 20260315_143447 
+BATCH_IMAGES = [
+    ("data/uploads/20260315_143447/frame_00.jpg", "acceptable"),
+    ("data/uploads/20260315_143447/frame_01.jpg", "acceptable"),
+    ("data/uploads/20260315_143447/frame_02.jpg", "acceptable"),
+    ("data/uploads/20260315_143447/frame_03.jpg", "acceptable"),
+    ("data/uploads/20260315_143447/frame_04.jpg", "acceptable"),
+    ("data/uploads/20260315_143447/frame_05.jpg", "acceptable"),
+    ("data/uploads/20260315_143447/frame_06.jpg", "acceptable"),
+    ("data/uploads/20260315_143447/frame_07.jpg", "underexposed"),
+    ("data/uploads/20260315_143447/frame_08.jpg", "acceptable"),
+    ("data/uploads/20260315_143447/frame_09.jpg", "acceptable"),
+]
 
-# Batch 3: 20260315_143615 (descomente para testar)
+# Batch 3: 20260315_143615 
 # BATCH_IMAGES = [
 #     ("data/uploads/20260315_143615/frame_00.jpg", "adequate"),
 #     ("data/uploads/20260315_143615/frame_01.jpg", "adequate"),
@@ -70,7 +64,7 @@ from app.pipeline.illumination_pipeline import IlluminationPipeline
 #     ("data/uploads/20260315_143615/frame_09.jpg", "overexposed"),
 # ]
 
-# Batch 4: 20260315_143747 (descomente para testar)
+# Batch 4: 20260315_143747 
 # BATCH_IMAGES = [
 #     ("data/uploads/20260315_143747/frame_00.jpg", "adequate"),
 #     ("data/uploads/20260315_143747/frame_01.jpg", "adequate"),
@@ -84,7 +78,7 @@ from app.pipeline.illumination_pipeline import IlluminationPipeline
 #     ("data/uploads/20260315_143747/frame_09.jpg", "acceptable"),
 # ]
 
-# Batch 5: 20260315_175638 (descomente para testar)
+# Batch 5: 20260315_175638 
 # BATCH_IMAGES = [
 #     ("data/uploads/20260315_175638/frame_00.jpg", "underexposed"),
 #     ("data/uploads/20260315_175638/frame_01.jpg", "underexposed"),
@@ -98,19 +92,19 @@ from app.pipeline.illumination_pipeline import IlluminationPipeline
 #     ("data/uploads/20260315_175638/frame_09.jpg", "underexposed"),
 # ]
 
-# Batch 6: 20260315_180200 (descomente para testar)
-BATCH_IMAGES = [
-    ("data/uploads/20260315_180200/frame_00.jpg", "adequate"),
-    ("data/uploads/20260315_180200/frame_01.jpg", "adequate"),
-    ("data/uploads/20260315_180200/frame_02.jpg", "adequate"),
-    ("data/uploads/20260315_180200/frame_03.jpg", "adequate"),
-    ("data/uploads/20260315_180200/frame_04.jpg", "adequate"),
-    ("data/uploads/20260315_180200/frame_05.jpg", "adequate"),
-    ("data/uploads/20260315_180200/frame_06.jpg", "underexposed"),
-    ("data/uploads/20260315_180200/frame_07.jpg", "underexposed"),
-    ("data/uploads/20260315_180200/frame_08.jpg", "underexposed"),
-    ("data/uploads/20260315_180200/frame_09.jpg", "underexposed"),
-]
+# Batch 6: 20260315_180200 
+# BATCH_IMAGES = [
+#     ("data/uploads/20260315_180200/frame_00.jpg", "adequate"),
+#     ("data/uploads/20260315_180200/frame_01.jpg", "adequate"),
+#     ("data/uploads/20260315_180200/frame_02.jpg", "adequate"),
+#     ("data/uploads/20260315_180200/frame_03.jpg", "adequate"),
+#     ("data/uploads/20260315_180200/frame_04.jpg", "adequate"),
+#     ("data/uploads/20260315_180200/frame_05.jpg", "adequate"),
+#     ("data/uploads/20260315_180200/frame_06.jpg", "underexposed"),
+#     ("data/uploads/20260315_180200/frame_07.jpg", "underexposed"),
+#     ("data/uploads/20260315_180200/frame_08.jpg", "underexposed"),
+#     ("data/uploads/20260315_180200/frame_09.jpg", "underexposed"),
+# ]
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # método auxiliar para carregar uma imagem usando PIL, retornando None em caso de erro

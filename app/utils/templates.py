@@ -8,41 +8,45 @@ from typing import Dict, List
 # classe que fornece templates de explicação para casos em que o modelo SLM falha ou não consegue gerar uma explicação adequada
 class ExplanationTemplates:
     """
-    Fornece templates de explicação para fallback,
-    categorizados por status (pass/fail) e tipo de falha.
-
-    Garante que o sistema sempre possa fornecer feedback útil ao usuário.
+    Fornece templates sucintos para fallback.
+    Uma frase por template, sem redundância.
     """
     
     def __init__(self):
-        """Inicializa templates"""
+        """Inicializa templates breves"""
+        import random
+        random.seed()
 
-        # templates de sucesso - PASS
-        # o rule engine sempre retorna risk_level='low' quando status='pass'
-        self.pass_templates = {
-            'low': (
-                "The scene presents optimal illumination conditions for AR deployment with "
-                "adequate lighting levels, ensuring stable tracking and reliable anchor placement."
-            )
-        }
+        # Templates sucesso - PASS (breves)
+        self.pass_templates = [
+            "Optimal lighting enables stable AR tracking.",
+            "Good brightness and uniformity support AR operations.",
+            "Strong lighting conditions provide reliable AR tracking.",
+            "Adequate illumination ensures consistent AR performance.",
+        ]
         
-        # templates de falha - FAIL 
+        # Templates falha - breves por tipo
         self.fail_templates = {
-            'underexposed': (
-                "The scene is severely underexposed with insufficient lighting, resulting in poor feature visibility "
-                "and compromised AR tracking accuracy."
-            ),
-            'overexposed': (
-                "The scene is severely overexposed with excessive brightness, causing loss of visual detail "
-                "and degraded AR tracking performance."
-            ),
-            'poor_illumination': (
-                "Inadequate illumination conditions compromise visual quality and feature detection, "
-                "negatively impacting AR tracking accuracy and anchor placement reliability."
-            )
+            'underexposed': [
+                "Low light severely limits feature visibility.",
+                "Insufficient brightness degrades AR tracking.",
+                "Dark conditions prevent reliable feature detection.",
+                "Low light levels harm AR accuracy.",
+            ],
+            'overexposed': [
+                "Excessive brightness washes out visual detail.",
+                "Highlight clipping impairs AR feature matching.",
+                "Overexposure reduces visual contrast needed for AR.",
+                "High brightness eliminates subtle AR markers.",
+            ],
+            'poor_illumination': [
+                "Uneven lighting disrupts AR feature consistency.",
+                "Lighting variation harms AR tracking stability.",
+                "Poor uniformity compromises AR performance.",
+                "Shadowed areas reduce AR feature availability.",
+            ]
         }
-    #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  
-    # método que seleciona o template de explicação apropriado com base no status, nível de risco, regras ativadas e métricas da cena
+    
     def get_template_explanation( 
         self,
         status: str,
@@ -51,21 +55,21 @@ class ExplanationTemplates:
         metrics: Dict
     ) -> str:
         """
-        Gera explicação baseada em templates
-        
+        Gera explicação baseada em templates com variação
+
         Args:
             status: 'pass' ou 'fail'
             risk_level: Nível de risco
             triggered_rules: Regras ativadas
             metrics: Métricas da cena
-        
+
         Returns:
             Explicação formatada
         """
+        import random
 
-        # verifica se o status é 'pass' — risk_level é sempre 'low' conforme o rule engine
         if status == 'pass':
-            return self.pass_templates['low']
+            return random.choice(self.pass_templates)
         
         # Status = fail, escolhe template apropriado
         rule_mapping = {
@@ -77,7 +81,8 @@ class ExplanationTemplates:
         for rule in triggered_rules:
             if rule in rule_mapping:
                 template_key = rule_mapping[rule]
-                return self.fail_templates[template_key]
+                templates = self.fail_templates[template_key]
+                return random.choice(templates)
         
         # Fallback genérico
-        return self.fail_templates['poor_illumination']
+        return random.choice(self.fail_templates['poor_illumination'])
