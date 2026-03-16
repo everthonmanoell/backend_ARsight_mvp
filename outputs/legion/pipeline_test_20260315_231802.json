@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-03-15T20:41:31.121763",
+    "timestamp": "2026-03-15T23:18:02.051268",
     "environment": "legion",
     "model": "qwen",
     "device": "cuda",
@@ -9,12 +9,12 @@
     "batch_folder": "20260315_180200"
   },
   "performance": {
-    "pdi_total_ms": 133.0,
-    "pdi_per_image_ms": 13.3,
-    "slm_total_s": 5.784,
-    "slm_per_diagnosis_s": 0.578,
-    "total_s": 5.917,
-    "target_met": true
+    "pdi_total_ms": 364.6,
+    "pdi_per_image_ms": 36.5,
+    "slm_total_s": 129.04,
+    "slm_per_diagnosis_s": 12.904,
+    "total_s": 129.405,
+    "target_met": false
   },
   "statistics": {
     "total": 10,
@@ -26,7 +26,7 @@
     "dominant_label": "underexposed",
     "problem_count": 4,
     "normal_count": 6,
-    "explanation": "The scene has a low level of lighting, posing a significant risk to AR tracking due to insufficient illumination, which could lead to inaccurate positioning and reduced effectiveness in augmented reality applications.",
+    "explanation": "The scene requires careful consideration of the lighting to ensure accurate and suitable AR content.",
     "recommendations": [
       {
         "condition": "adequate_acceptable",
@@ -75,7 +75,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The bright, uniform lighting enhances visual clarity, allowing AR to accurately track objects in the environment.",
+      "explanation": "The lighting conditions affect AR accuracy and performance, leading to potential issues with object recognition and depth perception.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -99,7 +99,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The scene presents optimal illumination conditions for AR deployment with adequate lighting levels, ensuring stable tracking and reliable anchor placement.",
+      "explanation": "A well-lit environment enhances the quality of AR data, improving tracking accuracy and reducing artifacts.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -123,7 +123,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The bright, even lighting enhances AR performance by providing clear, contrasted visuals that aid in accurate object recognition.",
+      "explanation": "The lighting conditions affect the accuracy of AR by ensuring a high level of uniformity and brightness across the entire scene, which is crucial for accurate object recognition and interaction with augmented reality applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -147,7 +147,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The scene's lighting provides sufficient brightness and uniformity to support AR tracking effectively, enhancing visual clarity in the environment.",
+      "explanation": "Optimal lighting conditions for accurate AR positioning and interaction.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -171,7 +171,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The ample light ensures smooth motion, enhancing the visual experience.",
+      "explanation": "The lighting enhances AR accuracy by providing sufficient contrast and uniformity, thus improving overall image quality for accurate AR experience.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -195,7 +195,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The balanced lighting ensures clear video feed; contrasts well with the background; aids in accurate object recognition; enhances visual clarity; supports smooth motion control; improves overall performance in AR applications.",
+      "explanation": "A good lighting setup enhances AR by ensuring accurate and consistent 3D objects are seen from a single source of light, improving overall performance.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -219,7 +219,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces clarity, making it difficult to track objects accurately in low-light conditions.",
+      "explanation": "Underexposure can degrade AR's ability to detect and track objects accurately in low-light conditions.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -245,7 +245,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces visibility, making it difficult to identify objects, leading to degraded performance in AR applications.",
+      "explanation": "Underexposure can degrade AR accuracy by reducing the contrast and detail of the environment, making it harder to track objects accurately.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -271,7 +271,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces clarity, making it difficult to see details in images, impacting AR accuracy.",
+      "explanation": "Underexposure blurs objects and reduces contrast, impacting AR's ability to track them accurately.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -297,7 +297,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Insufficient exposure leads to noise and reduced visibility in images, hindering accurate AR tracking.",
+      "explanation": "Underexposure of a 27/255 brightness range with 53% uniformity can degrade the quality of AR data, leading to reduced accuracy and potentially misleading results.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],

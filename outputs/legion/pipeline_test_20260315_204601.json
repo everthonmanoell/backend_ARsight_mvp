@@ -1,19 +1,19 @@
 {
   "metadata": {
-    "timestamp": "2026-03-15T19:57:41.495693",
+    "timestamp": "2026-03-15T20:46:01.157332",
     "environment": "legion",
     "model": "qwen",
     "device": "cuda",
     "quantization": "4-bit",
     "batch_size": 10,
-    "batch_folder": "20260315_143615"
+    "batch_folder": "20260315_143747"
   },
   "performance": {
-    "pdi_total_ms": 198.5,
-    "pdi_per_image_ms": 19.8,
-    "slm_total_s": 8.226,
-    "slm_per_diagnosis_s": 0.823,
-    "total_s": 8.424,
+    "pdi_total_ms": 128.9,
+    "pdi_per_image_ms": 12.9,
+    "slm_total_s": 4.812,
+    "slm_per_diagnosis_s": 0.481,
+    "total_s": 4.941,
     "target_met": true
   },
   "statistics": {
@@ -22,11 +22,11 @@
     "accuracy": 100.0
   },
   "summary": {
-    "overall_risk": "high",
-    "dominant_label": "overexposed",
-    "problem_count": 1,
-    "normal_count": 9,
-    "explanation": "lighting analysis: 1 out of 10 frames had excessively bright conditions, which could affect AR tracking because it may lead to misalignment and reduced image quality, necessitating careful adjustment of the scene's exposure settings.",
+    "overall_risk": "low",
+    "dominant_label": "adequate",
+    "problem_count": 0,
+    "normal_count": 10,
+    "explanation": "The scene is well-lit with all 10 frames showing sufficient light, suitable for AR applications.",
     "recommendations": [
       {
         "condition": "adequate_acceptable",
@@ -39,32 +39,22 @@
           5,
           6,
           7,
-          8
+          8,
+          9
         ],
-        "count": 9,
+        "count": 10,
         "actions": [
           "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
           "Ensure consistent lighting throughout the AR session to preserve quality"
         ]
-      },
-      {
-        "condition": "overexposed",
-        "frames": [
-          9
-        ],
-        "count": 1,
-        "actions": [
-          "Avoid pointing camera directly at bright light sources",
-          "Reduce direct lighting or use diffusers to soften harsh light"
-        ]
       }
     ],
     "metrics_avg": {
-      "mean_brightness": 0.4494,
-      "mean_luma": 114.59,
-      "uniformity": 0.6613,
-      "pct_clipped_bright": 0.0288,
-      "pct_clipped_dark": 0.003
+      "mean_brightness": 0.442,
+      "mean_luma": 112.7,
+      "uniformity": 0.7242,
+      "pct_clipped_bright": 0.0031,
+      "pct_clipped_dark": 0.0009
     }
   },
   "frames": [
@@ -75,21 +65,21 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The scene's lighting provides a balanced, uniform 114/255 brightness, enhancing contrast and ensuring clear visual features. This setup supports accurate AR tracking.",
+      "explanation": "The brightness ensures smooth motion, contrast enhances detail, and features are visible in low light conditions.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
         "Ensure consistent lighting throughout the AR session to preserve quality"
       ],
       "metrics": {
-        "illumination_score": 0.7874,
+        "illumination_score": 0.7485,
         "illumination_label": "adequate",
-        "mean_brightness": 0.4487,
-        "mean_luma": 114.42,
-        "std_luma": 59.73,
-        "uniformity": 0.657,
-        "pct_clipped_dark": 0.0016,
-        "pct_clipped_bright": 0.0006
+        "mean_brightness": 0.452,
+        "mean_luma": 115.27,
+        "std_luma": 43.73,
+        "uniformity": 0.725,
+        "pct_clipped_dark": 0.0018,
+        "pct_clipped_bright": 0.0
       }
     },
     {
@@ -99,21 +89,21 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The consistent brightness ensures smooth motion, while the uniform lighting enhances detail, aiding in accurate AR object recognition.",
+      "explanation": "The scene presents optimal illumination conditions for AR deployment with adequate lighting levels, ensuring stable tracking and reliable anchor placement.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
         "Ensure consistent lighting throughout the AR session to preserve quality"
       ],
       "metrics": {
-        "illumination_score": 0.743,
+        "illumination_score": 0.7381,
         "illumination_label": "adequate",
-        "mean_brightness": 0.4139,
-        "mean_luma": 105.56,
-        "std_luma": 60.14,
-        "uniformity": 0.637,
-        "pct_clipped_dark": 0.0057,
-        "pct_clipped_bright": 0.0008
+        "mean_brightness": 0.4451,
+        "mean_luma": 113.51,
+        "std_luma": 42.86,
+        "uniformity": 0.7259,
+        "pct_clipped_dark": 0.0009,
+        "pct_clipped_bright": 0.0
       }
     },
     {
@@ -123,21 +113,21 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The lighting provides a balanced, uniform, and clear environment that enhances AR performance, improving the accuracy of object recognition and interaction.",
+      "explanation": "The balanced brightness ensures clear vision; uniformity improves contrast; features are visible in low light conditions; aids accurate AR tracking.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
         "Ensure consistent lighting throughout the AR session to preserve quality"
       ],
       "metrics": {
-        "illumination_score": 0.7273,
+        "illumination_score": 0.7455,
         "illumination_label": "adequate",
-        "mean_brightness": 0.4055,
-        "mean_luma": 103.4,
-        "std_luma": 58.6,
-        "uniformity": 0.6383,
-        "pct_clipped_dark": 0.0071,
-        "pct_clipped_bright": 0.0013
+        "mean_brightness": 0.4316,
+        "mean_luma": 110.05,
+        "std_luma": 51.76,
+        "uniformity": 0.6801,
+        "pct_clipped_dark": 0.0002,
+        "pct_clipped_bright": 0.0
       }
     },
     {
@@ -147,21 +137,21 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The bright, uniform lighting ensures clear vision, aiding in accurate AR tracking.",
+      "explanation": "The scene presents optimal illumination conditions for AR deployment with adequate lighting levels, ensuring stable tracking and reliable anchor placement.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
         "Ensure consistent lighting throughout the AR session to preserve quality"
       ],
       "metrics": {
-        "illumination_score": 0.7363,
+        "illumination_score": 0.7466,
         "illumination_label": "adequate",
-        "mean_brightness": 0.4124,
-        "mean_luma": 105.15,
-        "std_luma": 58.84,
-        "uniformity": 0.6412,
-        "pct_clipped_dark": 0.006,
-        "pct_clipped_bright": 0.0029
+        "mean_brightness": 0.4257,
+        "mean_luma": 108.55,
+        "std_luma": 55.43,
+        "uniformity": 0.6619,
+        "pct_clipped_dark": 0.0031,
+        "pct_clipped_bright": 0.0
       }
     },
     {
@@ -171,21 +161,21 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The lighting enhances clarity in AR environments; good contrast ensures accurate feature detection.",
+      "explanation": "The high brightness ensures clear vision, enhancing contrast; uniform lighting prevents artifacts; sufficient contrast enhances detail in objects; features visible through the dark background. This setup supports accurate AR positioning.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
         "Ensure consistent lighting throughout the AR session to preserve quality"
       ],
       "metrics": {
-        "illumination_score": 0.7719,
+        "illumination_score": 0.7421,
         "illumination_label": "adequate",
-        "mean_brightness": 0.4377,
-        "mean_luma": 111.61,
-        "std_luma": 60.79,
-        "uniformity": 0.6474,
-        "pct_clipped_dark": 0.0034,
-        "pct_clipped_bright": 0.0075
+        "mean_brightness": 0.4938,
+        "mean_luma": 125.91,
+        "std_luma": 21.24,
+        "uniformity": 0.8557,
+        "pct_clipped_dark": 0.0,
+        "pct_clipped_bright": 0.0
       }
     },
     {
@@ -195,21 +185,21 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The bright, even lighting enhances the view of objects, improving accuracy in AR applications.",
+      "explanation": "The scene presents optimal illumination conditions for AR deployment with adequate lighting levels, ensuring stable tracking and reliable anchor placement.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
         "Ensure consistent lighting throughout the AR session to preserve quality"
       ],
       "metrics": {
-        "illumination_score": 0.7953,
+        "illumination_score": 0.7247,
         "illumination_label": "adequate",
-        "mean_brightness": 0.4635,
-        "mean_luma": 118.19,
-        "std_luma": 61.64,
-        "uniformity": 0.6572,
-        "pct_clipped_dark": 0.0025,
-        "pct_clipped_bright": 0.0275
+        "mean_brightness": 0.4483,
+        "mean_luma": 114.33,
+        "std_luma": 36.08,
+        "uniformity": 0.7601,
+        "pct_clipped_dark": 0.0,
+        "pct_clipped_bright": 0.0
       }
     },
     {
@@ -219,21 +209,21 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The high brightness ensures clear vision, while the uniform lighting maintains consistency in detail, aiding accurate AR tracking.",
+      "explanation": "The scene's lighting provides a balanced 112/255 brightness range, ensuring high contrast between objects and background, aiding in accurate AR tracking.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
         "Ensure consistent lighting throughout the AR session to preserve quality"
       ],
       "metrics": {
-        "illumination_score": 0.7627,
+        "illumination_score": 0.7286,
         "illumination_label": "adequate",
-        "mean_brightness": 0.4578,
-        "mean_luma": 116.74,
-        "std_luma": 55.14,
-        "uniformity": 0.6792,
-        "pct_clipped_dark": 0.0016,
-        "pct_clipped_bright": 0.0433
+        "mean_brightness": 0.4404,
+        "mean_luma": 112.29,
+        "std_luma": 41.44,
+        "uniformity": 0.7304,
+        "pct_clipped_dark": 0.0002,
+        "pct_clipped_bright": 0.0005
       }
     },
     {
@@ -243,21 +233,21 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The lighting provides a smooth, uniform environment that enhances AR performance by ensuring accurate color rendering.",
+      "explanation": "The bright, even lighting ensures clear vision, enhancing AR experience by improving contrast and allowing features to be seen clearly.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
         "Ensure consistent lighting throughout the AR session to preserve quality"
       ],
       "metrics": {
-        "illumination_score": 0.7657,
+        "illumination_score": 0.7614,
         "illumination_label": "adequate",
-        "mean_brightness": 0.4645,
-        "mean_luma": 118.45,
-        "std_luma": 53.78,
-        "uniformity": 0.6878,
-        "pct_clipped_dark": 0.0009,
-        "pct_clipped_bright": 0.0466
+        "mean_brightness": 0.4547,
+        "mean_luma": 115.96,
+        "std_luma": 47.95,
+        "uniformity": 0.7075,
+        "pct_clipped_dark": 0.0003,
+        "pct_clipped_bright": 0.0048
       }
     },
     {
@@ -267,47 +257,45 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The balanced brightness ensures clear view; uniformity enhances detail; contrast improves object recognition; aids in accurate tracking; supports smooth motion; enhances overall experience.",
+      "explanation": "The scene's lighting ensures clear, balanced visuals, aiding in accurate AR tracking by providing sufficient brightness and uniformity.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
         "Ensure consistent lighting throughout the AR session to preserve quality"
       ],
       "metrics": {
-        "illumination_score": 0.7683,
+        "illumination_score": 0.7342,
         "illumination_label": "adequate",
-        "mean_brightness": 0.4703,
-        "mean_luma": 119.93,
-        "std_luma": 51.81,
-        "uniformity": 0.6983,
-        "pct_clipped_dark": 0.0004,
-        "pct_clipped_bright": 0.0455
+        "mean_brightness": 0.4351,
+        "mean_luma": 110.96,
+        "std_luma": 48.9,
+        "uniformity": 0.6941,
+        "pct_clipped_dark": 0.001,
+        "pct_clipped_bright": 0.0147
       }
     },
     {
       "frame_index": 9,
       "filename": "frame_09.jpg",
-      "expected_label": "overexposed",
-      "status": "fail",
-      "risk_level": "high",
+      "expected_label": "acceptable",
+      "status": "pass",
+      "risk_level": "low",
       "label_correct": true,
-      "explanation": "Excessively bright lighting causes visual artifacts that degrade AR performance, making it harder to track objects accurately in complex scenes.",
-      "triggered_rules": [
-        "Overexposed scene (too bright)"
-      ],
+      "explanation": "The scene's lighting provides a balanced, uniform, and sufficient range of brightness to support accurate AR tracking.",
+      "triggered_rules": [],
       "recommendations": [
-        "Reduce direct lighting or use diffusers to soften harsh light",
-        "Avoid pointing camera directly at bright light sources"
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
       ],
       "metrics": {
-        "illumination_score": 0.7831,
-        "illumination_label": "overexposed",
-        "mean_brightness": 0.5194,
-        "mean_luma": 132.45,
-        "std_luma": 65.35,
-        "uniformity": 0.6696,
-        "pct_clipped_dark": 0.0006,
-        "pct_clipped_bright": 0.1123
+        "illumination_score": 0.6673,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.3931,
+        "mean_luma": 100.24,
+        "std_luma": 42.71,
+        "uniformity": 0.7012,
+        "pct_clipped_dark": 0.0015,
+        "pct_clipped_bright": 0.0115
       }
     }
   ]

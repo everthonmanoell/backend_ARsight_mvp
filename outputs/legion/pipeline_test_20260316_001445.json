@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-03-15T19:56:12.695921",
+    "timestamp": "2026-03-16T00:14:45.756120",
     "environment": "legion",
     "model": "qwen",
     "device": "cuda",
@@ -9,11 +9,11 @@
     "batch_folder": "20260315_143447"
   },
   "performance": {
-    "pdi_total_ms": 187.3,
-    "pdi_per_image_ms": 18.7,
-    "slm_total_s": 7.313,
-    "slm_per_diagnosis_s": 0.731,
-    "total_s": 7.5,
+    "pdi_total_ms": 136.6,
+    "pdi_per_image_ms": 13.7,
+    "slm_total_s": 3.308,
+    "slm_per_diagnosis_s": 0.331,
+    "total_s": 3.445,
     "target_met": true
   },
   "statistics": {
@@ -26,7 +26,7 @@
     "dominant_label": "underexposed",
     "problem_count": 1,
     "normal_count": 9,
-    "explanation": "Low light conditions are present, which could hamper AR performance.",
+    "explanation": "AR lighting conditions significantly impact the quality of AR content, including tracking, leading to a need for careful consideration and adjustment in scene analysis.",
     "recommendations": [
       {
         "condition": "adequate_acceptable",
@@ -75,7 +75,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The balanced light provides a clear view of the environment; high brightness ensures smooth operation; uniform distribution enhances accuracy in AR applications.",
+      "explanation": "Yes, the brightness meets the required standards for AR applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -99,7 +99,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The balanced lighting enhances contrast, improving visual clarity; uniformity ensures smooth color transitions; the presence of features aids in accurate AR tracking.",
+      "explanation": "The current lighting is acceptable for AR applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -123,7 +123,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The lighting provides sufficient brightness to support AR features, including feature visibility, without causing glare or distortion.",
+      "explanation": "Strong lighting conditions provide reliable AR tracking.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -147,7 +147,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The lighting enhances image quality, allowing AR to track objects more accurately and efficiently.",
+      "explanation": "The current lighting is acceptable for AR applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -171,7 +171,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The lighting provides a smooth, natural environment that enhances AR performance by ensuring consistent brightness levels and uniformity, aiding in accurate feature detection.",
+      "explanation": "The scene meets the required lighting standards for AR applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -195,7 +195,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The lighting provides a balanced, uniform 71/255 brightness, enhancing contrast and ensuring accurate feature visibility in AR applications.",
+      "explanation": "The lighting meets the required standards for AR applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -219,7 +219,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The lighting enhances the image quality, improving AR performance by providing a balanced range of brightness and color, which aids in accurate object recognition.",
+      "explanation": "The lighting meets the requirements for AR applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -243,7 +243,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces clarity, making it difficult to distinguish objects, affecting AR performance significantly.",
+      "explanation": "Underexposure compromises visual clarity for accurate AR experience.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -269,7 +269,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The scene's lighting provides a balanced, uniform 79% brightness that enhances AR features like motion blur and shadow, ensuring accurate targeting of objects.",
+      "explanation": "The scene's lighting meets the required standards for AR application success.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -293,7 +293,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The balanced brightness ensures smooth motion, enhancing accuracy in AR applications; uniformity minimizes flicker, improving overall experience; contrast boosts clarity, facilitating accurate object detection; feature visibility enhances user interaction, ensuring effective AR interactions.",
+      "explanation": "Yes, the current lighting is acceptable for AR applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",

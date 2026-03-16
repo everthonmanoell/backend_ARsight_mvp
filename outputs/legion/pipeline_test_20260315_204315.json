@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-03-15T19:55:02.133807",
+    "timestamp": "2026-03-15T20:43:15.111467",
     "environment": "legion",
     "model": "qwen",
     "device": "cuda",
@@ -9,11 +9,11 @@
     "batch_folder": "20260315_143220"
   },
   "performance": {
-    "pdi_total_ms": 200.7,
-    "pdi_per_image_ms": 20.1,
-    "slm_total_s": 6.996,
-    "slm_per_diagnosis_s": 0.7,
-    "total_s": 7.196,
+    "pdi_total_ms": 141.3,
+    "pdi_per_image_ms": 14.1,
+    "slm_total_s": 6.581,
+    "slm_per_diagnosis_s": 0.658,
+    "total_s": 6.723,
     "target_met": true
   },
   "statistics": {
@@ -26,7 +26,7 @@
     "dominant_label": "adequate",
     "problem_count": 0,
     "normal_count": 10,
-    "explanation": "Excellent lighting conditions throughout the scene support stable AR performance.",
+    "explanation": "The scene is well-lit and suitable for AR applications due to its balanced exposure across all frames, with no significant areas lacking light. This balance supports effective use of AR technologies like AR glasses or AR headsets in immersive environments.",
     "recommendations": [
       {
         "condition": "adequate_acceptable",
@@ -65,7 +65,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The bright, evenly lit environment enhances the clarity of AR features, improving performance in various environments.",
+      "explanation": "The lighting ensures clear, images for AR applications; it's balanced to avoid harsh shadows and bright highlights; contrast enhances detail in features; uniform lighting across the room supports accurate object recognition.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -89,7 +89,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The balanced brightness and uniform lighting ensure clear video streams; contrast enhances visual details; optimal visibility aids in AR interaction.",
+      "explanation": "The bright, uniform lighting enhances visual clarity, allowing AR to track objects more accurately.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -113,7 +113,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The balanced brightness ensures smooth motion, while uniformity enhances detail, aiding in accurate AR positioning.",
+      "explanation": "The lighting provides a balanced, uniform 94% brightness to ensure accurate AR image capture; high contrast enhances visual clarity; features are visible in low-light environments; thus, it supports effective AR applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -137,7 +137,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The brightness ensures smooth visuals; uniformity aids in accurate feature detection; contrast enhances detail; suitable for AR applications.",
+      "explanation": "The scene's lighting provides sufficient brightness and uniformity to support accurate AR tracking.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -161,7 +161,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The balanced brightness ensures smooth AR experience; uniform lighting minimizes artifacts; sufficient contrast enhances visual clarity; features are easily visible in the dark environment.",
+      "explanation": "The balanced brightness and uniformity of the lighting ensure clear vision in AR applications, aiding accurate object detection and recognition.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -185,7 +185,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The lighting provides a uniform, and balanced environment that supports accurate AR tracking.",
+      "explanation": "The scene's lighting ensures clear, uniform 100% brightness across the screen, enhancing AR performance.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -209,7 +209,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The balanced light provides sufficient brightness, ensuring smooth color transitions; uniform illumination enhances clarity, facilitating accurate object detection in the augmented reality environment.",
+      "explanation": "The lighting provides a balanced range of brightness and contrast, aiding in accurate AR image capture.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -233,7 +233,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The bright, uniform lighting enhances AR's ability to track objects accurately.",
+      "explanation": "The lighting provides a clear, uniform 117/255 brightness, aiding in accurate AR tracking by ensuring features are visible against the background.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -257,7 +257,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The bright, even lighting ensures clear video feed; contrast enhances object recognition; features visible in dark background.",
+      "explanation": "The bright, even lighting enhances AR vision, improving accuracy of object recognition.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -281,7 +281,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The bright, even lighting enhances the clarity of AR features like cameras and objects, aiding in accurate tracking.",
+      "explanation": "The bright, uniform lighting enhances visual clarity in AR applications, aiding accurate object recognition.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",

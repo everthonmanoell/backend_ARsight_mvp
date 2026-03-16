@@ -55,17 +55,17 @@ class QwenARModel(ARDiagnosticModel):
         
         # Carrega configurações de geração do YAML
         config = Config()
-        self.max_tokens = config.get('models.qwen.max_tokens', 60)
-        self.summary_max_tokens = config.get('models.qwen.summary_tokens', 150)
+        self.max_tokens = config.get('models.qwen.max_tokens', 30)
+        self.summary_max_tokens = config.get('models.qwen.summary_tokens', 40)
 
-        # Temperatura mais baixa para respostas mais focadas e consistentes, ideal para explicações técnicas
-        # A temperatura num modelo de linguagem controla a aleatoriedade da geração: valores mais baixos resultam em respostas mais determinísticas e focadas, 
-        # enquanto valores mais altos geram respostas mais variadas e criativas. 
+        # Temperatura
         self.temperature = config.get('models.qwen.temperature', 0.3) 
 
-        # Top-p sampling (nucleus sampling) é uma técnica de geração onde o modelo considera apenas os tokens mais prováveis que juntos somam uma probabilidade p (ex: 0.9)
-        # para manter uma geração focada com alguma diversidade foi usado 0.85
+        # Top-p
         self.top_p = config.get('models.qwen.top_p', 0.85)
+
+        # Greedy decoding: elimina overhead de sampling
+        self.greedy_decoding = config.get('models.greedy_decoding', True)
 
         # Greedy decoding: desativa amostragem aleatória (do_sample=False), eliminando o overhead do top_p/softmax sampling.
         # Resultado mais determinístico e consideravelmente mais rápido, especialmente em GPUs com baixo throughput como a Jetson Nano.
@@ -168,106 +168,93 @@ class QwenARModel(ARDiagnosticModel):
     #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # método para construir o prompt de diagnóstico para o modelo, formatado para Qwen (ChatML)
     def _build_prompt(self, metrics: Dict, status: str, risk_level: str, triggered_rules: List[str]) -> str:
-        """Constrói prompt para Qwen (ChatML format)"""
+        """Constrói prompt para Qwen - Restaurado baseline com verbosity control e template diversity"""
         
-        # System prompt - específico sobre iluminação (versão MVP focada, pode ser expandida com mais detalhes técnicos ou instruções específicas para o modelo)
-
-        # system_msg define o papel do modelo — instrução curta e direta para modelos pequenos
+        import random
+        
+        # System message estrito sobre brevidade
         system_msg = (
             "You analyze lighting for AR applications. "
-            "Write 1-2 plain sentences. No lists. No markdown. Under 50 words."
+            "Respond in ONE concise sentence only. No lists, no markdown."
         )
         
-        # Extrai evidências
-        illumination_label = metrics.get('illumination_label', 'unknown') # label qualitativo (underexposed, adequate, acceptable, overexposed, poor)
-        illumination_score = metrics.get('illumination', 0.0)             # score numérico (0-1)
-        mean_luma = metrics.get('mean_luma', 0.0)                         # brilho médio (0-255)
-        uniformity = metrics.get('uniformity', 0.0)                       # uniformidade (0-1)
+        # Extrai métricas
+        illumination_label = metrics.get('illumination_label', 'unknown')
+        illumination_score = metrics.get('illumination', 0.0)
+        mean_luma = metrics.get('mean_luma', 0.0)
+        uniformity = metrics.get('uniformity', 0.0)
         
-        # Pré-digere a análise: diz ao modelo O QUE acontece em vez de esperar que ele infira
-        # Modelos pequenos (0.5B) aderem melhor a completar uma narrativa do que a raciocinar sobre métricas
+        # Template variety para evitar repetição mesmo com respostas concisas
         if status == 'pass':
-            user_msg = (
-                f"This scene has {illumination_label} lighting (brightness {mean_luma:.0f}/255, "
-                f"uniformity {uniformity:.0%}). "
-                f"The lighting is adequate for AR — good contrast and feature visibility. "
-                f"Explain why this helps AR tracking:"
-            )
-
-        # status 'fail' — prompt diretivo que já descreve a causa, modelo só precisa elaborar
-        else: 
-            rules_text = '; '.join(triggered_rules)
-            # Mapeia label para causa concreta do impacto no AR
+            pass_templates = [
+                f"Scene has {illumination_label} lighting (brightness {mean_luma:.0f}/255, uniformity {uniformity:.0%}). This supports AR tracking effectively.",
+                f"The {illumination_label} conditions (brightness {mean_luma:.0f}/255) provide adequate quality for AR applications.",
+                f"Current lighting ({illumination_label}, {mean_luma:.0f}/255 brightness) meets AR requirements with good feature visibility.",
+                f"Scene analysis shows {illumination_label} lighting suitable for AR: brightness {mean_luma:.0f}/255 with {uniformity:.0%} uniformity.",
+            ]
+            user_msg = random.choice(pass_templates)
+        else:
             cause_map = {
-                'overexposed': 'Excessive brightness washes out visual features and reduces contrast',
-                'underexposed': 'Insufficient light causes noise and makes features hard to detect',
-                'poor': 'Uneven lighting creates inconsistent contrast across the scene',
+                'overexposed': 'excessive brightness reduces contrast and feature visibility',
+                'underexposed': 'insufficient light increases noise and feature detection difficulty',
+                'poor': 'uneven lighting creates inconsistent contrast across the scene',
             }
-            cause = cause_map.get(illumination_label, 'Poor lighting degrades image quality')
-            user_msg = (
-                f"This scene is {illumination_label} (brightness {mean_luma:.0f}/255, "
-                f"uniformity {uniformity:.0%}). "
-                f"{cause}, which harms AR tracking. "
-                f"Explain the impact on AR performance:"
-            )
+            cause = cause_map.get(illumination_label, 'poor lighting degrades image quality')
+            
+            fail_templates = [
+                f"Scene is {illumination_label} (brightness {mean_luma:.0f}/255): {cause}, compromising AR tracking.",
+                f"The {illumination_label} conditions ({mean_luma:.0f}/255 brightness) cause {cause.split(':')[0].lower()}, affecting AR performance.",
+                f"Current lighting ({illumination_label}) creates AR challenges: {cause}.",
+                f"Detected {illumination_label} scene (brightness {mean_luma:.0f}/255) with impact: {cause}.",
+            ]
+            user_msg = random.choice(fail_templates)
         
-        # Formato ChatML para Qwen: uma lista de mensagens com roles (system, user) que orientam o modelo sobre o contexto e a tarefa
-        # permite uma geração mais coerente e relevante para a análise de iluminação em AR
         messages = [
             {"role": "system", "content": system_msg},
             {"role": "user", "content": user_msg}
         ]
         
-        # Aplica template do tokenizer: converte a lista de mensagens em um prompt formatado corretamente para o modelo, 
-        # garantindo que as instruções e o contexto sejam apresentados de forma clara e estruturada para otimizar a geração da resposta
         prompt = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        
         return prompt
     #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    # método para construir o prompt de sumarização do ambiente, agregando as métricas e avaliações de múltiplos frames para fornecer um contexto mais amplo ao modelo 
-    # sobre a qualidade geral do ambiente AR, permitindo que ele gere um resumo mais informativo e útil para o usuário final
+    # método para construir o prompt de sumarização do ambiente
     def _build_summary_prompt(self, agg: Dict) -> str: 
-        """Constrói prompt de sumarização do ambiente (ChatML format) - Generar naturalmente com validações"""
+        """Constrói prompt de sumarização - Restaurado baseline com brevidade e template diversity"""
+        
+        import random
 
-        total          = agg['total']                     # número total de frames analisados
-        problem_count  = agg['problem_count']             # número de frames com problemas de iluminação
-        dominant_label = agg['dominant_label']            # label dominante entre os frames problemáticos
-        overall_risk   = agg['overall_risk']              # risco geral do ambiente baseado na análise de todos os frames
-
+        total = agg['total']
+        problem_count = agg['problem_count']
+        dominant_label = agg['dominant_label']
+        
         system_msg = (
-            "You are an expert AR lighting analyst. Generate a concise, natural assessment of the scene's lighting quality. "
-            "Use cautious language (could, may, can) when discussing potential impacts on AR. "
-            "Be professional but conversational. Keep response under 50 words."
+            "You are an AR lighting analyst. Provide ONE concise assessment sentence. "
+            "No lists, markdown, or elaboration."
         )
 
-        # Descrição amigável do contexto
-        label_names = {
-            'overexposed':  'excessively bright',
-            'underexposed': 'too dark',
-            'poor':         'unevenly lit',
-        }
-        
-        dominant_label_name = label_names.get(dominant_label, dominant_label)
-        
         if problem_count > 0:
-            user_msg = (
-                f"Analyze this scene: {problem_count} frames with {dominant_label_name} conditions detected. "
-                f"Overall risk: {overall_risk}. Provide a natural summary of how this affects AR tracking. "
-                f"Be concise and use cautious language."
-            )
+            summary_templates = [
+                f"Scene analysis reveals {problem_count} out of {total} frames with {dominant_label} lighting, affecting AR tracking quality.",
+                f"{problem_count}/{total} frames show {dominant_label} conditions that compromise AR performance.",
+                f"The {dominant_label} lighting in {problem_count} frames impacts the overall AR suitability of the scene.",
+                f"Detected {dominant_label} lighting issues in {problem_count} out of {total} frames: AR tracking may be affected.",
+            ]
+            user_msg = random.choice(summary_templates)
         else:
-            user_msg = (
-                f"Analyze this scene: All {total} frames show adequate lighting. "
-                f"Provide a positive summary of the scene's suitability for AR applications."
-            )
+            summary_templates = [
+                f"All {total} frames demonstrate adequate lighting conditions suitable for AR applications.",
+                f"Scene analysis shows {total} frames with optimal lighting: AR tracking conditions are ideal.",
+                f"No lighting issues detected across {total} frames: scene is well-suited for AR.",
+                f"Complete frame analysis confirms {total} frames meet AR lighting requirements perfectly.",
+            ]
+            user_msg = random.choice(summary_templates)
 
         messages = [
             {"role": "system", "content": system_msg},
-            {"role": "user",   "content": user_msg}
+            {"role": "user", "content": user_msg}
         ]
 
-        prompt = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)   
-        
+        prompt = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         return prompt
     #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # método para chamar o modelo com o prompt construído

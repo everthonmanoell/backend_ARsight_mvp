@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-03-15T20:00:35.519287",
+    "timestamp": "2026-03-16T00:11:36.589879",
     "environment": "legion",
     "model": "qwen",
     "device": "cuda",
@@ -9,11 +9,11 @@
     "batch_folder": "20260315_175638"
   },
   "performance": {
-    "pdi_total_ms": 209.5,
-    "pdi_per_image_ms": 20.9,
-    "slm_total_s": 6.964,
-    "slm_per_diagnosis_s": 0.696,
-    "total_s": 7.174,
+    "pdi_total_ms": 143.0,
+    "pdi_per_image_ms": 14.3,
+    "slm_total_s": 3.231,
+    "slm_per_diagnosis_s": 0.323,
+    "total_s": 3.374,
     "target_met": true
   },
   "statistics": {
@@ -26,7 +26,7 @@
     "dominant_label": "underexposed",
     "problem_count": 10,
     "normal_count": 0,
-    "explanation": "Low light conditions are present, which could hamper AR performance.",
+    "explanation": "AR lighting analysis indicates that the system is experiencing underexposure across all frames, which could impact the quality and effectiveness of AR content.",
     "recommendations": [
       {
         "condition": "underexposed",
@@ -65,7 +65,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces clarity, making it difficult to distinguish objects in the environment. This affects AR's ability to accurately track subjects, leading to reduced accuracy in interactions with virtual environments.",
+      "explanation": "Adjust exposure to improve contrast and clarity.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -91,7 +91,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces clarity, making it difficult to distinguish objects, leading to suboptimal AR performance.",
+      "explanation": "Adjust exposure to improve contrast.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -117,7 +117,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Insufficient exposure reduces clarity, making it difficult to see details, affecting AR accuracy.",
+      "explanation": "Adjust exposure to improve overall image quality.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -143,7 +143,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces visual clarity, making it difficult to distinguish between objects and background, impacting AR's effectiveness in real-time interaction.",
+      "explanation": "Ensure adequate exposure to avoid such issues.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -169,7 +169,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces visibility of objects, impacting AR accuracy, leading to degraded user experience.",
+      "explanation": "Adjust exposure to improve overall clarity.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -195,7 +195,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces clarity, making it difficult to distinguish between objects, affecting AR accuracy.",
+      "explanation": "Optimize exposure to improve overall performance.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -221,7 +221,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces visual clarity, making it difficult to distinguish objects, leading to poor AR performance.",
+      "explanation": "Reduce exposure to 100% or increase ISO.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -247,7 +247,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces contrast, making it difficult to see details in the environment, affecting AR performance significantly.",
+      "explanation": "Yes, the underexposure condition negatively impacts AR performance.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -273,7 +273,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces visibility of details, impacting AR accuracy and user experience.",
+      "explanation": "Optimize exposure to improve overall performance.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -299,7 +299,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces clarity, making it difficult to see details, affecting AR's ability to track objects accurately.",
+      "explanation": "Ensure sufficient exposure to avoid such issues.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],

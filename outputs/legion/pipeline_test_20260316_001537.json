@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-03-15T20:30:12.748840",
+    "timestamp": "2026-03-16T00:15:37.128538",
     "environment": "legion",
     "model": "qwen",
     "device": "cuda",
@@ -9,12 +9,12 @@
     "batch_folder": "20260315_143220"
   },
   "performance": {
-    "pdi_total_ms": 150.4,
-    "pdi_per_image_ms": 15.0,
-    "slm_total_s": 264.118,
-    "slm_per_diagnosis_s": 26.412,
-    "total_s": 264.269,
-    "target_met": false
+    "pdi_total_ms": 136.6,
+    "pdi_per_image_ms": 13.7,
+    "slm_total_s": 2.915,
+    "slm_per_diagnosis_s": 0.291,
+    "total_s": 3.052,
+    "target_met": true
   },
   "statistics": {
     "total": 10,
@@ -26,7 +26,7 @@
     "dominant_label": "adequate",
     "problem_count": 0,
     "normal_count": 10,
-    "explanation": "The scene offers suitable lighting conditions that can support reliable AR tracking and interaction.",
+    "explanation": "The assessments of the 10 frames indicate sufficient lighting to support effective use in AR applications.",
     "recommendations": [
       {
         "condition": "adequate_acceptable",
@@ -65,7 +65,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The inadequate illumination score of 0.738 indicates that while the scene has sufficient light to support AR features, it is not optimal. The low uniformity of 79.5% suggests uneven lighting across different areas of the scene, which can lead to artifacts in both feature tracking and feature detection. The absence of any triggered rules further underscores the need for more robust lighting conditions to ensure accurate AR experiences.",
+      "explanation": "The scene's lighting meets the required standards for effective AR application support.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -89,7 +89,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The inadequate illumination scores and high uniformity indicate that the scene's lighting is not optimal for AR features like motion blur, shadow reduction, and contrast enhancement, which are critical for accurate feature detection. The low brightness variation suggests that there may be issues with light distribution, such as insufficient ambient light, leading to poor visibility of objects in the scene. These factors combined could result in: 1. **Poor Feature Detection**: Poorly illuminated areas might not trigger any features, leading to reduced accuracy.",
+      "explanation": "The scene's lighting meets the required standards for AR application success.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -113,7 +113,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The classification of acceptable lighting conditions is crucial for ensuring that the augmented reality application operates optimally in terms of feature detection and tracking. The illumination score indicates that there is sufficient light to support accurate feature detection, but it's important to note that this alone does not guarantee optimal performance. The uniformity metric suggests that the lighting conditions are relatively even across all areas of the scene, which is beneficial for smooth interaction with features.",
+      "explanation": "The current lighting meets the AR application's requirements.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -137,7 +137,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The classification of acceptable lighting conditions is crucial in the analysis of lighting metrics for Augmented Reality applications. The illumination score indicates that the light source is providing sufficient illumination to support the AR experience, but it's important to note that this score alone does not fully capture all aspects of lighting quality. The mean brightness of 78.2/255 suggests that the ambient lighting is well-balanced, with moderate contrast between different areas of the scene.",
+      "explanation": "The scene's lighting meets the required standards for AR application success.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -161,7 +161,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The classification of \"acceptable\" is not applicable in this context as it refers to the quality of the scene rather than the lighting conditions. The illumination score indicates that the scene is well-lit with a high level of uniformity, but the other metrics suggest significant issues such as low brightness, noise, and uncluttered features. These conditions significantly impact AR feature detection and tracking performance.",
+      "explanation": "Yes, the brightness meets the requirements for AR applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -185,7 +185,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The scene presents optimal illumination conditions for AR deployment with adequate lighting levels, ensuring stable tracking and reliable anchor placement.",
+      "explanation": "The current lighting is adequate and meets the AR application's requirements.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -209,7 +209,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The sufficient illumination, uniform brightness distribution, and absence of triggered rules across the scene contribute to high accuracy in AR feature detection. However, the lack of clipped bright pixels suggests that there might be some artifacts due to the limited number of features present. This could lead to reduced detection efficiency if not addressed. Therefore, while the system is performing well with respect to feature detection, it may need further optimization to handle more complex scenes effectively.",
+      "explanation": "Quality is sufficient with the appropriate brightness levels.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -233,7 +233,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The inadequate illumination score of 0.764 suggests that there is insufficient light to fully support AR feature detection, particularly in low-light environments. This could be due to various factors such as poor visibility, shadowing, or inconsistent lighting conditions. The lack of uniformity in brightness indicates uneven lighting, which can lead to artifacts in the feature detection process, making it challenging to accurately track features like people or objects.",
+      "explanation": "The brightness of the lighting meets the requirements for AR applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -257,7 +257,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The inadequate illumination scores of 0.742 on the mean brightness of 117.9/255 indicate that there is a significant issue with the ambient light levels in the scene. This could be due to poor lighting control, improper setup, or issues with the environment itself. The uniformity of the illumination across all areas suggests that the lighting system may not have been optimized for the entire scene, leading to inconsistent lighting.",
+      "explanation": "The lighting is adequate and meets the AR requirements.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -281,7 +281,7 @@
       "status": "pass",
       "risk_level": "low",
       "label_correct": true,
-      "explanation": "The adequate classification of light conditions is crucial for accurate AR feature detection, as it ensures that the environment does not contain any obstructions that could interfere with the interaction between the AR application and its features. The low illumination score indicates insufficient illumination, which can lead to reduced visibility, making it difficult for the AR system to detect objects accurately. This issue affects both feature detection and overall performance by reducing the ability to identify and interact with objects in the scene.",
+      "explanation": "The scene's lighting is sufficient and uniformly distributed, supporting effective AR tracking.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
