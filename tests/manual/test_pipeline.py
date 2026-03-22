@@ -109,11 +109,22 @@ BATCH_IMAGES = [
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # método auxiliar para carregar uma imagem usando PIL, retornando None em caso de erro
 def load_image(path: str): 
-    """Carrega imagem via PIL."""
-    try:
+    """Carrega imagem via PIL - tenta múltiplos caminhos."""
+    # Tenta o caminho direto
+    if Path(path).exists():
         return Image.open(path)
-    except Exception:
-        return None
+    
+    # Tenta relativo a /app (para Docker)
+    app_path = Path("/app") / path
+    if app_path.exists():
+        return Image.open(app_path)
+    
+    # Tenta relativo ao diretório de trabalho atual
+    cwd_path = Path.cwd() / path
+    if cwd_path.exists():
+        return Image.open(cwd_path)
+    
+    return None
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # método auxiliar para imprimir uma linha separadora no console, melhorando a legibilidade dos logs durante o teste
@@ -172,6 +183,7 @@ def main():
         img  = load_image(path_str)
         if img is None:
             missing.append(path_str)
+            print(f"  [xx] {path.name} - NOT FOUND at {path_str}")
         else:
             images.append(img)
             filenames.append(path.name)
