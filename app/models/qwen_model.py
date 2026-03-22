@@ -114,8 +114,15 @@ class QwenARModel(ARDiagnosticModel):
             else:
                 # CPU ou sem quantização
                 # Evita device_map="auto" na Jetson (causa offload para disco)
-                # Mas usa no Legion (mais VRAM, mais eficiente)
-                use_device_map = self.device == 'cuda' and torch.cuda.get_device_properties(0).total_memory > 8e9  # > 8GB
+                # Usa no Legion com VRAM suficiente (mais eficiente)
+                use_device_map = False
+                try:
+                    if self.device == 'cuda' and torch.cuda.is_available():
+                        total_memory = torch.cuda.get_device_properties(0).total_memory
+                        use_device_map = total_memory > 8e9  # > 8GB
+                except (RuntimeError, AssertionError):
+                    # Torch não foi compilado com CUDA, ou CUDA indisponível
+                    use_device_map = False
                 
                 load_kwargs = {
                     "trust_remote_code": True,
