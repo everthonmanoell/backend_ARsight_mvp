@@ -35,7 +35,9 @@ RUN curl -sS https://bootstrap.pypa.io/pip/3.8/get-pip.py | python3.8
 
 # ── Dependências da aplicação ────────────────────────────────────────────────
 COPY requirements-jetson.txt .
-RUN python3.8 -m pip install --no-cache-dir -r requirements-jetson.txt
+# Instala sem reconstruir PyTorch (evita reinstalar versão CPU-only)
+# PyTorch 1.10 já vem na imagem base com suporte CUDA 10.2
+RUN python3.8 -m pip install --no-cache-dir --no-build-isolation -r requirements-jetson.txt
 
 # ── Aplicação ────────────────────────────────────────────────────────────────
 COPY app/ ./app/
