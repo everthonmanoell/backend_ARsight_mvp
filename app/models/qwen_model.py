@@ -113,13 +113,28 @@ class QwenARModel(ARDiagnosticModel):
                 logger.info("Model loaded with 4-bit quantization")
             else:
                 # CPU ou sem quantização
+                # Evita device_map="auto" na Jetson (causa offload para disco)
+                # Mas usa no Legion (mais VRAM, mais eficiente)
+                use_device_map = self.device == 'cuda' and torch.cuda.get_device_properties(0).total_memory > 8e9  # > 8GB
+                
+                load_kwargs = {
+                    "trust_remote_code": True,
+                    "torch_dtype": torch.float32 if self.device == 'cpu' else torch.float16,
+                }
+                
+                if use_device_map:
+                    load_kwargs["device_map"] = "auto"
+                
                 self.model = AutoModelForCausalLM.from_pretrained(
                     self.MODEL_NAME,
-                    device_map="auto",
-                    trust_remote_code=True,
-                    torch_dtype=torch.float32 if self.device == 'cpu' else torch.float16
+                    **load_kwargs
                 )
-                logger.info(f"Model loaded on {self.device}")
+                
+                # Se não usou device_map, move manualmente (Jetson)
+                if not use_device_map:
+                    self.model = self.model.to(self.device)
+                
+                logger.info(f"Model loaded on {self.device} (device_map={'auto' if use_device_map else 'manual'})")
 
             # Colocar modelo em modo de inferência (desativa dropout, batch norm em modo treino, etc.)
             self.model.eval()
