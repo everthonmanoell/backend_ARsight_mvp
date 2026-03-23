@@ -226,23 +226,23 @@ class QwenARModel(ARDiagnosticModel):
         
         system_msg = (
             "You are an AR lighting analyst. Provide ONE concise assessment sentence. "
-            "No lists, markdown, or elaboration."
+            "No lists, markdown, or elaboration. Use exact numbers given in the analysis."
         )
 
         if problem_count > 0:
             summary_templates = [
-                f"Scene analysis reveals {problem_count} out of {total} frames with {dominant_label} lighting, affecting AR tracking quality.",
-                f"{problem_count}/{total} frames show {dominant_label} conditions that compromise AR performance.",
-                f"The {dominant_label} lighting in {problem_count} frames impacts the overall AR suitability of the scene.",
-                f"Detected {dominant_label} lighting issues in {problem_count} out of {total} frames: AR tracking may be affected.",
+                f"In this batch of {total} frames, {problem_count} frames show {dominant_label} lighting, affecting AR tracking quality.",
+                f"Out of {total} analyzed frames, {problem_count} display {dominant_label} conditions that compromise AR performance.",
+                f"The {dominant_label} lighting issue affects {problem_count} of the {total} frames in this batch.",
+                f"Analysis of {total} frames reveals {problem_count} with {dominant_label} lighting: AR tracking may be affected.",
             ]
             user_msg = random.choice(summary_templates)
         else:
             summary_templates = [
-                f"All {total} frames demonstrate adequate lighting conditions suitable for AR applications.",
-                f"Scene analysis shows {total} frames with optimal lighting: AR tracking conditions are ideal.",
-                f"No lighting issues detected across {total} frames: scene is well-suited for AR.",
-                f"Complete frame analysis confirms {total} frames meet AR lighting requirements perfectly.",
+                f"This batch of {total} frames demonstrates adequate lighting conditions suitable for AR applications.",
+                f"All {total} frames analyzed show optimal lighting: AR tracking conditions are ideal.",
+                f"No lighting issues detected in this batch of {total} frames: scene is well-suited for AR.",
+                f"All {total} analyzed frames meet AR lighting requirements perfectly.",
             ]
             user_msg = random.choice(summary_templates)
 
