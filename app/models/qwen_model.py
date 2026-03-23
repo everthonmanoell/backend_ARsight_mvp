@@ -165,7 +165,9 @@ class QwenARModel(ARDiagnosticModel):
     #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # método para construir o prompt de diagnóstico para o modelo, formatado para Qwen (ChatML)
     def _build_prompt(self, metrics: Dict, status: str, risk_level: str, triggered_rules: List[str]) -> str:
-        """Constrói prompt para Qwen - determinístico para testes (sem random)"""
+        """Constrói prompt para Qwen - com template diversity para evitar repetição monotônica"""
+        
+        import random
         
         # System message estrito sobre brevidade
         system_msg = (
@@ -179,9 +181,15 @@ class QwenARModel(ARDiagnosticModel):
         mean_luma = metrics.get('mean_luma', 0.0)
         uniformity = metrics.get('uniformity', 0.0)
         
-        # Usa primeiro template (determinístico para testes)
+        # Template variety para evitar repetição mesmo com respostas concisas
         if status == 'pass':
-            user_msg = f"Scene has {illumination_label} lighting (brightness {mean_luma:.0f}/255, uniformity {uniformity:.0%}). This supports AR tracking effectively."
+            pass_templates = [
+                f"Scene has {illumination_label} lighting (brightness {mean_luma:.0f}/255, uniformity {uniformity:.0%}). This supports AR tracking effectively.",
+                f"The {illumination_label} conditions (brightness {mean_luma:.0f}/255) provide adequate quality for AR applications.",
+                f"Current lighting ({illumination_label}, {mean_luma:.0f}/255 brightness) meets AR requirements with good feature visibility.",
+                f"Scene analysis shows {illumination_label} lighting suitable for AR: brightness {mean_luma:.0f}/255 with {uniformity:.0%} uniformity.",
+            ]
+            user_msg = random.choice(pass_templates)
         else:
             cause_map = {
                 'overexposed': 'excessive brightness reduces contrast and feature visibility',
@@ -189,7 +197,14 @@ class QwenARModel(ARDiagnosticModel):
                 'poor': 'uneven lighting creates inconsistent contrast across the scene',
             }
             cause = cause_map.get(illumination_label, 'poor lighting degrades image quality')
-            user_msg = f"Scene is {illumination_label} (brightness {mean_luma:.0f}/255): {cause}, compromising AR tracking."
+            
+            fail_templates = [
+                f"Scene is {illumination_label} (brightness {mean_luma:.0f}/255): {cause}, compromising AR tracking.",
+                f"The {illumination_label} conditions ({mean_luma:.0f}/255 brightness) cause {cause.split(':')[0].lower()}, affecting AR performance.",
+                f"Current lighting ({illumination_label}) creates AR challenges: {cause}.",
+                f"Detected {illumination_label} scene (brightness {mean_luma:.0f}/255) with impact: {cause}.",
+            ]
+            user_msg = random.choice(fail_templates)
         
         messages = [
             {"role": "system", "content": system_msg},
@@ -201,7 +216,9 @@ class QwenARModel(ARDiagnosticModel):
     #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # método para construir o prompt de sumarização do ambiente
     def _build_summary_prompt(self, agg: Dict) -> str: 
-        """Constrói prompt de sumarização - determinístico para testes (sem random)"""
+        """Constrói prompt de sumarização - com template diversity"""
+        
+        import random
 
         total = agg['total']
         problem_count = agg['problem_count']
@@ -213,9 +230,21 @@ class QwenARModel(ARDiagnosticModel):
         )
 
         if problem_count > 0:
-            user_msg = f"Scene analysis reveals {problem_count} out of {total} frames with {dominant_label} lighting, affecting AR tracking quality."
+            summary_templates = [
+                f"Scene analysis reveals {problem_count} out of {total} frames with {dominant_label} lighting, affecting AR tracking quality.",
+                f"{problem_count}/{total} frames show {dominant_label} conditions that compromise AR performance.",
+                f"The {dominant_label} lighting in {problem_count} frames impacts the overall AR suitability of the scene.",
+                f"Detected {dominant_label} lighting issues in {problem_count} out of {total} frames: AR tracking may be affected.",
+            ]
+            user_msg = random.choice(summary_templates)
         else:
-            user_msg = f"All {total} frames demonstrate adequate lighting conditions suitable for AR applications."
+            summary_templates = [
+                f"All {total} frames demonstrate adequate lighting conditions suitable for AR applications.",
+                f"Scene analysis shows {total} frames with optimal lighting: AR tracking conditions are ideal.",
+                f"No lighting issues detected across {total} frames: scene is well-suited for AR.",
+                f"Complete frame analysis confirms {total} frames meet AR lighting requirements perfectly.",
+            ]
+            user_msg = random.choice(summary_templates)
 
         messages = [
             {"role": "system", "content": system_msg},
