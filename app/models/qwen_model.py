@@ -293,6 +293,7 @@ class QwenARModel(ARDiagnosticModel):
                 max_new_tokens=max_new_tokens if max_new_tokens is not None else self.max_tokens,       # define o número máximo de tokens a serem gerados
                 temperature=self.temperature if use_sampling else 1.0,                                  # ignorado quando do_sample=False
                 top_p=self.top_p if use_sampling else 1.0,                                              # ignorado quando do_sample=False
+                top_k=None if not use_sampling else 20,                                                 # desabilita top_k quando do_sample=False para evitar aviso
                 do_sample=use_sampling,                                                                 # False = greedy decoding (mais rápido)
                 pad_token_id=self.tokenizer.pad_token_id,                                               # define o token de padding 
                 eos_token_id=self.tokenizer.eos_token_id                                                # define o token de end-of-sequence para indicar quando a geração deve parar
@@ -390,6 +391,7 @@ class QwenARModel(ARDiagnosticModel):
                 max_new_tokens=self.max_tokens,
                 temperature=self.temperature if use_sampling else 1.0,
                 top_p=self.top_p if use_sampling else 1.0,
+                top_k=None if not use_sampling else 20,                                                 # desabilita top_k quando do_sample=False para evitar aviso
                 do_sample=use_sampling,            # False = greedy decoding (mais rápido)
                 pad_token_id=self.tokenizer.pad_token_id,
                 eos_token_id=self.tokenizer.eos_token_id
