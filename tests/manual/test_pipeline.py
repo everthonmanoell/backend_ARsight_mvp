@@ -65,32 +65,32 @@ from app.pipeline.illumination_pipeline import IlluminationPipeline
 # ]
 
 # Batch 4: 20260315_143747 
-BATCH_IMAGES = [
-    ("data/uploads/20260315_143747/frame_00.jpg", "adequate"),
-    ("data/uploads/20260315_143747/frame_01.jpg", "adequate"),
-    ("data/uploads/20260315_143747/frame_02.jpg", "adequate"),
-    ("data/uploads/20260315_143747/frame_03.jpg", "adequate"),
-    ("data/uploads/20260315_143747/frame_04.jpg", "adequate"),
-    ("data/uploads/20260315_143747/frame_05.jpg", "adequate"),
-    ("data/uploads/20260315_143747/frame_06.jpg", "adequate"),
-    ("data/uploads/20260315_143747/frame_07.jpg", "adequate"),
-    ("data/uploads/20260315_143747/frame_08.jpg", "adequate"),
-    ("data/uploads/20260315_143747/frame_09.jpg", "acceptable"),
-]
+# BATCH_IMAGES = [
+#     ("data/uploads/20260315_143747/frame_00.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_01.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_02.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_03.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_04.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_05.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_06.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_07.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_08.jpg", "adequate"),
+#     ("data/uploads/20260315_143747/frame_09.jpg", "acceptable"),
+# ]
 
 # Batch 5: 20260315_175638 
-# BATCH_IMAGES = [
-#     ("data/uploads/20260315_175638/frame_00.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_01.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_02.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_03.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_04.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_05.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_06.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_07.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_08.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_09.jpg", "underexposed"),
-# ]
+BATCH_IMAGES = [
+    ("data/uploads/20260315_175638/frame_00.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_01.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_02.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_03.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_04.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_05.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_06.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_07.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_08.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_09.jpg", "underexposed"),
+]
 
 # Batch 6: 20260315_180200 
 # BATCH_IMAGES = [
