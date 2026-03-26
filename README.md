@@ -138,3 +138,24 @@ Quando o MVP for validado, integrar de volta ao `backend_tcc`:
 ## 📝 Licença
 
 MIT
+
+## 📈 Benchmark Jetson vs Legion
+
+Para comparar automaticamente os resultados de performance entre `outputs/jetson` e `outputs/legion`:
+
+```bash
+python benchmark_jetson_vs_legion.py
+```
+
+Saídas geradas em `outputs/benchmark_comparison/`:
+- `runs_raw.csv`: todas as execuções lidas dos JSONs
+- `summary_by_env_model_batch.csv`: agregação por ambiente/modelo/batch
+- `speedup_legion_vs_jetson.csv`: speedup comparável entre ambientes
+- `benchmark_report.md`: relatório em Markdown
+- `plots/*.png`: gráficos de latência e speedup
+
+Se o ambiente não tiver matplotlib instalado, os CSVs e o relatório Markdown serão gerados normalmente, mas sem gráficos. Para habilitar os gráficos:
+
+```bash
+pip install matplotlib
+```
