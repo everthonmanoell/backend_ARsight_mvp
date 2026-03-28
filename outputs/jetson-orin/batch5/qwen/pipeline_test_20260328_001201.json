@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-03-27T22:16:59.090861",
+    "timestamp": "2026-03-28T00:12:01.664308",
     "environment": "jetson-orin",
     "model": "qwen",
     "device": "cuda",
@@ -9,11 +9,11 @@
     "batch_folder": "20260315_175638"
   },
   "performance": {
-    "pdi_total_ms": 175.7,
+    "pdi_total_ms": 176.3,
     "pdi_per_image_ms": 17.6,
-    "slm_total_s": 4.094,
-    "slm_per_diagnosis_s": 0.409,
-    "total_s": 4.27,
+    "slm_total_s": 3.368,
+    "slm_per_diagnosis_s": 0.337,
+    "total_s": 3.544,
     "target_met": true
   },
   "statistics": {
@@ -26,7 +26,7 @@
     "dominant_label": "underexposed",
     "problem_count": 10,
     "normal_count": 0,
-    "explanation": "There is a significant underexposure problem affecting 10 out of every 10 frames in the batch.",
+    "explanation": "The batch contains 10 frames that exhibit underexposure, impacting AR tracking quality.",
     "recommendations": [
       {
         "condition": "underexposed",
@@ -65,7 +65,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces contrast, affecting AR performance significantly.",
+      "explanation": "Underexposed lighting exacerbates AR challenges by increasing noise and difficulty in feature detection.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -91,7 +91,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure reduces visual clarity, complicating AR interactions.",
+      "explanation": "Underexposure reduces image quality, impacting AR performance.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -117,7 +117,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposed lighting exacerbates AR challenges by increasing noise and making feature detection harder.",
+      "explanation": "Yes, this can be mitigated by adjusting exposure to ensure sufficient brightness.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -143,7 +143,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Yes, this is a common challenge in AR applications due to underexposure.",
+      "explanation": "Yes, this can lead to poor performance of AR technology.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -169,7 +169,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Adjust exposure to correct brightness for better image quality.",
+      "explanation": "Underexposed lighting exacerbates AR challenges by increasing noise and making feature detection difficult.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -221,7 +221,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Yes, that's correct. Overexposure can lead to increased noise and reduced feature detection quality, which is detrimental to AR performance.",
+      "explanation": "Underexposure reduces image quality and features detection accuracy.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -247,7 +247,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Yes, this can be a challenge for AR applications.",
+      "explanation": "Underexposure reduces image quality, impacting AR performance.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -273,7 +273,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure can lead to reduced clarity and increased noise in AR applications.",
+      "explanation": "Yes, this is true. Underexposure reduces image quality, leading to reduced detail and increased noise.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],
@@ -299,7 +299,7 @@
       "status": "fail",
       "risk_level": "high",
       "label_correct": true,
-      "explanation": "Underexposure leads to reduced contrast and increased noise, impacting AR performance.",
+      "explanation": "Adjust exposure to increase brightness for better lighting conditions.",
       "triggered_rules": [
         "Underexposed scene (too dark)"
       ],

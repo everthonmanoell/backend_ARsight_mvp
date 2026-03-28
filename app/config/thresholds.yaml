@@ -2,7 +2,7 @@
 # Illumination-only pipeline for Jetson deployment
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 models:
-  default: qwen            # Qwen 0.5B (rápido, 1GB mem)
+  default: qwen             # Qwen 0.5B (rápido, 1GB mem) ou Phi mini (mais lento, 2GB mem): qwen ou phi
   device: cuda             # 'cuda', 'cpu', ou 'auto'
   use_4bit: false          # DESABILITADO: torch 2.0.1 + não instalado bitsandbytes para Jetson Orin
   use_int8: false          # INT8 desabilitado (usar apenas se instalar optimum-quanto)
