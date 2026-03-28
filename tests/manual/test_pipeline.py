@@ -4,10 +4,16 @@ Simula o fluxo real: celular envia 10 frames -> servidor diagnostica em batch ->
 
 Uso:
     python tests/manual/test_pipeline.py
+
+    ou
+
+    com poetry:
+    poetry run python tests/manual/test_pipeline.py
 """
 import json
 import sys
 import time
+import platform
 from datetime import datetime
 from pathlib import Path
 
@@ -18,23 +24,50 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent)) # Ajuste para acess
 from app.config.config import Config
 from app.pipeline.illumination_pipeline import IlluminationPipeline
 
+
+def detect_environment() -> str:
+    """
+    Detecta o ambiente de execução (jetson-nano, jetson-orin, ou desktop-legion)
+    
+    Returns:
+        str: Environment label
+    """
+    machine = platform.machine()
+    
+    if machine == "aarch64":
+        # É um Jetson, agora diferenciamos entre Nano e Orin
+        try:
+            with open("/etc/nv_tegra_release", "r") as f:
+                release_info = f.read()
+                if "R32" in release_info:
+                    return "jetson-nano"
+                elif "R36" in release_info:
+                    return "jetson-orin"
+                else:
+                    return "jetson"
+        except (FileNotFoundError, OSError):
+            return "jetson"
+    else:
+        # Desktop environment
+        return "desktop-legion"
+
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # BANCOS DE IMAGENS POR BATCH - Descomente APENAS UM batch por vez
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Batch 1: 20260315_143220
-BATCH_IMAGES = [
-    ("data/uploads/20260315_143220/frame_00.jpg", "adequate"),
-    ("data/uploads/20260315_143220/frame_01.jpg", "adequate"),
-    ("data/uploads/20260315_143220/frame_02.jpg", "acceptable"),
-    ("data/uploads/20260315_143220/frame_03.jpg", "acceptable"),
-    ("data/uploads/20260315_143220/frame_04.jpg", "acceptable"),
-    ("data/uploads/20260315_143220/frame_05.jpg", "adequate"),
-    ("data/uploads/20260315_143220/frame_06.jpg", "adequate"),
-    ("data/uploads/20260315_143220/frame_07.jpg", "adequate"),
-    ("data/uploads/20260315_143220/frame_08.jpg", "adequate"),
-    ("data/uploads/20260315_143220/frame_09.jpg", "adequate"),
-]
+# BATCH_IMAGES = [
+#     ("data/uploads/20260315_143220/frame_00.jpg", "adequate"),
+#     ("data/uploads/20260315_143220/frame_01.jpg", "adequate"),
+#     ("data/uploads/20260315_143220/frame_02.jpg", "acceptable"),
+#     ("data/uploads/20260315_143220/frame_03.jpg", "acceptable"),
+#     ("data/uploads/20260315_143220/frame_04.jpg", "acceptable"),
+#     ("data/uploads/20260315_143220/frame_05.jpg", "adequate"),
+#     ("data/uploads/20260315_143220/frame_06.jpg", "adequate"),
+#     ("data/uploads/20260315_143220/frame_07.jpg", "adequate"),
+#     ("data/uploads/20260315_143220/frame_08.jpg", "adequate"),
+#     ("data/uploads/20260315_143220/frame_09.jpg", "adequate"),
+# ]
 
 # Batch 2: 20260315_143447 
 # BATCH_IMAGES = [
@@ -79,18 +112,18 @@ BATCH_IMAGES = [
 # ]
 
 # Batch 5: 20260315_175638 
-# BATCH_IMAGES = [
-#     ("data/uploads/20260315_175638/frame_00.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_01.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_02.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_03.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_04.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_05.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_06.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_07.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_08.jpg", "underexposed"),
-#     ("data/uploads/20260315_175638/frame_09.jpg", "underexposed"),
-# ]
+BATCH_IMAGES = [
+    ("data/uploads/20260315_175638/frame_00.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_01.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_02.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_03.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_04.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_05.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_06.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_07.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_08.jpg", "underexposed"),
+    ("data/uploads/20260315_175638/frame_09.jpg", "underexposed"),
+]
 
 # Batch 6: 20260315_180200 
 # BATCH_IMAGES = [
@@ -329,7 +362,7 @@ def main():
     print(f"  Meta < 1s/diagnost. : {'[OK] atingida' if meta_ok else '[!!] nao atingida'}  ({per_diag:.3f}s)")
 
     # Salva JSON
-    env         = config.get("environment", "legion")  # 'jetson' ou 'legion'
+    env         = detect_environment()  # 'jetson-nano', 'jetson-orin', ou 'desktop-legion'
     output_dir  = Path("outputs") / env
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / f"pipeline_test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"

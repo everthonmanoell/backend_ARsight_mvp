@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# requirements-jetson-orin.txt — Jetson Orin (L4T R36 · CUDA 12.6 · Python 3.10)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# NOTA: PyTorch 2.2 já vem na imagem base nvcr.io/nvidia/l4t-pytorch:r36.3.0-pth2.2-py3
+# NÃO especifique torch aqui!
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+# API
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.17
+
+# Utilities
+pyyaml>=6.0
+pillow>=11.0
+numpy>=1.21.0
+scipy>=1.7.0
+
+# Computer Vision (headless para Jetson — sem X11)
+opencv-python-headless>=4.5.0
+
+# LLM (PyTorch 2.2 já instalado na imagem base!)
+# transformers e aceleração (compatível com torch 2.2)
+transformers>=4.31.0
+huggingface-hub>=0.16.0
+accelerate>=0.21.0
+bitsandbytes>=0.41.0
+
+# Requests
+requests>=2.31.0

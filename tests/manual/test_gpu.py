@@ -1,8 +1,18 @@
 """
 GPU Diagnostic Test
 Verifica disponibilidade e configuração de CUDA/GPU
+
 uso: python tests/manual/test_gpu.py
-para ativar ambiente virtual: .venv\Scripts\activate 
+
+para ativar ambiente virtual no Windows: .venv\Scripts\activate
+
+para ativar ambiente virtual no Linux/Mac: 
+# Option 1: Usar Poetry (automático)
+poetry run python tests/manual/test_gpu.py
+
+# Option 2: Se preferir ativar manualmente
+source $(poetry env info --path)/bin/activate
+python tests/manual/test_gpu.py 
 """
 import sys
 from pathlib import Path

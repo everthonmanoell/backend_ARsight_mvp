@@ -7,7 +7,7 @@ import logging
 import time
 from typing import Dict, List
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from app.models.base_model import ARDiagnosticModel
 from app.config.config import Config
@@ -91,32 +91,16 @@ class QwenARModel(ARDiagnosticModel):
         logger.info(f"Loading {self.MODEL_NAME}...")
         
         try:
-            # Configuração de quantização 4-bit
-            if self.use_4bit and self.device == 'cuda':
-                quantization_config = BitsAndBytesConfig(
-                    load_in_4bit=True,   
-                    bnb_4bit_compute_dtype=torch.float16,  
-                    bnb_4bit_quant_type="nf4", 
-                    bnb_4bit_use_double_quant=True,
-                )
-                
-                self.model = AutoModelForCausalLM.from_pretrained( 
-                    self.MODEL_NAME,
-                    quantization_config=quantization_config,
-                    device_map="auto",
-                    trust_remote_code=True, # necessário para modelos com código customizado no Hugging Face, como o Qwen, garantindo que as otimizações específicas do modelo sejam aplicadas corretamente
-                    torch_dtype=torch.float16  
-                )
-                logger.info("Model loaded with 4-bit quantization")
-            else:
-                # CPU ou sem quantização
-                self.model = AutoModelForCausalLM.from_pretrained(
-                    self.MODEL_NAME,
-                    device_map="auto",
-                    trust_remote_code=True,
-                    torch_dtype=torch.float32 if self.device == 'cpu' else torch.float16
-                )
-                logger.info(f"Model loaded on {self.device}")
+            # Jetson Orin: use fp16 sem quantização 4-bit (bitsandbytes foi removido)
+            # torch 2.0.1 é estável em L4T R36 mas não suporta BitsAndBytesConfig
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.MODEL_NAME,
+                device_map="auto",
+                trust_remote_code=True,
+                torch_dtype=torch.float32 if self.device == 'cpu' else torch.float16
+            )
+            logger.info(f"Model loaded on {self.device} (fp16)")
+
 
             # Colocar modelo em modo de inferência (desativa dropout, batch norm em modo treino, etc.)
             self.model.eval()

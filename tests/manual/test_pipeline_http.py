@@ -11,6 +11,7 @@ import argparse
 import json
 import sys
 import time
+import platform
 from datetime import datetime
 from pathlib import Path
 
@@ -23,6 +24,33 @@ parser.add_argument("--port", default=8000, type=int)
 args = parser.parse_args()
 
 BASE_URL = f"http://{args.host}:{args.port}"
+
+
+def detect_environment() -> str:
+    """
+    Detecta o ambiente de execução (jetson-nano, jetson-orin, ou desktop-legion)
+    
+    Returns:
+        str: Environment label
+    """
+    machine = platform.machine()
+    
+    if machine == "aarch64":
+        # É um Jetson, agora diferenciamos entre Nano e Orin
+        try:
+            with open("/etc/nv_tegra_release", "r") as f:
+                release_info = f.read()
+                if "R32" in release_info:
+                    return "jetson-nano"
+                elif "R36" in release_info:
+                    return "jetson-orin"
+                else:
+                    return "jetson"
+        except (FileNotFoundError, OSError):
+            return "jetson"
+    else:
+        # Desktop environment
+        return "desktop-legion"
 
 # ── Imagens (mesmo batch do test_pipeline.py) ─────────────────────────────────
 BATCH_IMAGES = [
@@ -175,8 +203,7 @@ print(f"  Tempo SLM (server)   : {slm_time:.2f}s   ({slm_time/n*1000:.0f}ms/diag
 print(f"  Meta < 1s/diagnóst.  : {'[OK] atingida' if meta_ok else '[!!] não atingida'}  ({slm_time/n:.3f}s)")
 
 # 7. Salva JSON
-from app.config.config import Config as _Config
-env         = _Config().get("environment", "legion")  # 'jetson' ou 'legion'
+env         = detect_environment()  # 'jetson-nano', 'jetson-orin', ou 'desktop-legion'
 output_dir  = Path("outputs") / env
 output_dir.mkdir(parents=True, exist_ok=True)
 output_file = output_dir / f"pipeline_http_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"

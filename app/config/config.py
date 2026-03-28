@@ -7,6 +7,8 @@ import yaml
 import os
 from pathlib import Path
 from typing import Dict, Any
+import torch
+import platform
 
 # classe de configurações, responsável por carregar e fornecer acesso às configurações do sistema, como thresholds do rule engine e parâmetros dos modelos
 class Config:
@@ -110,3 +112,22 @@ class Config:
 
 # Instância global das configurações, pode ser importada e usada em todo o sistema
 config = Config()
+
+# ================================================================================================
+# 🎯 FP16 / Precision Configuration para Jetson Orin
+# ================================================================================================
+
+# Detecta se está em Jetson Orin (aarch64)
+PLATFORM = "jetson" if platform.machine() == "aarch64" else "desktop"
+
+# Lê variável de ambiente (padrão: fp16 em Jetson, fp32 em Desktop)
+PRECISION = os.getenv("MODEL_PRECISION", "fp16" if PLATFORM == "jetson" else "fp32").lower()
+
+# Define torch dtype baseado na precisão
+TORCH_DTYPE = torch.float16 if PRECISION == "fp16" else torch.float32
+
+# Device (GPU ou CPU)
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+# Log para debug
+print(f"🎯 ML Config: Platform={PLATFORM}, Precision={PRECISION.upper()}, Device={DEVICE.upper()}, DType={TORCH_DTYPE}")
