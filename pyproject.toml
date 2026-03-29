@@ -1,23 +1,32 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# pyproject-legion.toml — Configuração para NVIDIA Legion (Desktop com GPU DESKTOP)
+#
+# Ambiente: Linux Legion com GPU NVIDIA (RTX 3080 / 4090 / etc)
+# CUDA: 12.1+
+# Python: 3.10+
+# ─────────────────────────────────────────────────────────────────────────────
+
 [tool.poetry]
 name = "ar-diagnostic-mvp"
 version = "0.1.0"
-description = "AR Scene Illumination Diagnostic MVP - Jetson Optimized"
+description = "AR Scene Illumination Diagnostic MVP - Desktop NVIDIA GPU"
 authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 packages = [{include = "app"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-
 fastapi = "^0.115.0"
-uvicorn = { extras = ["standard"], version = "^0.32.0" }
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
 python-multipart = "^0.0.17"
 pyyaml = "^6.0.2"
 pillow = "^11.0.0"
-numpy = ">=1.26.0,<2.0"
-opencv-python-headless = "4.10.0.84"
-transformers = "^4.30.0"
+numpy = "^2.1.3"
+opencv-python = "^4.10.0.84"
+torch = {version = "^2.5", source = "pytorch-cu121"}
+transformers = "^5.2.0"
 accelerate = "^1.2.1"
+bitsandbytes = "^0.49.2"
 scipy = "^1.14.1"
 requests = "^2.32.5"
 
@@ -25,6 +34,12 @@ requests = "^2.32.5"
 pytest = "^8.3.4"
 pytest-asyncio = "^0.24.0"
 httpx = "^0.28.1"
+
+# ┌─ Fonte oficial do PyTorch para CUDA 12.1 (Desktop) ┐
+[[tool.poetry.source]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+priority = "explicit"
 
 [build-system]
 requires = ["poetry-core"]

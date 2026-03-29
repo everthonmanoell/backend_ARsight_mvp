@@ -3,12 +3,12 @@
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 models:
   default: qwen             # Qwen 0.5B (rápido, 1GB mem) ou Phi mini (mais lento, 2GB mem): qwen ou phi
-  device: cuda             # 'cuda', 'cpu', ou 'auto'
-  use_4bit: false          # DESABILITADO: torch 2.0.1 + não instalado bitsandbytes para Jetson Orin
+  device: cuda              # 'cuda', 'cpu', ou 'auto'
+  use_4bit: true          # Desabilitado para FP16 puro (mais rápido que 4-bit)
   use_int8: false          # INT8 desabilitado (usar apenas se instalar optimum-quanto)
   greedy_decoding: false   # Sampling com temperature/top_p
   prompt_max_length: 512   # Max tokens na entrada
-  warmup_on_startup: false # DESABILITADO: modelo carrega apenas no primeiro diagnóstico
+  warmup_on_startup: true  # Ativado: modelo carrega no startup para requisições rápidas
   
   qwen:
     name: Qwen/Qwen2.5-0.5B-Instruct
