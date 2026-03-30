@@ -15,7 +15,7 @@ from pathlib import Path
 
 # Configuração
 API_URL = "http://localhost:8000/diagnose/batch"
-BATCH_FOLDER = "data/uploads/20260315_143615"  # Altere conforme necessário
+BATCH_FOLDER = "data/uploads/20260315_180200_copy"  # Altere conforme necessário
 
 def test_api():
     """Testa API com um batch de imagens"""

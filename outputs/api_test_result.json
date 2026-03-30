@@ -1,56 +1,51 @@
 {
   "summary": {
     "overall_risk": "high",
-    "dominant_label": "overexposed",
-    "problem_count": 1,
-    "normal_count": 9,
-    "explanation": "The analysis indicates that frame number 1 contains overexposed lighting, which could affect the accuracy and realism of the AR content being created.",
+    "dominant_label": "underexposed",
+    "problem_count": 2,
+    "normal_count": 3,
+    "explanation": "The analysis indicates that two out of five frames contain underexposed lighting, which could affect the accuracy and realism of the AR experience.",
     "recommendations": [
       {
         "condition": "adequate_acceptable",
         "frames": [
           0,
           1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8
+          2
         ],
-        "count": 9,
+        "count": 3,
         "actions": [
           "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
           "Ensure consistent lighting throughout the AR session to preserve quality"
         ]
       },
       {
-        "condition": "overexposed",
+        "condition": "underexposed",
         "frames": [
-          9
+          3,
+          4
         ],
-        "count": 1,
+        "count": 2,
         "actions": [
-          "Avoid pointing camera directly at bright light sources",
-          "Reduce direct lighting or use diffusers to soften harsh light"
+          "Increase ambient lighting or use supplemental light sources",
+          "Position light sources to evenly illuminate the scene"
         ]
       }
     ],
     "metrics_avg": {
-      "mean_brightness": 0.4494,
-      "mean_luma": 114.59,
-      "uniformity": 0.6613,
-      "pct_clipped_bright": 0.0288,
-      "pct_clipped_dark": 0.003
+      "mean_brightness": 0.2956,
+      "mean_luma": 75.38,
+      "uniformity": 0.6004,
+      "pct_clipped_bright": 0.0,
+      "pct_clipped_dark": 0.1677
     },
-    "processing_time_s": 4.311
+    "processing_time_s": 3.713
   },
   "frames": [
     {
       "status": "pass",
       "risk_level": "low",
-      "explanation": "The scene's lighting is sufficient for AR, meeting the required brightness and uniformity standards.",
+      "explanation": "Yes, the brightness and color accuracy are sufficient for AR applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -60,20 +55,20 @@
       "filename": "frame_00.jpg",
       "status_code": 200,
       "metrics": {
-        "illumination_score": 0.7874,
+        "illumination_score": 0.7494,
         "illumination_label": "adequate",
-        "mean_brightness": 0.4487,
-        "mean_luma": 114.42,
-        "std_luma": 59.73,
-        "uniformity": 0.657,
-        "pct_clipped_dark": 0.0016,
-        "pct_clipped_bright": 0.0006
+        "mean_brightness": 0.4209,
+        "mean_luma": 107.32,
+        "std_luma": 58.95,
+        "uniformity": 0.6454,
+        "pct_clipped_dark": 0.0046,
+        "pct_clipped_bright": 0.0
       }
     },
     {
       "status": "pass",
       "risk_level": "low",
-      "explanation": "Yes, the scene meets the lighting requirements for AR applications.",
+      "explanation": "Yes, the brightness and color match are crucial for AR visuals.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -83,20 +78,20 @@
       "filename": "frame_01.jpg",
       "status_code": 200,
       "metrics": {
-        "illumination_score": 0.743,
+        "illumination_score": 0.7472,
         "illumination_label": "adequate",
-        "mean_brightness": 0.4139,
-        "mean_luma": 105.56,
-        "std_luma": 60.14,
-        "uniformity": 0.637,
-        "pct_clipped_dark": 0.0057,
-        "pct_clipped_bright": 0.0008
+        "mean_brightness": 0.4196,
+        "mean_luma": 107.0,
+        "std_luma": 58.74,
+        "uniformity": 0.6456,
+        "pct_clipped_dark": 0.0046,
+        "pct_clipped_bright": 0.0001
       }
     },
     {
       "status": "pass",
       "risk_level": "low",
-      "explanation": "Optimal lighting enables stable AR tracking.",
+      "explanation": "Yes, the appropriate brightness level of 108/255 is sufficient for AR applications.",
       "triggered_rules": [],
       "recommendations": [
         "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
@@ -106,177 +101,64 @@
       "filename": "frame_02.jpg",
       "status_code": 200,
       "metrics": {
-        "illumination_score": 0.7273,
+        "illumination_score": 0.7533,
         "illumination_label": "adequate",
-        "mean_brightness": 0.4055,
-        "mean_luma": 103.4,
-        "std_luma": 58.6,
-        "uniformity": 0.6383,
-        "pct_clipped_dark": 0.0071,
-        "pct_clipped_bright": 0.0013
-      }
-    },
-    {
-      "status": "pass",
-      "risk_level": "low",
-      "explanation": "Strong lighting conditions provide reliable AR tracking.",
-      "triggered_rules": [],
-      "recommendations": [
-        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
-        "Ensure consistent lighting throughout the AR session to preserve quality"
-      ],
-      "frame_index": 3,
-      "filename": "frame_03.jpg",
-      "status_code": 200,
-      "metrics": {
-        "illumination_score": 0.7363,
-        "illumination_label": "adequate",
-        "mean_brightness": 0.4124,
-        "mean_luma": 105.15,
-        "std_luma": 58.84,
-        "uniformity": 0.6412,
-        "pct_clipped_dark": 0.006,
-        "pct_clipped_bright": 0.0029
-      }
-    },
-    {
-      "status": "pass",
-      "risk_level": "low",
-      "explanation": "Adequate illumination ensures consistent AR performance.",
-      "triggered_rules": [],
-      "recommendations": [
-        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
-        "Ensure consistent lighting throughout the AR session to preserve quality"
-      ],
-      "frame_index": 4,
-      "filename": "frame_04.jpg",
-      "status_code": 200,
-      "metrics": {
-        "illumination_score": 0.7719,
-        "illumination_label": "adequate",
-        "mean_brightness": 0.4377,
-        "mean_luma": 111.61,
-        "std_luma": 60.79,
-        "uniformity": 0.6474,
-        "pct_clipped_dark": 0.0034,
-        "pct_clipped_bright": 0.0075
-      }
-    },
-    {
-      "status": "pass",
-      "risk_level": "low",
-      "explanation": "Strong lighting conditions provide reliable AR tracking.",
-      "triggered_rules": [],
-      "recommendations": [
-        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
-        "Ensure consistent lighting throughout the AR session to preserve quality"
-      ],
-      "frame_index": 5,
-      "filename": "frame_05.jpg",
-      "status_code": 200,
-      "metrics": {
-        "illumination_score": 0.7953,
-        "illumination_label": "adequate",
-        "mean_brightness": 0.4635,
-        "mean_luma": 118.19,
-        "std_luma": 61.64,
-        "uniformity": 0.6572,
-        "pct_clipped_dark": 0.0025,
-        "pct_clipped_bright": 0.0275
-      }
-    },
-    {
-      "status": "pass",
-      "risk_level": "low",
-      "explanation": "Adequate illumination ensures consistent AR performance.",
-      "triggered_rules": [],
-      "recommendations": [
-        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
-        "Ensure consistent lighting throughout the AR session to preserve quality"
-      ],
-      "frame_index": 6,
-      "filename": "frame_06.jpg",
-      "status_code": 200,
-      "metrics": {
-        "illumination_score": 0.7627,
-        "illumination_label": "adequate",
-        "mean_brightness": 0.4578,
-        "mean_luma": 116.74,
-        "std_luma": 55.14,
-        "uniformity": 0.6792,
-        "pct_clipped_dark": 0.0016,
-        "pct_clipped_bright": 0.0433
-      }
-    },
-    {
-      "status": "pass",
-      "risk_level": "low",
-      "explanation": "Lighting is sufficient for AR application needs.",
-      "triggered_rules": [],
-      "recommendations": [
-        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
-        "Ensure consistent lighting throughout the AR session to preserve quality"
-      ],
-      "frame_index": 7,
-      "filename": "frame_07.jpg",
-      "status_code": 200,
-      "metrics": {
-        "illumination_score": 0.7657,
-        "illumination_label": "adequate",
-        "mean_brightness": 0.4645,
-        "mean_luma": 118.45,
-        "std_luma": 53.78,
-        "uniformity": 0.6878,
-        "pct_clipped_dark": 0.0009,
-        "pct_clipped_bright": 0.0466
-      }
-    },
-    {
-      "status": "pass",
-      "risk_level": "low",
-      "explanation": "Yes, the brightness of 120/255 is sufficient for providing adequate quality in AR applications.",
-      "triggered_rules": [],
-      "recommendations": [
-        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
-        "Ensure consistent lighting throughout the AR session to preserve quality"
-      ],
-      "frame_index": 8,
-      "filename": "frame_08.jpg",
-      "status_code": 200,
-      "metrics": {
-        "illumination_score": 0.7683,
-        "illumination_label": "adequate",
-        "mean_brightness": 0.4703,
-        "mean_luma": 119.93,
-        "std_luma": 51.81,
-        "uniformity": 0.6983,
-        "pct_clipped_dark": 0.0004,
-        "pct_clipped_bright": 0.0455
+        "mean_brightness": 0.4235,
+        "mean_luma": 107.99,
+        "std_luma": 59.19,
+        "uniformity": 0.646,
+        "pct_clipped_dark": 0.0046,
+        "pct_clipped_bright": 0.0
       }
     },
     {
       "status": "fail",
       "risk_level": "high",
-      "explanation": "Adjust exposure to reduce brightness by 10% or use a color correction tool.",
+      "explanation": "Underexposure reduces image quality, enhancing noise and feature detection difficulties.",
       "triggered_rules": [
-        "Overexposed scene (too bright)"
+        "Underexposed scene (too dark)"
       ],
       "recommendations": [
-        "Reduce direct lighting or use diffusers to soften harsh light",
-        "Avoid pointing camera directly at bright light sources"
+        "Increase ambient lighting or use supplemental light sources",
+        "Position light sources to evenly illuminate the scene"
       ],
-      "frame_index": 9,
+      "frame_index": 3,
+      "filename": "frame_08.jpg",
+      "status_code": 200,
+      "metrics": {
+        "illumination_score": 0.1813,
+        "illumination_label": "underexposed",
+        "mean_brightness": 0.1065,
+        "mean_luma": 27.15,
+        "std_luma": 23.87,
+        "uniformity": 0.5322,
+        "pct_clipped_dark": 0.4135,
+        "pct_clipped_bright": 0.0
+      }
+    },
+    {
+      "status": "fail",
+      "risk_level": "high",
+      "explanation": "Underexposure reduces image quality and features detection accuracy.",
+      "triggered_rules": [
+        "Underexposed scene (too dark)"
+      ],
+      "recommendations": [
+        "Increase ambient lighting or use supplemental light sources",
+        "Position light sources to evenly illuminate the scene"
+      ],
+      "frame_index": 4,
       "filename": "frame_09.jpg",
       "status_code": 200,
       "metrics": {
-        "illumination_score": 0.7831,
-        "illumination_label": "overexposed",
-        "mean_brightness": 0.5194,
-        "mean_luma": 132.45,
-        "std_luma": 65.35,
-        "uniformity": 0.6696,
-        "pct_clipped_dark": 0.0006,
-        "pct_clipped_bright": 0.1123
+        "illumination_score": 0.1832,
+        "illumination_label": "underexposed",
+        "mean_brightness": 0.1076,
+        "mean_luma": 27.45,
+        "std_luma": 24.08,
+        "uniformity": 0.5327,
+        "pct_clipped_dark": 0.411,
+        "pct_clipped_bright": 0.0
       }
     }
   ]

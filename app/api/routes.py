@@ -44,6 +44,100 @@ def get_pipeline() -> IlluminationPipeline:
 
 #----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # método auxiliar para validar e carregar uma imagem a partir do arquivo enviado, garantindo que o formato e tamanho são adequados antes de processar a imagem
+def _process_diagnose_batch_internal(images: List[Image.Image], filenames: List[str]) -> dict:
+    """
+    Função auxiliar para processar diagnóstico de um lote de imagens.
+    Reutilizada por /upload/batch e /diagnose/batch.
+    
+    Args:
+        images: Lista de PIL Images
+        filenames: Lista de nomes de arquivo
+        
+    Returns:
+        {
+            'summary': {...},
+            'frames': [...]
+        }
+    """
+    try:
+        pipeline = get_pipeline()
+        
+        success_frames: list = []
+        error_frames: list = []
+        summary: dict = {}
+        
+        t_start = _time.time()
+        
+        if images:
+            try:
+                # 2. PDI batch
+                pdi_metrics = pipeline.extract_metrics_batch(images)
+                
+                # 3. SLM batch (N+1 prompts: N individuais + 1 summary)
+                diagnoses, summary = pipeline.diagnose_from_metrics_batch_with_summary(pdi_metrics)
+                
+                # Itera sobre resultados
+                for idx, filename, pdi, result in zip(range(len(images)), filenames, pdi_metrics, diagnoses):
+                    result['frame_index'] = idx
+                    result['filename'] = filename
+                    result['status_code'] = 200
+                    result['metrics'] = {
+                        'illumination_score': round(pdi.get('illumination', 0.0), 4),
+                        'illumination_label': pdi.get('illumination_label', 'unknown'),
+                        'mean_brightness': round(pdi.get('mean_luma', 0.0) / 255.0, 4),
+                        'mean_luma': round(pdi.get('mean_luma', 0.0), 2),
+                        'std_luma': round(pdi.get('std_luma', 0.0), 2),
+                        'uniformity': round(pdi.get('uniformity', 0.0), 4),
+                        'pct_clipped_dark': round(pdi.get('pct_clipped_dark', 0.0), 4),
+                        'pct_clipped_bright': round(pdi.get('pct_clipped_bright', 0.0), 4),
+                    }
+                    success_frames.append(result)
+                    
+            except Exception as e:
+                logger.error(f"Batch+summary inference failed, falling back to sequential batch: {e}")
+                
+                try:
+                    fb_metrics = pipeline.extract_metrics_batch(images)
+                    fb_diagnoses, summary = pipeline.diagnose_from_metrics_batch_with_summary(fb_metrics)
+                    for idx, filename, result in zip(range(len(images)), filenames, fb_diagnoses):
+                        result['frame_index'] = idx
+                        result['filename'] = filename
+                        result['status_code'] = 200
+                        success_frames.append(result)
+                except Exception as e2:
+                    logger.error(f"Sequential fallback also failed: {e2}")
+                    for idx, filename in zip(range(len(images)), filenames):
+                        error_frames.append({
+                            'frame_index': idx,
+                            'filename': filename,
+                            'status_code': 500,
+                            'error': str(e2)
+                        })
+                    summary = {
+                        'overall_risk': 'unknown',
+                        'dominant_label': 'unknown',
+                        'problem_count': 0,
+                        'normal_count': 0,
+                        'explanation': 'Summary unavailable due to inference error.',
+                        'recommendations': [],
+                        'metrics_avg': {}
+                    }
+        
+        processing_time_s = round(_time.time() - t_start, 3)
+        summary['processing_time_s'] = processing_time_s
+        
+        all_frames = sorted(success_frames + error_frames, key=lambda f: f.get('frame_index', 0))
+        
+        return {
+            'summary': summary,
+            'frames': all_frames
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in diagnose batch internal: {e}")
+        raise HTTPException(status_code=500, detail=f"Error processing diagnosis: {str(e)}")
+
+
 def _validate_image_file(file: UploadFile) -> Image.Image:
     """
     Valida e carrega a imagem enviada
@@ -205,97 +299,15 @@ async def diagnose_batch(files: List[UploadFile] = File(...)):
                     'error':       str(e)
                 })
 
-        # lista success_frames armazena dicionários com detalhes dos arquivos que foram processados com sucesso
-        success_frames: list = [] 
+        # Extrai imagens e nomes de arquivo dos itens válidos
+        indices = [idx for idx, _, _ in valid_items]
+        filenames = [fn for _, fn, _ in valid_items]
+        images = [img for _, _, img in valid_items]
 
-        # dicionário summary armazena informações agregadas sobre o ambiente geral
-        summary: dict = {} 
+        # Chama a função auxiliar de processamento de diagnóstico
+        diagnosis_result = _process_diagnose_batch_internal(images, filenames)
 
-        t_start = _time.time() # registra o tempo de início do processamento para calcular o tempo total gasto no diagnóstico
-
-        # verifica se há itens válidos para processar; se houver, extrai os índices, nomes dos arquivos e imagens correspondentes para realizar o diagnóstico em batch usando o pipeline
-        if valid_items:
-            indices   = [idx for idx, _, _ in valid_items]
-            filenames = [fn  for _, fn, _ in valid_items]
-            images    = [img for _, _, img in valid_items]
-
-            try:
-                # 2. PDI batch 
-
-                # extrai métricas de para todas as imagens em um único batch, retornando uma lista de dicionários de métricas correspondentes a cada imagem
-                pdi_metrics = pipeline.extract_metrics_batch(images) 
-
-                # 3. SLM batch (N+1 prompts: N individuais + 1 summary)
-
-                # realiza o diagnóstico para todas as imagens em um único batch, retornando uma lista de diagnósticos individuais e um resumo geral do ambiente
-                diagnoses, summary = pipeline.diagnose_from_metrics_batch_with_summary(pdi_metrics) 
-
-                # itera sobre os resultados dos diagnósticos individuais, associando cada diagnóstico ao índice original e nome do arquivo correspondente, 
-                # e adicionando detalhes do diagnóstico e métricas ao dicionário resultante, que é adicionado à lista success_frames
-                for orig_idx, filename, pdi, result in zip(indices, filenames, pdi_metrics, diagnoses):
-                    result['frame_index'] = orig_idx
-                    result['filename']    = filename
-                    result['status_code'] = 200
-                    result['metrics'] = {
-                        'illumination_score': round(pdi.get('illumination', 0.0), 4),
-                        'illumination_label': pdi.get('illumination_label', 'unknown'),
-                        'mean_brightness':    round(pdi.get('mean_luma', 0.0) / 255.0, 4),
-                        'mean_luma':          round(pdi.get('mean_luma', 0.0), 2),
-                        'std_luma':           round(pdi.get('std_luma', 0.0), 2),
-                        'uniformity':         round(pdi.get('uniformity', 0.0), 4),
-                        'pct_clipped_dark':   round(pdi.get('pct_clipped_dark', 0.0), 4),
-                        'pct_clipped_bright': round(pdi.get('pct_clipped_bright', 0.0), 4),
-                    }
-                    success_frames.append(result)
-
-            # se ocorrer qualquer erro durante o processamento em batch (como falha na extração de métricas ou diagnóstico), captura a exceção e registra o erro, 
-            # tentando realizar um fallback para processar cada imagem individualmente
-            except Exception as e: 
-
-                logger.error(f"Batch+summary inference failed, falling back to sequential batch: {e}")
-
-                try:
-                    fb_images  = [img  for _, _, img  in valid_items]
-                    fb_indices = [idx  for idx, _, _  in valid_items]
-                    fb_names   = [name for _, name, _ in valid_items]
-                    fb_metrics = pipeline.extract_metrics_batch(fb_images)
-                    fb_diagnoses, summary = pipeline.diagnose_from_metrics_batch_with_summary(fb_metrics)
-                    for orig_idx, filename, result in zip(fb_indices, fb_names, fb_diagnoses):
-                        result['frame_index'] = orig_idx
-                        result['filename']    = filename
-                        result['status_code'] = 200
-                        success_frames.append(result)
-                except Exception as e2: 
-                    logger.error(f"Sequential fallback also failed: {e2}")
-                    for orig_idx, filename, _ in valid_items:
-                        error_frames.append({
-                            'frame_index': orig_idx,
-                            'filename':    filename,
-                            'status_code': 500,
-                            'error':       str(e2)
-                        })
-                    summary = {
-                        'overall_risk':   'unknown',
-                        'dominant_label': 'unknown',
-                        'problem_count':  0,
-                        'normal_count':   0,
-                        'explanation':    'Summary unavailable due to inference error.',
-                        'recommendations': [],
-                        'metrics_avg':    {}
-                    }
-
-        # calcula o tempo total gasto no processamento do lote, desde a validação das imagens até a geração dos diagnósticos e resumo, 
-        # e adiciona essa informação ao dicionário summary para fornecer contexto sobre a latência da API ao processar o lote de imagens
-        processing_time_s = round(_time.time() - t_start, 3) 
-        summary['processing_time_s'] = processing_time_s
-
-        # Frames ordenados pelo índice original
-        all_frames = sorted(success_frames + error_frames, key=lambda f: f.get('frame_index', 0))
-
-        return {
-            'summary': summary,
-            'frames':  all_frames
-        }
+        return diagnosis_result
 
     except HTTPException:
         raise
