@@ -1,39 +1,39 @@
 #!/bin/bash
-# Setup script for Desktop Legion (x86_64 with RTX)
-# Uses pyproject-legion.toml which includes torch
+# Script de configuração para Desktop Legion (x86_64 com RTX)
+# Usa pyproject-legion.toml que inclui torch
 
 set -e
 
 echo "====================================="
-echo "Desktop Legion Setup"
+echo "Configuração Desktop Legion"
 echo "====================================="
 
-# Step 1: Swap pyproject.toml
+# Etapa 1: Alternar pyproject.toml
 echo ""
-echo "Step 1: Swapping to Legion configuration..."
+echo "Etapa 1: Alternando para configuração Legion..."
 if [ -f "pyproject.toml" ]; then
     mv pyproject.toml pyproject-jetson.toml
 fi
 if [ ! -f "pyproject-legion.toml" ]; then
-    echo "❌ Error: pyproject-legion.toml not found!"
+    echo "❌ Erro: pyproject-legion.toml não encontrado!"
     exit 1
 fi
 mv pyproject-legion.toml pyproject.toml
 
-# Step 2: Rebuild lock file
+# Etapa 2: Reconstruir arquivo lock
 echo ""
-echo "Step 2: Rebuilding poetry.lock for Legion..."
+echo "Etapa 2: Reconstruindo poetry.lock para Legion..."
 rm -f poetry.lock
 poetry lock
 
-# Step 3: Install all dependencies
+# Etapa 3: Instalar todas as dependências
 echo ""
-echo "Step 3: Installing all dependencies (including torch)..."
+echo "Etapa 3: Instalando todas as dependências (incluindo torch)..."
 poetry install
 
-# Step 4: Verify installation
+# Etapa 4: Verificar instalação
 echo ""
-echo "Step 4: Verifying installation..."
+echo "Etapa 4: Verificando instalação..."
 poetry run python3 << 'VERIFY'
 import torch
 import transformers
@@ -44,14 +44,14 @@ print(f"✓ transformers: {transformers.__version__}")
 print(f"✓ accelerate:   {accelerate.__version__}")
 
 if not torch.cuda.is_available():
-    print("⚠️  WARNING: CUDA not available!")
+    print("⚠️  AVISO: CUDA não está disponível!")
     exit(1)
 VERIFY
 
 echo ""
 echo "====================================="
-echo "✅ Setup complete!"
+echo "✅ Configuração concluída!"
 echo "====================================="
 echo ""
-echo "To switch back to Jetson:"
+echo "Para voltar para Jetson:"
 echo "  ./setup_jetson.sh"
