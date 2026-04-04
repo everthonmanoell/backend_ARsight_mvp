@@ -1,61 +1,66 @@
 # Setup Instructions — Configuração por Ambiente
 
-Este projeto é otimizado para três ambientes de deployment distintos:
+**⚠️ ATENÇÃO:** Instruções de setup foram reorganizadas na pasta [setup/](setup/).
 
-| Ambiente | Hardware | JetPack/OS | CUDA | Python | Deployment |
-|----------|----------|-----------|------|--------|------------|
-| Desktop Legion | RTX 3080/4090 | Ubuntu 22.04 | 12.1+ | 3.10+ | Poetry + `pyproject-legion.toml` |
-| Jetson Orin | AGX Orin / Orin NX | JetPack 6.x (L4T R36) | 12.6 | 3.10 | Poetry + `pyproject.toml` (recomendado) |
-| Jetson Nano | Jetson Nano | JetPack 4.6 (L4T R32) | 10.2 | 3.8 | Docker + `docker-compose-nano.yml` |
+Este arquivo agora serve como índice. Consulte os documentos na pasta setup/ para instruções completas e atualizadas.
 
 ---
 
-## Jetson Orin (Recomendado)
+## 🐧 Jetson Orin (Linux / JetPack 6.x)
 
-### 1. Verificar ambiente
+**Documentação completa:** [setup/jetson-orin/README.md](setup/jetson-orin/README.md)
 
-```bash
-# Confirme que tem L4T R36.x e CUDA 12.6
-cat /etc/nv_tegra_release | grep "R36\|REVISION"
-nvidia-smi  # deve mostrar CUDA 12.6+
-python3 --version  # deve ser 3.10+
-```
-
-### 2. Instalação Nativa com Poetry
-
-Ver [JETSON_SETUP.md](JETSON_SETUP.md) para guia rápido completo.
-
-**Passo 1: Instalar dependências**
+**Setup rápido:**
 ```bash
 cd ~/backend_tcc_mvp
-poetry install
-```
-
-**Passo 2: Instalar PyTorch com CUDA (obrigatório)**
-```bash
-poetry run pip install torch==2.8.0 --index-url https://pypi.jetson-ai-lab.io/jp6/cu126
-```
-
-**Passo 3: Validar**
-```bash
-poetry run python -c "import torch; print('torch:', torch.__version__); print('cuda:', torch.cuda.is_available())"
-# Esperado: torch: 2.8.0, cuda: True
-```
-
-**Passo 4: Rodar API**
-```bash
+bash setup/jetson-orin/setup.sh
 poetry run ar-api
 ```
 
-CUDA e FP16 estão ativados automaticamente.
+---
 
-#### Configuração de Precisão (FP16/FP32)
+## 🪟 Desktop Legion (Windows)
 
-O sistema detecta automaticamente a arquitetura do processador e seleciona FP16 para Jetson Orin:
+**Documentação completa:** [setup/legion-windows/README.md](setup/legion-windows/README.md)
 
-```bash
-# Modo padrão (FP16 automático)
+**Setup rápido:**
+```powershell
+cd C:\Users\<seu_usuario>\TCC\backend_tcc_mvp
+.\setup\legion-windows\setup.ps1
 poetry run ar-api
+```
+
+---
+
+## 🔧 Troubleshooting
+
+**Guia de solução de problemas:** [setup/TROUBLESHOOTING.md](setup/TROUBLESHOOTING.md)
+
+---
+
+## 📁 Estrutura de Setup
+
+```
+setup/
+├── README.md                          (índice geral)
+├── TROUBLESHOOTING.md                 (soluções comuns)
+├── jetson-orin/
+│   ├── setup.sh                       (script automático)
+│   └── README.md                      (instruções detalhadas)
+└── legion-windows/
+    ├── setup.ps1                      (script automático)
+    └── README.md                      (instruções detalhadas)
+```
+
+---
+
+## 📚 Documentação Adicional
+
+- [README.md](README.md) - Visão geral do projeto
+- [JETSON_SETUP.md](JETSON_SETUP.md) - Detalhes específicos (legacy)
+- [WINDOWS_CUDA_SETUP.md](WINDOWS_CUDA_SETUP.md) - Guia CUDA para Windows (legacy)
+
+**Última atualização:** Abril 2026
 
 # Modo desenvolvimento com auto-reload
 poetry run uvicorn app.api.main:app --reload --host 0.0.0.0 --port 8000
@@ -82,7 +87,81 @@ curl -X POST http://localhost:8000/diagnose \
 
 ---
 
-## Desktop Legion
+## Desktop Legion (Windows)
+
+### 1. Verificar ambiente
+
+```powershell
+# CUDA 12.1+
+nvidia-smi  # deve mostrar CUDA 12.1+
+python --version  # deve ser 3.10+
+poetry --version  # deve estar instalado
+```
+
+### 2. Instalação com Poetry (Automático)
+
+**Opção A: PowerShell (Recomendado)**
+```powershell
+cd backend_tcc_mvp
+.\setup_legion.ps1
+```
+
+**Opção B: Command Prompt (cmd)**
+```cmd
+cd backend_tcc_mvp
+setup_legion.bat
+```
+
+**Opção C: Manual**
+```powershell
+# Trocar configuração para Legion
+Move-Item pyproject.toml pyproject-jetson.toml -Force
+Move-Item pyproject-legion.toml pyproject.toml -Force
+
+# Reconstruir lock
+Remove-Item poetry.lock -Force
+poetry lock
+
+# Instalar dependências (PyTorch com CUDA 12.1+)
+poetry install
+```
+
+### 3. Validar Instalação
+
+```powershell
+poetry run python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA disponível: {torch.cuda.is_available()}'); print(f'Dispositivo CUDA: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"N/A\"}')"
+# Esperado: cuda: True
+```
+
+### 4. Rodar API
+
+```powershell
+poetry run ar-api
+```
+
+Acesse em: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### 5. Testes e Benchmarks
+
+No desktop é mais rápido fazer testes e ajustes:
+
+```powershell
+# Health check
+curl http://localhost:8000/health
+
+# Rodar testes unitários
+poetry run pytest tests/
+
+# Teste de batch
+poetry run python tests/test_illumination_batch.py
+
+# Benchmark (Jetson vs Legion)
+poetry run python benchmark_jetson_vs_legion.py
+```
+
+---
+
+## Desktop Legion (Linux)
 
 ### 1. Verificar ambiente
 
@@ -90,47 +169,50 @@ curl -X POST http://localhost:8000/diagnose \
 # CUDA 12.1+
 nvidia-smi  # deve mostrar CUDA 12.1+
 python3 --version  # deve ser 3.10+
+poetry --version  # deve estar instalado
 ```
 
-### 2. Instalação com Poetry
+### 2. Instalação com Poetry (Automático)
 
 ```bash
-cd ~/backend_tcc_mvp
-
-# Copiar config de Desktop
-cp pyproject-legion.toml pyproject.toml
-
-# Instalar
-poetry install
+cd backend_tcc_mvp
+bash setup_legion.sh
 ```
 
-PyTorch (com CUDA 12.1+) é instalado automaticamente do PyPI.
+O script `setup_legion.sh` faz:
+- ✅ Troca para pyproject-legion.toml
+- ✅ Reconstrói poetry.lock
+- ✅ Instala dependências (incluindo PyTorch com CUDA)
+- ✅ Valida disponibilidade de CUDA
 
-**Validar:**
+### 3. Validar Instalação
+
 ```bash
-poetry run python -c "import torch; print('cuda:', torch.cuda.is_available())"
-# Esperado: cuda: True
+poetry run python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
+# Esperado: True
 ```
 
-**Rodar:**
+### 4. Rodar API
+
 ```bash
 poetry run ar-api
 ```
 
-### 3. Testar a Instalação
+Acesse em: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-### 4. Desenvolvimento e Testes
-
-No desktop é mais rápido fazer testes e ajustes:
+### 5. Testes e Benchmarks
 
 ```bash
+# Health check
+curl http://localhost:8000/health
+
 # Rodar testes
 poetry run pytest tests/
 
 # Batch illumination test
 poetry run python tests/test_illumination_batch.py
 
-# Benchmark (Jetson vs Legion)
+# Benchmark
 poetry run python benchmark_jetson_vs_legion.py
 ```
 
@@ -216,7 +298,47 @@ poetry run python tests/manual/test_gpu.py
 
 ---
 
+---
+
 ## Troubleshooting
+
+### Windows - CUDA não encontrado
+
+**Solução:**
+```powershell
+# 1. Verifique drivers NVIDIA
+nvidia-smi
+
+# 2. Se nvidia-smi não funciona:
+# - Reinstale drivers da NVIDIA (versão 550+)
+# - Download: https://www.nvidia.com/Download/driverDetails.aspx/
+
+# 3. Reinstale PyTorch com CUDA 12.1
+poetry run pip install --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# 4. Valide novamente
+poetry run python -c "import torch; print(torch.cuda.is_available())"
+```
+
+### Windows - Poetry lock falha
+
+```powershell
+# Limpe cache e tente novamente
+poetry cache clear --all
+Remove-Item poetry.lock -Force
+poetry lock --no-cache --regenerate
+poetry install
+```
+
+### Windows - Scripts não executam (erro de execução)
+
+```powershell
+# Se setup_legion.ps1 não executa:
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Depois tente novamente:
+.\setup_legion.ps1
+```
 
 ### Poetry: `torch` não encontra wheel
 

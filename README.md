@@ -31,98 +31,68 @@ Este backend foi desenvolvido para integrar com um **frontend Flutter mobile**.
 
 ## 🚀 Início Rápido
 
+Escolha seu ambiente:
+
+### 🐧 Jetson Orin (Linux / JetPack 6.x)
+
+```bash
+cd ~/backend_tcc_mvp
+bash setup/jetson-orin/setup.sh
+poetry run ar-api
+```
+
+**Documentação:** [setup/jetson-orin/README.md](setup/jetson-orin/README.md)
+
+### 🪟 Desktop Legion (Windows)
+
+```powershell
+cd C:\Users\<seu_usuario>\TCC\backend_tcc_mvp
+.\setup\legion-windows\setup.ps1
+poetry run ar-api
+```
+
+**Documentação:** [setup/legion-windows/README.md](setup/legion-windows/README.md)
+
+---
+
 ### Pré-requisitos
 
-**Para Jetson Orin:**
+**Jetson Orin:**
 - JetPack 6.0+
-- CUDA 12.1+
+- CUDA 12.6
 - Python 3.10+
 - Poetry
 
-**Para Desktop (Legion/RTX):**
+**Desktop Legion (Windows):**
+- Windows 10/11
+- NVIDIA GPU (RTX 20 series ou mais novo)
+- CUDA 12.1+ drivers
 - Python 3.10+
-- CUDA 12.1+ (para GPU)
 - Poetry
 
-### Instalação e Setup
+---
 
-#### 1️⃣ Jetson Orin
+### 📖 Documentação Completa
 
-```bash
-# Setup inicial (apenas uma vez!)
-bash setup_jetson.sh
+- **Setup e Instalação:** [setup/README.md](setup/README.md)
+- **Troubleshooting:** [setup/TROUBLESHOOTING.md](setup/TROUBLESHOOTING.md)
+- **Instruções Detalhadas:** [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md)
 
-# Depois, toda vez que quiser rodar:
-poetry run ar-api
-```
+"""
+Documentação:** [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md)
 
-**O que `setup_jetson.sh` faz:**
-- ✅ Verifica versões de torch e accelerate
-- ✅ Instala dependências Poetry
-- ✅ Instala torch 2.8.0+cu126 do Jetson AI Lab
-- ✅ Valida disponibilidade de CUDA
-
-#### 2️⃣ Desktop Legion (x86_64 com RTX)
-
-```bash
-# Setup inicial (apenas uma vez!)
-bash setup_legion.sh
-
-# Depois, toda vez que quiser rodar:
-poetry run ar-api
-```
-
-**O que `setup_legion.sh` faz:**
-- ✅ Alterna para configuração Legion
-- ✅ Reconstrói poetry.lock
-- ✅ Instala todas as dependências (incluindo torch)
-- ✅ Valida CUDA
-
-### Acessar a API
-
-**Localmente (localhost):**
-```
-http://localhost:8000
-```
-
-**Via hostname (Jetson):**
-```
-http://farmaciaback.local:8000
-```
-
-**Documentação Interativa (Swagger UI):**
-```
-http://localhost:8000/docs
-```
-
-ou
-
-```
-http://farmaciaback.local:8000/docs
-```
-
-**Para redirecionar porta via SSH (do seu desktop para a Jetson):**
-```bash
-ssh -L 8000:localhost:8000 farmaciaback@farmaciaback.local
-
-# Depois acessa em: http://localhost:8000/docs
-```
+---
 
 ## 🔄 Fluxo de Diagnóstico em Batch (Upload + Processamento)
 
-O novo fluxo separa o upload do diagnóstico em **2 etapas**, permitindo melhor controle e retry automático:
+O fluxo separa o upload do diagnóstico em **2 etapas**, permitindo melhor controle e retry automático:
 
 ### Etapa 1️⃣ : Upload de Imagens
 
-```bash
-# Via localhost
-curl -X POST http://localhost:8000/upload/batch \
-  -F "files=@frame_1.jpg" \
-  -F "files=@frame_2.jpg" \
-  -F "files=@frame_3.jpg"
+Envie até 10 imagens:
 
-# Via Jetson hostname
-curl -X POST http://farmaciaback.local:8000/upload/batch \
+```bash
+curl -X POST http://localhost:8000/upload/batch \
   -F "files=@frame_1.jpg" \
   -F "files=@frame_2.jpg" \
   -F "files=@frame_3.jpg"

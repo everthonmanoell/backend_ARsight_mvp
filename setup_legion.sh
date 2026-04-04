@@ -1,11 +1,16 @@
 #!/bin/bash
-# Script de configuração para Desktop Legion (x86_64 com RTX)
-# Usa pyproject-legion.toml que inclui torch
+# Script de configuração para Desktop Legion (Linux x86_64 com RTX)
+# Usa pyproject-legion.toml que inclui torch com CUDA 12.1+
+#
+# Uso:
+#   bash setup_legion.sh
+#
+# ⚠️  PARA WINDOWS: Use setup_legion.ps1 ou setup_legion.bat em vez disso
 
 set -e
 
 echo "====================================="
-echo "Configuração Desktop Legion"
+echo "Configuração Desktop Legion (Linux)"
 echo "====================================="
 
 # Etapa 1: Alternar pyproject.toml
