@@ -1,0 +1,78 @@
+{
+  "batch_id": "batch_20260331_212047_c7dabe",
+  "created_at": "2026-03-31T21:20:48.026892",
+  "total_files": 10,
+  "files_saved": 10,
+  "results": [
+    {
+      "filename": "frame_0.jpg",
+      "saved_as": "frame_00.jpg",
+      "size_bytes": 80453,
+      "image_size": "720x1280",
+      "status": "success"
+    },
+    {
+      "filename": "frame_1.jpg",
+      "saved_as": "frame_01.jpg",
+      "size_bytes": 81636,
+      "image_size": "720x1280",
+      "status": "success"
+    },
+    {
+      "filename": "frame_2.jpg",
+      "saved_as": "frame_02.jpg",
+      "size_bytes": 80703,
+      "image_size": "720x1280",
+      "status": "success"
+    },
+    {
+      "filename": "frame_3.jpg",
+      "saved_as": "frame_03.jpg",
+      "size_bytes": 78355,
+      "image_size": "720x1280",
+      "status": "success"
+    },
+    {
+      "filename": "frame_4.jpg",
+      "saved_as": "frame_04.jpg",
+      "size_bytes": 75277,
+      "image_size": "720x1280",
+      "status": "success"
+    },
+    {
+      "filename": "frame_5.jpg",
+      "saved_as": "frame_05.jpg",
+      "size_bytes": 79596,
+      "image_size": "720x1280",
+      "status": "success"
+    },
+    {
+      "filename": "frame_6.jpg",
+      "saved_as": "frame_06.jpg",
+      "size_bytes": 78980,
+      "image_size": "720x1280",
+      "status": "success"
+    },
+    {
+      "filename": "frame_7.jpg",
+      "saved_as": "frame_07.jpg",
+      "size_bytes": 79997,
+      "image_size": "720x1280",
+      "status": "success"
+    },
+    {
+      "filename": "frame_8.jpg",
+      "saved_as": "frame_08.jpg",
+      "size_bytes": 78366,
+      "image_size": "720x1280",
+      "status": "success"
+    },
+    {
+      "filename": "frame_9.jpg",
+      "saved_as": "frame_09.jpg",
+      "size_bytes": 78426,
+      "image_size": "720x1280",
+      "status": "success"
+    }
+  ]
+}
