@@ -22,6 +22,23 @@ echo ""
 echo "🚀 Configuração Jetson Orin"
 echo "=============================================="
 
+# Etapa -1: Trocar para configuração Jetson
+echo ""
+echo "-1️⃣ Preparando configuração Jetson..."
+
+if [ -f "pyproject-jetson.toml" ]; then
+    echo "  • Usando pyproject-jetson.toml..."
+    if [ -f "pyproject.toml" ]; then
+        mv pyproject.toml pyproject-legion.toml
+        echo "  • Salvo: pyproject.toml → pyproject-legion.toml"
+    fi
+    cp pyproject-jetson.toml pyproject.toml
+    echo "  • Ativado: pyproject-jetson.toml → pyproject.toml ✓"
+else
+    echo "  ⚠️  pyproject-jetson.toml não encontrado"
+    echo "  • Usando pyproject.toml existente"
+fi
+
 # Função para verificar se o pacote está instalado com a versão correta
 check_package_version() {
     local package=$1
