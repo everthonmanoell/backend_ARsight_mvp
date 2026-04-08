@@ -102,16 +102,21 @@ def load_record(path: Path, env_fallback: str) -> dict[str, Any] | None:
     }
 
 
-def collect_records(jetson_dir: Path, legion_dir: Path) -> list[dict[str, Any]]:
+def collect_records(desktop_legion_dir: Path, jetson_nano_dir: Path, jetson_orin_dir: Path) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
 
-    for path in find_json_files(jetson_dir):
-        record = load_record(path, env_fallback="jetson")
+    for path in find_json_files(desktop_legion_dir):
+        record = load_record(path, env_fallback="desktop-legion")
         if record:
             records.append(record)
 
-    for path in find_json_files(legion_dir):
-        record = load_record(path, env_fallback="legion")
+    for path in find_json_files(jetson_nano_dir):
+        record = load_record(path, env_fallback="jetson-nano")
+        if record:
+            records.append(record)
+
+    for path in find_json_files(jetson_orin_dir):
+        record = load_record(path, env_fallback="jetson-orin")
         if record:
             records.append(record)
 
@@ -181,31 +186,46 @@ def build_speedup(aggregates: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     speedups: list[dict[str, Any]] = []
     for (model, batch), env_rows in sorted(by_model_batch.items()):
-        if "jetson" not in env_rows or "legion" not in env_rows:
+        # Require at least 2 environments for comparison
+        if len(env_rows) < 2:
             continue
 
-        j = env_rows["jetson"]
-        l = env_rows["legion"]
+        base_envs = ["desktop-legion", "jetson-nano", "jetson-orin"]
+        available_envs = [e for e in base_envs if e in env_rows]
+        
+        if len(available_envs) < 2:
+            continue
 
-        j_total = j.get("total_s_mean")
-        l_total = l.get("total_s_mean")
-        j_slm = j.get("slm_per_diag_mean")
-        l_slm = l.get("slm_per_diag_mean")
+        speedup_row: dict[str, Any] = {
+            "model": model,
+            "batch": batch,
+        }
 
-        speedups.append(
-            {
-                "model": model,
-                "batch": batch,
-                "jetson_total_mean_s": j_total,
-                "legion_total_mean_s": l_total,
-                "legion_speedup_total_x": (j_total / l_total) if j_total and l_total else None,
-                "jetson_speedup_total_x": (l_total / j_total) if j_total and l_total else None,
-                "jetson_slm_per_diag_mean_s": j_slm,
-                "legion_slm_per_diag_mean_s": l_slm,
-                "legion_speedup_slm_x": (j_slm / l_slm) if j_slm and l_slm else None,
-                "jetson_speedup_slm_x": (l_slm / j_slm) if j_slm and l_slm else None,
-            }
-        )
+        # Add metrics for each environment
+        for env in available_envs:
+            env_data = env_rows[env]
+            speedup_row[f"{env}_total_mean_s"] = env_data.get("total_s_mean")
+            speedup_row[f"{env}_slm_per_diag_mean_s"] = env_data.get("slm_per_diag_mean")
+
+        # Calculate speedups relative to desktop-legion (baseline)
+        if "desktop-legion" in env_rows:
+            baseline = env_rows["desktop-legion"]
+            baseline_total = baseline.get("total_s_mean")
+            baseline_slm = baseline.get("slm_per_diag_mean")
+
+            for env in available_envs:
+                if env == "desktop-legion":
+                    continue
+                env_data = env_rows[env]
+                env_total = env_data.get("total_s_mean")
+                env_slm = env_data.get("slm_per_diag_mean")
+
+                if baseline_total and env_total:
+                    speedup_row[f"{env}_speedup_vs_legion_total_x"] = baseline_total / env_total
+                if baseline_slm and env_slm:
+                    speedup_row[f"{env}_speedup_vs_legion_slm_x"] = baseline_slm / env_slm
+
+        speedups.append(speedup_row)
 
     return speedups
 
@@ -215,9 +235,15 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         path.write_text("", encoding="utf-8")
         return
 
-    fieldnames = list(rows[0].keys())
+    # Coletar todas as keys possíveis
+    all_keys: set[str] = set()
+    for row in rows:
+        all_keys.update(row.keys())
+    
+    fieldnames = sorted(list(all_keys))
+    
     with path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, restval="")
         writer.writeheader()
         for row in rows:
             writer.writerow(row)
@@ -233,7 +259,7 @@ def fmt(value: Any, digits: int = 3) -> str:
 
 def write_markdown(path: Path, summary_rows: list[dict[str, Any]], speedup_rows: list[dict[str, Any]]) -> None:
     lines: list[str] = []
-    lines.append("# Benchmark Jetson vs Legion")
+    lines.append("# Benchmark de Performance - Desktop Legion vs Jetson Nano vs Jetson Orin")
     lines.append("")
     lines.append(f"Gerado em: {datetime.now().isoformat(timespec='seconds')}")
     lines.append("")
@@ -263,24 +289,29 @@ def write_markdown(path: Path, summary_rows: list[dict[str, Any]], speedup_rows:
         )
 
     lines.append("")
-    lines.append("## Speedup (Legion vs Jetson)")
+    lines.append("## Speedup vs Desktop Legion")
     lines.append("")
-    lines.append("| model | batch | legion_speedup_total_x | legion_speedup_slm_x |")
-    lines.append("|---|---:|---:|---:|")
+    
+    if speedup_rows:
+        # Build dynamic headers based on what's in the first row
+        first_row = speedup_rows[0]
+        header_parts = ["model", "batch"]
+        for key in sorted(first_row.keys()):
+            if key not in ["model", "batch"] and "speedup" in key:
+                header_parts.append(key)
+        
+        separator = "|" + "|".join(["---"] * len(header_parts)) + "|"
+        header = "|" + "|".join(header_parts) + "|"
+        
+        lines.append(header)
+        lines.append(separator)
 
-    for row in speedup_rows:
-        lines.append(
-            "| "
-            + " | ".join(
-                [
-                    str(row.get("model", "")),
-                    str(row.get("batch", "")),
-                    fmt(row.get("legion_speedup_total_x")),
-                    fmt(row.get("legion_speedup_slm_x")),
-                ]
-            )
-            + " |"
-        )
+        for row in speedup_rows:
+            row_parts = [str(row.get("model", "")), str(row.get("batch", ""))]
+            for key in sorted(first_row.keys()):
+                if key not in ["model", "batch"] and "speedup" in key:
+                    row_parts.append(fmt(row.get(key)))
+            lines.append("|" + "|".join(row_parts) + "|")
 
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -294,16 +325,24 @@ def try_generate_plots(records: list[dict[str, Any]], aggregates: list[dict[str,
     plots_dir = out_dir / "plots"
     plots_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1) Boxplot de latencia total por ambiente
-    jetson_total = [r["total_s"] for r in records if r["environment"] == "jetson" and isinstance(r.get("total_s"), float)]
-    legion_total = [r["total_s"] for r in records if r["environment"] == "legion" and isinstance(r.get("total_s"), float)]
+    # 1) Boxplot de latencia total por ambiente (3 ambientes)
+    environments = ["desktop-legion", "jetson-nano", "jetson-orin"]
+    env_data: dict[str, list[float]] = {}
+    
+    for env in environments:
+        env_totals = [r["total_s"] for r in records if r["environment"] == env and isinstance(r.get("total_s"), float)]
+        if env_totals:
+            env_data[env] = env_totals
 
-    if jetson_total and legion_total:
-        plt.figure(figsize=(9, 5))
-        plt.boxplot([jetson_total, legion_total], tick_labels=["jetson", "legion"], patch_artist=True)
+    if len(env_data) >= 2:
+        plt.figure(figsize=(10, 5))
+        data_to_plot = [env_data[env] for env in environments if env in env_data]
+        labels = [env for env in environments if env in env_data]
+        plt.boxplot(data_to_plot, tick_labels=labels, patch_artist=True)
         plt.title("Latencia total por ambiente")
         plt.ylabel("total_s")
         plt.grid(axis="y", linestyle="--", alpha=0.4)
+        plt.xticks(rotation=15)
         plt.tight_layout()
         plt.savefig(plots_dir / "boxplot_total_s_by_environment.png", dpi=160)
         plt.close()
@@ -314,11 +353,20 @@ def try_generate_plots(records: list[dict[str, Any]], aggregates: list[dict[str,
         labels = [f"{r['environment']}:{r['model']}:{r['batch']}" for r in bar_rows]
         values = [r["slm_per_diag_mean"] for r in bar_rows]
 
-        plt.figure(figsize=(max(10, len(labels) * 0.45), 5))
-        plt.bar(range(len(labels)), values)
+        plt.figure(figsize=(max(12, len(labels) * 0.5), 5))
+        colors = []
+        for label in labels:
+            if "desktop-legion" in label:
+                colors.append("#1f77b4")  # blue
+            elif "jetson-nano" in label:
+                colors.append("#ff7f0e")  # orange
+            else:
+                colors.append("#2ca02c")  # green
+        
+        plt.bar(range(len(labels)), values, color=colors)
         plt.xticks(range(len(labels)), labels, rotation=75, ha="right")
         plt.ylabel("slm_per_diagnosis_s (media)")
-        plt.title("SLM medio por diagnostico")
+        plt.title("SLM medio por diagnostico por ambiente/modelo")
         plt.grid(axis="y", linestyle="--", alpha=0.4)
         plt.tight_layout()
         plt.savefig(plots_dir / "bar_slm_per_diag_mean.png", dpi=160)
@@ -338,7 +386,7 @@ def try_generate_plots(records: list[dict[str, Any]], aggregates: list[dict[str,
             series[key].append((batch_n, row["total_s_mean"]))
 
         if series:
-            plt.figure(figsize=(9, 5))
+            plt.figure(figsize=(10, 6))
             for key, points in sorted(series.items()):
                 points = sorted(points, key=lambda x: x[0])
                 xs = [p[0] for p in points]
@@ -348,35 +396,46 @@ def try_generate_plots(records: list[dict[str, Any]], aggregates: list[dict[str,
             plt.ylabel("total_s_mean")
             plt.title("Tendencia de latencia total media por batch")
             plt.grid(True, linestyle="--", alpha=0.4)
-            plt.legend()
+            plt.legend(fontsize=9)
             plt.tight_layout()
             plt.savefig(plots_dir / "line_total_s_mean_by_batch.png", dpi=160)
             plt.close()
 
-    # 4) Speedup legion vs jetson
-    speed_rows = [r for r in speedups if isinstance(r.get("legion_speedup_total_x"), float)]
-    if speed_rows:
-        labels = [f"{r['model']}:{r['batch']}" for r in speed_rows]
-        values = [r["legion_speedup_total_x"] for r in speed_rows]
+    # 4) Speedup bars (dinâmico baseado no que está nos dados)
+    if speedups:
+        speed_rows = [r for r in speedups if any(isinstance(r.get(k), float) for k in r.keys() if "speedup" in k)]
+        if speed_rows:
+            # Pega o primeiro speedup para saber qual é a métrica
+            first_speedup_col = None
+            for k in speed_rows[0].keys():
+                if "speedup" in k and "total" in k:
+                    first_speedup_col = k
+                    break
+            
+            if first_speedup_col:
+                labels = [f"{r['model']}:{r['batch']}" for r in speed_rows]
+                values = [r.get(first_speedup_col) for r in speed_rows]
+                values = [v if isinstance(v, float) else 0 for v in values]
 
-        plt.figure(figsize=(max(9, len(labels) * 0.5), 5))
-        plt.bar(range(len(labels)), values)
-        plt.axhline(1.0, color="red", linestyle="--", linewidth=1)
-        plt.xticks(range(len(labels)), labels, rotation=60, ha="right")
-        plt.ylabel("speedup x (jetson/legion)")
-        plt.title("Speedup Legion vs Jetson (total_s_mean)")
-        plt.grid(axis="y", linestyle="--", alpha=0.4)
-        plt.tight_layout()
-        plt.savefig(plots_dir / "bar_legion_speedup_total.png", dpi=160)
-        plt.close()
+                plt.figure(figsize=(max(10, len(labels) * 0.5), 5))
+                plt.bar(range(len(labels)), values, color="#2ca02c")
+                plt.axhline(1.0, color="red", linestyle="--", linewidth=1)
+                plt.xticks(range(len(labels)), labels, rotation=60, ha="right")
+                plt.ylabel("speedup x (lower is faster)")
+                plt.title("Speedup vs Desktop Legion (total_s_mean)")
+                plt.grid(axis="y", linestyle="--", alpha=0.4)
+                plt.tight_layout()
+                plt.savefig(plots_dir / "bar_speedup_vs_legion.png", dpi=160)
+                plt.close()
 
     return "ok"
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Benchmark comparativo entre outputs Jetson e Legion")
-    parser.add_argument("--jetson-dir", default="outputs/jetson", help="Diretorio raiz dos JSONs da Jetson")
-    parser.add_argument("--legion-dir", default="outputs/legion", help="Diretorio raiz dos JSONs da Legion")
+    parser = argparse.ArgumentParser(description="Benchmark comparativo entre Desktop Legion, Jetson Nano e Jetson Orin")
+    parser.add_argument("--desktop-legion-dir", default="outputs/desktop-legion", help="Diretorio raiz dos JSONs da Desktop Legion")
+    parser.add_argument("--jetson-nano-dir", default="outputs/jetson-nano", help="Diretorio raiz dos JSONs da Jetson Nano")
+    parser.add_argument("--jetson-orin-dir", default="outputs/jetson-orin", help="Diretorio raiz dos JSONs da Jetson Orin")
     parser.add_argument("--out-dir", default="outputs/benchmark_comparison", help="Diretorio de saida")
     parser.add_argument("--no-plots", action="store_true", help="Nao gerar graficos")
     return parser.parse_args()
@@ -387,7 +446,11 @@ def main() -> None:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    records = collect_records(Path(args.jetson_dir), Path(args.legion_dir))
+    records = collect_records(
+        Path(args.desktop_legion_dir),
+        Path(args.jetson_nano_dir),
+        Path(args.jetson_orin_dir)
+    )
     if not records:
         print("Nenhum arquivo de benchmark encontrado.")
         return
@@ -397,7 +460,7 @@ def main() -> None:
 
     write_csv(out_dir / "runs_raw.csv", records)
     write_csv(out_dir / "summary_by_env_model_batch.csv", aggregates)
-    write_csv(out_dir / "speedup_legion_vs_jetson.csv", speedups)
+    write_csv(out_dir / "speedup_vs_desktop_legion.csv", speedups)
     write_markdown(out_dir / "benchmark_report.md", aggregates, speedups)
 
     plot_status = "skipped"
@@ -406,7 +469,7 @@ def main() -> None:
 
     print(f"Total de execucoes lidas: {len(records)}")
     print(f"Resumo agregado: {len(aggregates)} grupos")
-    print(f"Speedups comparaveis: {len(speedups)}")
+    print(f"Comparacoes geradas: {len(speedups)}")
     print(f"Saida em: {out_dir}")
     print(f"Plots: {plot_status}")
 
