@@ -4,7 +4,7 @@ services:
   ar-diagnostic-mvp:
     build:
       context: .
-      dockerfile: docker/Dockerfile.jetson
+      dockerfile: docker/Dockerfile.jetson-nano
     container_name: ar-diagnostic-mvp
     ports:
       - "8000:8000"
@@ -18,8 +18,11 @@ services:
       - PYTHONUNBUFFERED=1
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      - AR_CONFIG_FILE=/app/app/config/thresholds.jetson.yaml # injeta config Jetson automaticamente
-    # JetPack 4.6.x (L4T R32.7.x) usa nvidia-container-runtime
-    # "runtime: nvidia" é a forma correta para JetPack 4.6 / Docker < 19.03
+      - AR_CONFIG_FILE=/app/app/config/thresholds.jetson.yaml
     runtime: nvidia
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 2G
