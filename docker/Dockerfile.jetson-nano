@@ -20,8 +20,22 @@ WORKDIR /app
 COPY requirements-jetson-nano.txt .
 COPY setup_jetson_nano.sh .
 
-# Instalar build tools antes de pip
-RUN python3 -m pip install --upgrade pip setuptools setuptools_rust wheel
+# Instalar build tools ANTES de pip (necessário para compilar tokenizers)
+# Remover repositórios problemáticos antes de apt-get update
+RUN rm -f /etc/apt/sources.list.d/*.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    rustc \
+    cargo && \
+    rm -rf /var/lib/apt/lists/*
+
+# Verificar que Rust está instalado
+RUN rustc --version && cargo --version
+
+# Atualizar pip e instalar wheel
+RUN python3 -m pip install --upgrade pip wheel
 
 # Instalar dependências com versões específicas testadas para Nano
 RUN python3 -m pip install --no-cache-dir -r requirements-jetson-nano.txt
