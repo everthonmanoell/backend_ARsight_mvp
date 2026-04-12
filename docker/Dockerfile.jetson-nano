@@ -20,25 +20,13 @@ WORKDIR /app
 COPY requirements-jetson-nano.txt .
 COPY setup_jetson_nano.sh .
 
-# Instalar build tools ANTES de pip (necessário para compilar tokenizers)
-# Remover repositórios problemáticos antes de apt-get update
-RUN rm -f /etc/apt/sources.list.d/*.list && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
-    rustc \
-    cargo && \
-    rm -rf /var/lib/apt/lists/*
-
-# Verificar que Rust está instalado
-RUN rustc --version && cargo --version
-
-# Atualizar pip e instalar wheel
+# Atualizar pip (ANTES de instalar dependências)
 RUN python3 -m pip install --upgrade pip wheel
 
-# Instalar dependências com versões específicas testadas para Nano
-RUN python3 -m pip install --no-cache-dir -r requirements-jetson-nano.txt
+# Instalar dependências com --only-binary (usar pré-compilados, sem compilar Rust)
+# Isso evita compilar tokenizers que é MUITO lento em Jetson Nano
+RUN python3 -m pip install --no-cache-dir --only-binary :all: -r requirements-jetson-nano.txt || \
+    python3 -m pip install --no-cache-dir -r requirements-jetson-nano.txt
 
 # Verificar que CUDA está disponível (falhar build se não estiver)
 RUN python3 -c "\
