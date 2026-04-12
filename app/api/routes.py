@@ -380,49 +380,51 @@ def _process_diagnose_batch_internal(images: List[Image.Image], filenames: List[
 
 def _validate_image_file(file: UploadFile) -> Image.Image:
     """
-    Valida e carrega a imagem enviada
-    
-    Args:
-        file: arquivo enviado (UploadFile)
-    
-    Returns:
-        PIL Image
-        
-    Raises:
-        HTTPException: se o arquivo for inválido
+    Valida e carrega a imagem enviada.
+    Mais tolerante com EXIF/metadados problemáticos.
     """
     config = Config()
-    allowed_formats: list = config.get('api.allowed_formats', ['jpg', 'jpeg', 'png', 'bmp'])
-    max_size: int         = config.get('api.max_image_size', 10 * 1024 * 1024)
+    allowed_formats: list = config.get("api.allowed_formats", ["jpg", "jpeg", "png", "bmp"])
+    max_size: int = config.get("api.max_image_size", 10 * 1024 * 1024)
 
-    # Checar se o formato do arquivo é permitido (baseado na extensão)
-    # se não for, lança uma exceção HTTP 400 indicando que o formato é inválido
-    file_ext = file.filename.split('.')[-1].lower()
+    file_ext = file.filename.split(".")[-1].lower()
     if file_ext not in allowed_formats:
         raise HTTPException(
-            status_code=400, 
+            status_code=400,
             detail=f"Invalid file format. Allowed: {', '.join(allowed_formats)}"
         )
-    
-    # Ler e validar o conteúdo do arquivo, tentando abrir como imagem usando PIL; 
-    # se falhar, lança uma exceção HTTP 400 indicando que o arquivo é inválido
+
     try:
         contents = file.file.read()
-        image = Image.open(io.BytesIO(contents))
-        
-        # Aplica rotação EXIF para corrigir a orientação da imagem conforme metadados da câmera
-        image = ImageOps.exif_transpose(image)
-        
+
         if len(contents) > max_size:
             raise HTTPException(
                 status_code=400,
                 detail=f"File too large. Max size: {max_size / 1024 / 1024:.0f}MB"
             )
-        
-        return image
 
-    # Em caso de qualquer erro durante a leitura ou validação da imagem, captura a exceção 
-    # e lança uma HTTPException com status 400 e detalhes do erro   
+        image = Image.open(io.BytesIO(contents))
+
+        # Força leitura real da imagem para detectar corrupção cedo
+        image.load()
+
+        # EXIF pode quebrar em alguns arquivos na Nano/Pillow antigo.
+        # Tenta rotacionar corretamente; se falhar, segue sem EXIF.
+        try:
+            image = ImageOps.exif_transpose(image)
+        except Exception as exif_err:
+            logger.warning(f"EXIF transpose failed for {file.filename}: {exif_err}")
+
+        # Normaliza modo para evitar problemas ao salvar/processar depois
+        if image.mode not in ("RGB", "L"):
+            image = image.convert("RGB")
+        elif image.mode == "L":
+            image = image.convert("RGB")
+
+        return image.copy()
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
     finally:
@@ -557,8 +559,17 @@ async def diagnose_batch_start(batch_id: str):
                 try:
                     frame_path = os.path.join(batch_dir, frame_file)
                     img = Image.open(frame_path)
-                    img = ImageOps.exif_transpose(img)  # Aplica rotação EXIF
-                    saved_images.append(img)
+                    img.load()
+
+                    try:
+                        img = ImageOps.exif_transpose(img)
+                    except Exception as exif_err:
+                        logger.warning(f"EXIF transpose failed for saved image {frame_file}: {exif_err}")
+
+                    if img.mode != "RGB":
+                        img = img.convert("RGB")
+
+                    saved_images.append(img.copy())
                     saved_filenames.append(frame_file)
                 except Exception as e:
                     logger.error(f"Failed to load image {frame_file}: {e}")
