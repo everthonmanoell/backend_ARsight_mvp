@@ -1,42 +1,29 @@
-# Requirements para Jetson Nano - JetPack 4.6.x (CUDA 10.2, Python 3.8)
-#
-# DIFERENCAS em relacao a requirements.txt (desktop):
-#
-#  torch          - instalado via wheel oficial NVIDIA no Dockerfile.jetson
-#                   (wheel CUDA 10.2 / aarch64 nao esta no PyPI)
-#
-#  bitsandbytes   - NAO suportado no Jetson Nano
-#                   Quantizacao 4-bit requer GPU compute >= 7.5 (Turing+)
-#                   Jetson Nano tem Maxwell (compute 5.3)
-#
-#  numpy          - 2.x requer Python 3.9+; usar 1.x aqui
-#
-#  pillow         - 11.x requer Python 3.9+; usar 10.x aqui
-#
-#  scipy          - 1.11+ requer Python 3.9+; usar 1.10.x aqui
-#
-
 # API
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
 python-multipart==0.0.17
 
-# Utilitários
+# Utilities
 pyyaml==6.0.2
 pillow==10.4.0
 numpy==1.24.4
 scipy==1.10.1
 
-# Visão computacional (wheel aarch64 disponível no PyPI a partir da 4.5)
+# Computer Vision
 opencv-python-headless==4.8.1.78
 
-# LLM — torch instalado via wheel NVIDIA no Dockerfile
+# LLM - torch installed via NVIDIA wheel in Dockerfile
 transformers==4.46.3
 huggingface-hub==0.26.2
 accelerate==0.27.2
-# bitsandbytes: OMITIDO (incompatível com compute 5.3 do Jetson Nano)
 
-# Quantização INT8 via optimum-quanto: pure PyTorch, sem restrição de compute CUDA
-# Compatível com Jetson Nano (Maxwell/compute 5.3)
-# Alternativa ao bitsandbytes para ambientes sem suporte a INT4 nativo
+# INT8 Quantization via optimum-quanto: pure PyTorch
 optimum[quanto]
+
+# Logging and monitoring
+python-json-logger==2.0.7
+
+# Utilities
+python-dotenv==1.0.1
+requests==2.32.3
+
