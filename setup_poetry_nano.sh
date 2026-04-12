@@ -9,6 +9,10 @@
 
 set -e
 
+# 🔧 FIX para Jetson Nano: OpenBLAS em ARMv8
+# Sem isso, numpy/cv2/torch falham com "Illegal instruction"
+export OPENBLAS_CORETYPE=ARMV8
+
 echo ""
 echo "🚀 Poetry Setup para Jetson Nano (L4T R32.7 - JetPack 4.6)"
 echo "=============================================="
