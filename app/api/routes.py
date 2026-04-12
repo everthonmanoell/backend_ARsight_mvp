@@ -46,7 +46,7 @@ def _get_environment() -> str:
     try:
         config = Config()
         env_from_yaml = config.get('environment', None)
-        if env_from_yaml and env_from_yaml.lower() != 'unknown':
+        if env_from_yaml and env_from_yaml.lower() not in ['unknown', 'auto']:
             if env_from_yaml.lower() == 'jetson':
                 # Se é "jetson" no YAML, detectar qual tipo
                 return _detect_jetson_type()

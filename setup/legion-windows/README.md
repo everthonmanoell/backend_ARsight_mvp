@@ -65,7 +65,7 @@ cd C:\Users\<seu_usuario>\TCC\backend_tcc_mvp
 **O que o script faz:**
 
 1. ✅ Verifica pré-requisitos (Python, Poetry, nvidia-smi)
-2. ✅ Alterna para `pyproject-legion.toml`
+2. ✅ Copia `pyproject-legion.toml` → `pyproject.toml` (sem renomear original)
 3. ✅ Reconstrói `poetry.lock`
 4. ✅ Instala todas as dependências (PyTorch com CUDA 12.1+)
 5. ✅ Valida disponibilidade de CUDA
@@ -94,13 +94,10 @@ Este comando permite que você execute scripts locais no PowerShell sem afetar a
 
 Se preferir fazer manualmente:
 
-### Passo 1: Alternar para config Legion
+### Passo 1: Copiar config Legion
 ```powershell
-# Se existe arquivo de Jetson
-if (Test-Path "pyproject.toml") { Move-Item "pyproject.toml" "pyproject-jetson.toml" -Force }
-
-# Ativar config Legion
-Move-Item "pyproject-legion.toml" "pyproject.toml" -Force
+# Copiar pyproject-legion.toml para usar como active
+Copy-Item "pyproject-legion.toml" "pyproject.toml" -Force
 ```
 
 ### Passo 2: Instalar
@@ -315,14 +312,24 @@ A: Use drivers NVIDIA 550+. CUDA Toolkit é opcional. Se instalar, use 12.1.
 **P: Posso usar GPU AMD ou Intel Arc?**
 A: Não, este projeto usa CUDA (NVIDIA only).
 
-**P: Como voltar para Jetson?**
-A: `pyproject.toml` é versionada:
+**P: Como alternar entre Legion, Jetson e Nano?**
+A: Copie o arquivo de configuração desejado:
 ```powershell
-Move-Item pyproject.toml pyproject-legion.toml -Force
-Move-Item pyproject-jetson.toml pyproject.toml -Force
+# Para Legion
+Copy-Item pyproject-legion.toml pyproject.toml -Force
+
+# Para Jetson Orin
+Copy-Item pyproject-jetson.toml pyproject.toml -Force
+
+# Para Jetson Nano
+Copy-Item pyproject-jetson-nano.toml pyproject.toml -Force
+
+# Depois, reconstrua e reinstale
 poetry lock --no-cache --regenerate
 poetry install
 ```
+
+⚠️ **Nota:** Os arquivos `pyproject-*.toml` originais nunca são modificados, apenas copiado para `pyproject.toml`.
 
 **P: Quanto de VRAM preciso?**
 A: 

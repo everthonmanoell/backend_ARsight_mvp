@@ -1,4 +1,4 @@
-# Script de configuração para Desktop Legion (Windows - x86_64 com RTX)
+# Script de configuracao automática para Desktop Legion (Windows - x86_64 com RTX)
 # Usa pyproject-legion.toml que inclui torch com CUDA 12.1+
 # 
 # COMO EXECUTAR:
@@ -8,7 +8,7 @@
 #   Ou de fora (da raiz do projeto):
 #     .\setup\legion-windows\setup.ps1
 #
-# ⚠️  IMPORTANTE: Use .\ antes do nome (required by PowerShell security policy)
+# IMPORTANTE: Use .\ antes do nome (required by PowerShell security policy)
 #     Se receber erro "is not recognized", execute:
 #     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 #
@@ -17,111 +17,111 @@
 # Parar em qualquer erro
 $ErrorActionPreference = "Stop"
 
+# Navegar para raiz do projeto
+$projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+Set-Location $projectRoot
+
 Write-Host "=====================================" -ForegroundColor Cyan
-Write-Host "Configuração Desktop Legion (Windows)" -ForegroundColor Cyan
+Write-Host "Configuracao Desktop Legion (Windows)" -ForegroundColor Cyan
 Write-Host "=====================================" -ForegroundColor Cyan
+Write-Host "Diretorio: $projectRoot" -ForegroundColor Gray
 Write-Host ""
 
 # Etapa 0: Verificar pré-requisitos
-Write-Host "0️⃣  Verificando pré-requisitos..." -ForegroundColor Yellow
+Write-Host "0 - Verificando pre-requisitos..." -ForegroundColor Yellow
 Write-Host ""
 
 try {
     $pythonVersion = python --version 2>&1
-    Write-Host "  ✓ Python: $pythonVersion"
+    Write-Host "  OK Python: $pythonVersion"
 }
 catch {
-    Write-Host "  ❌ Python não encontrado. Instale Python 3.10+" -ForegroundColor Red
+    Write-Host "  ERRO Python nao encontrado. Instale Python 3.10+" -ForegroundColor Red
     exit 1
 }
 
 try {
     $poetryVersion = poetry --version 2>&1
-    Write-Host "  ✓ Poetry: $poetryVersion"
+    Write-Host "  OK Poetry: $poetryVersion"
 }
 catch {
-    Write-Host "  ❌ Poetry não encontrado. Instale com: pip install poetry" -ForegroundColor Red
+    Write-Host "  ERRO Poetry nao encontrado. Instale com: pip install poetry" -ForegroundColor Red
     exit 1
 }
 
 try {
     $nvidiaCheck = nvidia-smi 2>&1
-    Write-Host "  ✓ NVIDIA Driver: disponível"
+    Write-Host "  OK NVIDIA Driver: disponivel"
 }
 catch {
-    Write-Host "  ⚠️  nvidia-smi não encontrado. Verifique drivers NVIDIA" -ForegroundColor Yellow
+    Write-Host "  AVISO nvidia-smi nao encontrado. Verifique drivers NVIDIA" -ForegroundColor Yellow
 }
 
-# Etapa 1: Alternar pyproject.toml
+# Etapa 1: Copiar configuracao Legion
 Write-Host ""
-Write-Host "1️⃣  Alternando para configuração Legion..." -ForegroundColor Yellow
-if (Test-Path "pyproject.toml") {
-    Move-Item "pyproject.toml" "pyproject-jetson.toml" -Force | Out-Null
-    Write-Host "  ✓ Salvou pyproject.toml como pyproject-jetson.toml"
-}
+Write-Host "1 - Copiando configuracao Legion..." -ForegroundColor Yellow
 
 if (-not (Test-Path "pyproject-legion.toml")) {
-    Write-Host "  ❌ Erro: pyproject-legion.toml não encontrado!" -ForegroundColor Red
+    Write-Host "  ERRO pyproject-legion.toml nao encontrado!" -ForegroundColor Red
     exit 1
 }
 
-Move-Item "pyproject-legion.toml" "pyproject.toml" -Force | Out-Null
-Write-Host "  ✓ Ativado pyproject-legion.toml"
+Copy-Item "pyproject-legion.toml" "pyproject.toml" -Force | Out-Null
+Write-Host "  OK Copiado pyproject-legion.toml para pyproject.toml"
+Write-Host "  INFO Arquivo original preservado (sem renomeacao)"
 
 # Etapa 2: Reconstruir arquivo lock
 Write-Host ""
-Write-Host "2️⃣  Reconstruindo poetry.lock para Legion..." -ForegroundColor Yellow
+Write-Host "2 - Reconstruindo poetry.lock para Legion..." -ForegroundColor Yellow
 if (Test-Path "poetry.lock") {
     Remove-Item "poetry.lock" -Force
-    Write-Host "  ✓ Removido poetry.lock anterior"
+    Write-Host "  OK Removido poetry.lock anterior"
 }
 
 Write-Host "  Rodando poetry lock... (pode levar alguns minutos)" -ForegroundColor Gray
 poetry lock
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  ❌ Erro ao executar poetry lock" -ForegroundColor Red
+    Write-Host "  ERRO ao executar poetry lock" -ForegroundColor Red
     exit 1
 }
-Write-Host "  ✓ poetry.lock criado"
+Write-Host "  OK poetry.lock criado"
 
-# Etapa 3: Instalar todas as dependências
+# Etapa 3: Instalar todas as dependencias
 Write-Host ""
-Write-Host "3️⃣  Instalando dependências (incluindo torch com CUDA 12.1+)..." -ForegroundColor Yellow
+Write-Host "3 - Instalando dependencias (incluindo torch com CUDA 12.1+)..." -ForegroundColor Yellow
 Write-Host "  Rodando poetry install... (pode levar alguns minutos)" -ForegroundColor Gray
 poetry install
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  ❌ Erro ao executar poetry install" -ForegroundColor Red
+    Write-Host "  ERRO ao executar poetry install" -ForegroundColor Red
     exit 1
 }
-Write-Host "  ✓ Dependências instaladas"
+Write-Host "  OK Dependencias instaladas"
 
-# Etapa 4: Verificar instalação
+# Etapa 4: Verificar instalacao
 Write-Host ""
-Write-Host "4️⃣  Verificando instalação..." -ForegroundColor Yellow
+Write-Host "4 - Verificando instalacao..." -ForegroundColor Yellow
 
-$pythonCode = @'
-import torch
+$pythonCode = 'import torch
 import transformers
 import accelerate
 
-print(f"✓ torch:        {torch.__version__} (CUDA: {torch.cuda.is_available()})")
-print(f"✓ transformers: {transformers.__version__}")
-print(f"✓ accelerate:   {accelerate.__version__}")
+print(f"OK torch:        {torch.__version__} (CUDA: {torch.cuda.is_available()})")
+print(f"OK transformers: {transformers.__version__}")
+print(f"OK accelerate:   {accelerate.__version__}")
 
 if torch.cuda.is_available():
-    print(f"✓ Dispositivo:   {torch.cuda.get_device_name(0)}")
+    print(f"OK Dispositivo:   {torch.cuda.get_device_name(0)}")
 else:
-    print("⚠️  AVISO: CUDA não está disponível!")
-    exit(1)
-'@
+    print("AVISO CUDA nao esta disponivel!")
+    exit(1)'
 
 poetry run python -c $pythonCode
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  ❌ Erro: CUDA não disponível" -ForegroundColor Red
+    Write-Host "  ERRO CUDA nao disponivel" -ForegroundColor Red
     Write-Host ""
-    Write-Host "  Dicas de solução:" -ForegroundColor Yellow
+    Write-Host "  Dicas de solucao:" -ForegroundColor Yellow
     Write-Host "    1. Verifique nvidia-smi (deve mostrar CUDA 12.1+)"
-    Write-Host "    2. Reinstale drivers NVIDIA (versão 550+)"
+    Write-Host "    2. Reinstale drivers NVIDIA (versao 550+)"
     Write-Host "    3. Reinstale PyTorch com CUDA explicitamente:"
     Write-Host "       poetry run pip install --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121"
     Write-Host ""
@@ -131,10 +131,10 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "=====================================" -ForegroundColor Green
-Write-Host "✅ Configuração concluída!" -ForegroundColor Green
+Write-Host "OK Configuracao concluida!" -ForegroundColor Green
 Write-Host "=====================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Próximos passos:" -ForegroundColor Cyan
+Write-Host "Proximos passos:" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  Para rodar a API REST:"
 Write-Host "    poetry run ar-api"
@@ -142,9 +142,9 @@ Write-Host ""
 Write-Host "  Para executar o pipeline de teste:"
 Write-Host "    poetry run python tests/manual/test_pipeline.py"
 Write-Host ""
-Write-Host "  Para rodar testes unitários:"
+Write-Host "  Para rodar testes unitarios:"
 Write-Host "    poetry run pytest tests/"
 Write-Host ""
-Write-Host "  Documentação disponível em: setup/legion-windows/README.md"
+Write-Host "  Documentacao disponivel em: setup/legion-windows/README.md"
 Write-Host ""
 Write-Host "=====================================" -ForegroundColor Green
