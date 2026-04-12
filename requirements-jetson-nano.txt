@@ -5,10 +5,10 @@
 # This file contains ONLY Python dependencies compatible with Python 3.6
 
 # API
-fastapi==0.83.0
-uvicorn[standard]==0.17.0
+fastapi==0.64.0
+uvicorn==0.17.0
 python-multipart==0.0.5
-starlette==0.19.1
+starlette==0.13.8
 pydantic<2.0.0
 
 # Core utilities
@@ -20,13 +20,13 @@ scipy==1.5.4
 opencv-python-headless==4.5.5.62
 
 # LLM (note: torch and torchvision already installed via AI Lab)
-transformers==4.18.0
-huggingface-hub==0.4.0
+transformers==4.8.2
+huggingface-hub==0.0.19
 
 # Logging
 python-json-logger==2.0.7
 
 # Misc
 python-dotenv==0.19.0
-requests==2.27.1
+requests==2.25.1
 click==8.0.4
