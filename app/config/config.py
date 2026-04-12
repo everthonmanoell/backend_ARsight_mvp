@@ -5,6 +5,7 @@ Carrega configurações do arquivo YAML
 
 import yaml
 import os
+import platform
 from pathlib import Path
 from typing import Dict, Any
 import torch
