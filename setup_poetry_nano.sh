@@ -57,9 +57,21 @@ fi
 
 # Etapa 3: Preparar ambiente Poetry
 echo ""
-echo "3️⃣ Criando environment Poetry..."
-poetry env use python3
+echo "3️⃣ Gerando lock e instalando dependências base..."
+rm -f poetry.lock
+poetry lock
 poetry install
+
+# Etapa 3b: Instalar OpenCV manualmente (fora do Poetry resolver)
+echo ""
+echo "3b️⃣ Verificando OpenCV..."
+if poetry run python3 -c "import cv2; print(cv2.__version__)" >/dev/null 2>&1; then
+    echo "  • OpenCV já instalado ✓"
+else
+    echo "  • Instalando OpenCV manualmente (evita travamentos no resolver)..."
+    poetry run pip install opencv-python-headless==4.5.3.56
+    echo "  ✓ OpenCV instalado"
+fi
 
 # Etapa 4: Instalar torch com CUDA do Jetson AI Lab
 echo ""

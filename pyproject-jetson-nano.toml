@@ -21,9 +21,6 @@ pydantic = "~1.9"
 pyyaml = "~5.4.1"
 numpy = "~1.19.5"
 
-# Vision - aarch64 wheels disponíveis
-opencv-python-headless = "~4.5.5"
-
 # LLM (torch/torchvision instalados via setup_poetry_nano.sh)
 transformers = "~4.18.0"
 huggingface-hub = "~0.4.0"
