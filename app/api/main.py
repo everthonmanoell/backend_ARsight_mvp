@@ -60,22 +60,29 @@ async def initialize_pipeline() -> None:
     if warmup_on_startup:
         logger.info("Starting warm-up (1 run)...")
 
-        warmup_start = time.time()
+        try:
+            warmup_start = time.time()
 
-        dummy_image = Image.fromarray(
-            np.full((256, 256, 3), 128, dtype=np.uint8)
-        )
+            dummy_image = Image.fromarray(
+                np.full((256, 256, 3), 128, dtype=np.uint8)
+            )
 
-        t0 = time.time()
-        pdi_metrics = pipeline.extract_metrics_batch([dummy_image])
-        _, _ = pipeline.diagnose_from_metrics_batch_with_summary(pdi_metrics)
+            t0 = time.time()
+            pdi_metrics = pipeline.extract_metrics_batch([dummy_image])
+            _, _ = pipeline.diagnose_from_metrics_batch_with_summary(pdi_metrics)
 
-        logger.info(f"   Warmup #1/1: {time.time() - t0:.2f}s")
+            logger.info(f"   Warmup #1/1: {time.time() - t0:.2f}s")
 
-        warmup_time = time.time() - warmup_start
-        logger.info(
-            f"✅ Warm-up complete! Model loaded and ready (took {warmup_time:.1f}s)"
-        )
+            warmup_time = time.time() - warmup_start
+            logger.info(
+                f"✅ Warm-up complete! Model loaded and ready (took {warmup_time:.1f}s)"
+            )
+        except Exception as e:
+            # Se warm-up falhar (ex: modelo ainda não baixado na primeira execução), 
+            # deixa o modelo carregar on-demand no primeiro request
+            logger.warning(
+                f"⚠️ Warm-up skipped (will load on first request): {str(e)[:100]}"
+            )
 
     set_pipeline(pipeline)
     logger.info("✅ API ready to accept requests!")
