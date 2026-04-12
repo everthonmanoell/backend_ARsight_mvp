@@ -29,10 +29,10 @@ models:
     # Microsoft DialoGPT-small: Ultra-leve, 117M params
     # Compatível: PyTorch 1.10, transformers 4.8.2
     # VRAM estimada: ~250MB em FP16
-    # name: /home/das9/models/DialoGPT-small
-    name: microsoft/DialoGPT-small     # HuggingFace Hub (auto-downloads)
-    max_tokens: 30
-    summary_tokens: 40
+    name: /home/das9/models/DialoGPT-small     # Local (evita download automático, necessário para Jetson Nano)
+    # name: microsoft/DialoGPT-small     # HuggingFace Hub (auto-downloads)
+    max_tokens: 40
+    summary_tokens: 60
     temperature: 0.3
     top_p: 0.85
 
