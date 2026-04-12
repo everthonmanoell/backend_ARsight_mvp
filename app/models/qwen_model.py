@@ -91,23 +91,43 @@ class QwenARModel(ARDiagnosticModel):
         logger.info(f"Loading {self.MODEL_NAME}...")
         
         try:
+            # 🔍 PRE-LOAD DEBUG
+            logger.info(f"🔍 PRE-LOAD: CUDA available = {torch.cuda.is_available()}")
+            if torch.cuda.is_available():
+                logger.info(f"🔍 PRE-LOAD: CUDA device = {torch.cuda.get_device_name(0)}")
+            
             # ⚠️ CRÍTICO: Jetson Nano (torch 1.10) - NÃO usar device_map="auto"
-            # Funciona melhor com carregamento em CPU e .to(device) explícito
-            # device_map="auto" não funciona bem em torch 1.10 aarch64
+            # Carrega SEM device_map (compatível com torch 1.10)
+            logger.info(f"🔍 Loading model to temporary location...")
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.MODEL_NAME,
                 trust_remote_code=True,
                 torch_dtype=torch.float32 if self.device == 'cpu' else torch.float16,
-                # Sem device_map - vamos usar .to() explícito abaixo
+                # Sem device_map - vamos usar .to() explícito com map_location
             )
             
-            # CRÍTICO: Colocar modelo explicitamente no device correto (forte inference)
+            # 🔍 DEBUG POST-LOAD (antes de move)
+            try:
+                first_param = next(self.model.parameters())
+                logger.info(f"🔍 POST-LOAD (before .to()): device = {first_param.device}, dtype = {first_param.dtype}")
+            except:
+                logger.info("🔍 POST-LOAD: Could not get first param")
+            
+            # ALTERNATIVA 1: Tentar move com explicit casting
+            logger.info(f"🔍 Attempting move to {self.device}...")
             self.model = self.model.to(self.device)
-            logger.info(f"✅ Model moved to {self.device} via .to() method")
+            
+            # 🔍 DEBUG POST-MOVE
+            try:
+                first_param = next(self.model.parameters())
+                logger.info(f"✅ POST-MOVE: device = {first_param.device}, dtype = {first_param.dtype}")
+            except:
+                logger.info("❌ POST-MOVE: Could not verify device placement")
             
             # Log VRAM para debug
             if self.device == 'cuda':
-                logger.info(f"VRAM after .to(cuda): {torch.cuda.memory_allocated() / 1e9:.2f} GB allocated")
+                logger.info(f"🔍 VRAM after .to(cuda): {torch.cuda.memory_allocated() / 1e9:.2f} GB allocated")
+                logger.info(f"🔍 Total VRAM: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
 
 
             # Colocar modelo em modo de inferência (desativa dropout, batch norm em modo treino, etc.)
@@ -267,6 +287,13 @@ class QwenARModel(ARDiagnosticModel):
         t1 = time.time() # marca o fim da tokenização para calcular o tempo gasto nessa etapa
 
         logger.debug(f"Tokenização: {(t1-t0)*1000:.1f}ms")
+        
+        # 🔍 DEBUG PRE-GENERATE: Verificar device do modelo
+        try:
+            first_param = next(self.model.parameters())
+            logger.info(f"🔍 PRE-GENERATE: Model on device = {first_param.device}")
+        except:
+            logger.info("🔍 PRE-GENERATE: Could not get model device")
         
         # Gera com parâmetros otimizados
         # torch.inference_mode() é mais rápido que torch.no_grad() pois é uma otimização específica para geração
