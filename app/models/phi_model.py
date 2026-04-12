@@ -7,7 +7,13 @@ import logging
 import time
 from typing import Dict, List
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+try:
+    from transformers import BitsAndBytesConfig
+    _BITSANDBYTES_AVAILABLE = True
+except ImportError:
+    _BITSANDBYTES_AVAILABLE = False
 
 from app.models.base_model import ARDiagnosticModel
 from app.config.config import Config
@@ -36,6 +42,11 @@ class PhiARModel(ARDiagnosticModel):
             device: 'cuda', 'cpu', ou 'auto'
         """
         super().__init__(use_4bit)
+        
+        # Aviso se BitsAndBytesConfig não estiver disponível (Python 3.6 compatibility)
+        if self.use_4bit and not _BITSANDBYTES_AVAILABLE:
+            logger.warning("BitsAndBytesConfig not available (Python 3.6?). Using FP16 without 4-bit quantization.")
+            self.use_4bit = False
         
         # Detecta dispositivo
         if device is None or device == 'auto':
@@ -69,8 +80,8 @@ class PhiARModel(ARDiagnosticModel):
         logger.info(f"Loading {self.MODEL_NAME}...")
         
         try:
-            # Configuração de quantização 4-bit
-            if self.use_4bit and self.device == 'cuda':
+            # Configuração de quantização 4-bit (apenas se disponível)
+            if self.use_4bit and _BITSANDBYTES_AVAILABLE and self.device == 'cuda':
                 quantization_config = BitsAndBytesConfig(
                     load_in_4bit=True,
                     bnb_4bit_compute_dtype=torch.float16,
@@ -86,15 +97,15 @@ class PhiARModel(ARDiagnosticModel):
                     attn_implementation="eager" # otimização para modelos menores, reduz latência em GPUs com menos VRAM
                 )
             else:
-                # CPU ou sem quantização
+                # CPU ou sem quantização (FP16 para CUDA/Jetson, FP32 para CPU)
                 self.model = AutoModelForCausalLM.from_pretrained(
                     self.MODEL_NAME,
                     device_map="auto",
-                    dtype=torch.float32 if self.device == 'cpu' else torch.float16,
+                    dtype=torch.float16 if self.device == 'cuda' else torch.float32,
                     attn_implementation="eager"
                 )
 
-                logger.info(f"Model loaded on {self.device}")
+            logger.info(f"Model loaded on {self.device}")
             
             # Carrega tokenizer(responsável por converter texto em tokens numéricos que o modelo pode processar)
             # O parâmetro padding_side='left' é crucial para modelos decoder-only, garantindo que o padding seja adicionado à esquerda dos prompts,
