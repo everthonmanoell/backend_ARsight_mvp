@@ -2,7 +2,6 @@ fastapi
 uvicorn
 python-multipart
 pyyaml
-pillow
 numpy
 scipy
 opencv-python-headless
