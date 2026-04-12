@@ -29,7 +29,7 @@ models:
     # Microsoft DialoGPT-small: Ultra-leve, 117M params
     # Compatível: PyTorch 1.10, transformers 4.8.2
     # VRAM estimada: ~250MB em FP16
-    name: microsoft/DialoGPT-small
+    name: /home/das9/models/DialoGPT-small
     max_tokens: 30
     summary_tokens: 40
     temperature: 0.3
