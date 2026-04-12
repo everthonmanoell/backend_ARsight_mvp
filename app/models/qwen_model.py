@@ -93,12 +93,17 @@ class QwenARModel(ARDiagnosticModel):
         try:
             # Jetson Orin: use fp16 sem quantização 4-bit (bitsandbytes foi removido)
             # torch 2.0.1 é estável em L4T R36 mas não suporta BitsAndBytesConfig
+            # NOTA: Na Jetson Nano (torch 1.10), device_map="auto" não funciona bem
+            # Precisamos forçar .to(device) explicitamente
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.MODEL_NAME,
-                device_map="auto",
                 trust_remote_code=True,
                 torch_dtype=torch.float32 if self.device == 'cpu' else torch.float16
             )
+            
+            # CRÍTICO: Colocar modelo explicitamente no device correto
+            # Jetson Nano/Orin (PyTorch 1.10-2.x) requer .to() explícito
+            self.model = self.model.to(self.device)
             logger.info(f"Model loaded on {self.device} (fp16)")
 
 
