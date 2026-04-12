@@ -91,38 +91,44 @@ class QwenARModel(ARDiagnosticModel):
         logger.info(f"Loading {self.MODEL_NAME}...")
         
         try:
-            # 🔍 PRE-LOAD DEBUG
+            # 🔍 PRE-LOAD DEBUG: Verificação de CUDA
             logger.info(f"🔍 PRE-LOAD: CUDA available = {torch.cuda.is_available()}")
             if torch.cuda.is_available():
                 logger.info(f"🔍 PRE-LOAD: CUDA device = {torch.cuda.get_device_name(0)}")
+                logger.info(f"🔍 PRE-LOAD: Device properties = compute {torch.cuda.get_device_capability(0)}")
+            else:
+                logger.warning(f"⚠️  CUDA NÃO disponível - modelo rodará em CPU (LENTO)")
             
             # ⚠️ CRÍTICO: Jetson Nano (torch 1.10) - NÃO usar device_map="auto"
-            # Carrega SEM device_map (compatível com torch 1.10)
-            logger.info(f"🔍 Loading model to temporary location...")
+            # device_map="auto" não funciona bem em torch 1.10 aarch64
+            logger.info(f"🔍 Loading model from {self.MODEL_NAME}...")
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.MODEL_NAME,
                 trust_remote_code=True,
                 torch_dtype=torch.float32 if self.device == 'cpu' else torch.float16,
-                # Sem device_map - vamos usar .to() explícito com map_location
             )
             
-            # 🔍 DEBUG POST-LOAD (antes de move)
+            # 🔍 DEBUG POST-LOAD (antes do move)
             try:
                 first_param = next(self.model.parameters())
                 logger.info(f"🔍 POST-LOAD (before .to()): device = {first_param.device}, dtype = {first_param.dtype}")
-            except:
-                logger.info("🔍 POST-LOAD: Could not get first param")
+            except Exception as e:
+                logger.warning(f"⚠️  Could not get first param: {e}")
             
-            # ALTERNATIVA 1: Tentar move com explicit casting
-            logger.info(f"🔍 Attempting move to {self.device}...")
+            # CRÍTICO: Move explícito para device
+            logger.info(f"🔍 Moving model to {self.device}...")
             self.model = self.model.to(self.device)
             
-            # 🔍 DEBUG POST-MOVE
+            # 🔍 DEBUG POST-MOVE: Verificar se movimento funcionou
             try:
                 first_param = next(self.model.parameters())
+                actual_device = str(first_param.device)
+                if "cuda" in self.device and "cpu" in actual_device:
+                    logger.error(f"❌ CRITICAL: Model is on {actual_device} but expected {self.device}!")
+                    logger.error(f"❌ device_map may have overridden .to() call")
                 logger.info(f"✅ POST-MOVE: device = {first_param.device}, dtype = {first_param.dtype}")
-            except:
-                logger.info("❌ POST-MOVE: Could not verify device placement")
+            except Exception as e:
+                logger.warning(f"⚠️  Could not verify device placement: {e}")
             
             # Log VRAM para debug
             if self.device == 'cuda':

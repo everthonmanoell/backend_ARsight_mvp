@@ -15,12 +15,29 @@ WORKDIR /app
 # A imagem base já vem com python3 + PyTorch 1.10 com CUDA 10.2
 
 # ── Dependências da aplicação ────────────────────────────────────────────────
-COPY requirements-jetson.txt .
-# PyTorch 1.10 já vem na imagem base com suporte CUDA 10.2
-# Usamos python3 nativo (não instalar python3.8 que quebra CUDA!)
-# Nota: imagem base tem Python 3.6, --no-build-isolation é antigo
-RUN python3 -m pip install --upgrade pip setuptools setuptools_rust && \
-    python3 -m pip install --no-cache-dir -r requirements-jetson.txt
+# 🔍 CRÍTICO para CUDA: usar requirements-jetson-nano.txt com versões pinadas
+# que funcionam com PyTorch 1.10 e Python 3.6
+COPY requirements-jetson-nano.txt .
+COPY setup_jetson_nano.sh .
+
+# Instalar build tools antes de pip
+RUN python3 -m pip install --upgrade pip setuptools setuptools_rust wheel
+
+# Instalar dependências com versões específicas testadas para Nano
+RUN python3 -m pip install --no-cache-dir -r requirements-jetson-nano.txt
+
+# Verificar que CUDA está disponível (falhar build se não estiver)
+RUN python3 << 'VERIFY_CUDA'
+import torch
+print(f"torch version: {torch.__version__}")
+print(f"CUDA version: {torch.version.cuda}")
+if not torch.cuda.is_available():
+    print("ERROR: CUDA is not available!")
+    print("Make sure pytorch was installed from nvidia base image")
+    exit(1)
+print(f"CUDA device: {torch.cuda.get_device_name(0)}")
+print("✓ CUDA verified in image")
+VERIFY_CUDA
 
 # ── Aplicação ────────────────────────────────────────────────────────────────
 COPY app/ ./app/
