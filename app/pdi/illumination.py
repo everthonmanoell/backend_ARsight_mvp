@@ -2,8 +2,8 @@
 Illumination Analysis
 Análise de iluminação da cena
 """
-from __future__ import annotations  # compatibilidade de tipagem com Python 3.8
 import logging
+from typing import Tuple, Dict, Optional
 import cv2
 import numpy as np
 from PIL import Image as PILImage
@@ -18,7 +18,7 @@ class IlluminationAnalyzer:
     Retorna um score [0,1] + features para auditoria.
     """
     
-    def __init__(self, config: dict = None):
+    def __init__(self, config: Optional[Dict] = None):
         """
         Inicializa analisador de iluminação
         
@@ -30,7 +30,7 @@ class IlluminationAnalyzer:
     #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # método que analisa a imagem e retorna score + detalhes
     # aceita PIL.Image ou np.ndarray (BGR); a conversão PIL→BGR é responsabilidade deste módulo
-    def analyze(self, image) -> tuple[float, dict]:
+    def analyze(self, image) -> Tuple[float, Dict]:
 
         # Converte PIL.Image para numpy BGR se necessário
         if isinstance(image, PILImage.Image):
@@ -114,7 +114,7 @@ class IlluminationAnalyzer:
         
    #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
    # método para classificar a condição de iluminação baseado em gates configuráveis, usando tanto os detalhes calculados quanto o score final 
-    def classify(self, details: dict, score: float) -> str:
+    def classify(self, details: Dict, score: float) -> str:
         """
         Classifica condição de iluminação baseado em gates configuráveis
         
