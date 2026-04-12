@@ -19,7 +19,8 @@ COPY requirements-jetson.txt .
 # PyTorch 1.10 já vem na imagem base com suporte CUDA 10.2
 # Usamos python3 nativo (não instalar python3.8 que quebra CUDA!)
 # Nota: imagem base tem Python 3.6, --no-build-isolation é antigo
-RUN python3 -m pip install --no-cache-dir -r requirements-jetson.txt
+RUN python3 -m pip install --upgrade pip setuptools setuptools_rust && \
+    python3 -m pip install --no-cache-dir -r requirements-jetson.txt
 
 # ── Aplicação ────────────────────────────────────────────────────────────────
 COPY app/ ./app/
