@@ -76,14 +76,17 @@ fi
 # Etapa 4: Instalar torch com CUDA do Jetson AI Lab
 echo ""
 echo "4️⃣ Instalando torch 1.10.0 com CUDA 10.2..."
-echo "   (via Jetson AI Lab index: https://pypi.jetson-ai-lab.io)"
+echo "   (wheel NVIDIA direta: torch-1.10.0-cp36-cp36m-linux_aarch64.whl)"
 echo ""
 
-poetry run pip install --force-reinstall --no-cache-dir \
-    torch==1.10.0 \
-    --index-url https://pypi.jetson-ai-lab.io/jp46/cu102
+# Instalar Cython primeiro (dependência de compilação)
+poetry run pip install 'Cython<3'
 
-echo "  ✓ torch instalado com CUDA"
+# Instalar torch da URL direta da NVIDIA (não via index)
+TORCH_URL="https://nvidia.box.com/shared/static/fjtbno0vpo676a25cgvuqc1wty0fkkg6.whl"
+poetry run pip install --no-cache "$TORCH_URL"
+
+echo "  ✓ torch instalado"
 
 # Etapa 5: Verificação CUDA
 echo ""
@@ -92,17 +95,20 @@ poetry run python3 << 'VERIFY'
 import torch
 
 print(f"✓ torch versão: {torch.__version__}")
-print(f"✓ CUDA versão: {torch.version.cuda}")
+print(f"✓ CUDA disponível: {torch.cuda.is_available()}")
 
 if torch.cuda.is_available():
-    print(f"✓ CUDA disponível: SIM")
     print(f"✓ Dispositivo: {torch.cuda.get_device_name(0)}")
     
     # Teste rápido
-    test = torch.randn(10, 10).cuda()
-    print(f"✓ Tensor GPU: {test.device}")
-    del test
-    torch.cuda.empty_cache()
+    try:
+        test = torch.randn(10, 10).cuda()
+        print(f"✓ Tensor GPU: {test.device}")
+        del test
+        torch.cuda.empty_cache()
+    except Exception as e:
+        print(f"❌ Erro ao testar tensor GPU: {e}")
+        exit(1)
 else:
     print(f"❌ CUDA NÃO disponível")
     exit(1)
