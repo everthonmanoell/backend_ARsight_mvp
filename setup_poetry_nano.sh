@@ -6,13 +6,6 @@
 # Uso:
 #   bash setup_poetry_nano.sh
 #   poetry run python -m uvicorn app.api.main:app --host 0.0.0.0 --port 8000
-#
-# Este script:
-# 1. Instala Poetry (se necessário)
-# 2. Configura pyproject-jetson-nano.toml
-# 3. Instala torch 1.10.0 com CUDA 10.2 via Jetson AI Lab
-# 4. Instala dependências Python
-# 5. Verifica CUDA
 
 set -e
 
@@ -55,38 +48,51 @@ else
     exit 1
 fi
 
-# Etapa 3: Preparar ambiente Poetry
+# Garantir que o Poetry use python3
 echo ""
 echo "3️⃣ Gerando lock e instalando dependências base..."
+poetry env use python3
 rm -f poetry.lock
 poetry lock
 poetry install
 
-# Etapa 3b: Instalar OpenCV manualmente (fora do Poetry resolver)
+# Etapa 3b: OpenCV manual (safe mode)
 echo ""
 echo "3b️⃣ Verificando OpenCV..."
-if poetry run python3 -c "import cv2; print(cv2.__version__)" >/dev/null 2>&1; then
+
+set +e
+poetry run python3 -c "import cv2; print(cv2.__version__)" >/dev/null 2>&1
+CV2_STATUS=$?
+set -e
+
+if [ "$CV2_STATUS" -eq 0 ]; then
     echo "  • OpenCV já instalado ✓"
 else
-    echo "  • Instalando OpenCV manualmente (evita travamentos no resolver)..."
-    poetry run pip install opencv-python-headless==4.5.3.56
+    echo "  • OpenCV não pôde ser validado no venv"
+    echo "  • Reinstalando OpenCV manualmente..."
+    poetry run pip install --force-reinstall --no-cache-dir opencv-python-headless==4.5.3.56
     echo "  ✓ OpenCV instalado"
 fi
 
-# Etapa 4: Instalar torch com CUDA do Jetson AI Lab
+# Etapa 4: Instalar torch com CUDA via wheel direta
 echo ""
 echo "4️⃣ Instalando torch 1.10.0 com CUDA 10.2..."
 echo "   (wheel NVIDIA direta: torch-1.10.0-cp36-cp36m-linux_aarch64.whl)"
 echo ""
 
-# Instalar Cython primeiro (dependência de compilação)
 poetry run pip install 'Cython<3'
 
-# Instalar torch da URL direta da NVIDIA (não via index)
+TORCH_WHL="torch-1.10.0-cp36-cp36m-linux_aarch64.whl"
 TORCH_URL="https://nvidia.box.com/shared/static/fjtbno0vpo676a25cgvuqc1wty0fkkg6.whl"
-poetry run pip install --no-cache "$TORCH_URL"
 
-echo "  ✓ torch instalado"
+if poetry run python3 -c "import torch; print(torch.__version__)" 2>/dev/null | grep -q "1.10.0"; then
+    echo "  • torch 1.10.0 já instalado ✓"
+else
+    wget -O "$TORCH_WHL" "$TORCH_URL"
+    poetry run pip install --no-cache-dir "./$TORCH_WHL"
+    rm -f "$TORCH_WHL"
+    echo "  ✓ torch instalado"
+fi
 
 # Etapa 5: Verificação CUDA
 echo ""
@@ -99,8 +105,6 @@ print(f"✓ CUDA disponível: {torch.cuda.is_available()}")
 
 if torch.cuda.is_available():
     print(f"✓ Dispositivo: {torch.cuda.get_device_name(0)}")
-    
-    # Teste rápido
     try:
         test = torch.randn(10, 10).cuda()
         print(f"✓ Tensor GPU: {test.device}")
@@ -108,10 +112,10 @@ if torch.cuda.is_available():
         torch.cuda.empty_cache()
     except Exception as e:
         print(f"❌ Erro ao testar tensor GPU: {e}")
-        exit(1)
+        raise SystemExit(1)
 else:
-    print(f"❌ CUDA NÃO disponível")
-    exit(1)
+    print("❌ CUDA NÃO disponível")
+    raise SystemExit(1)
 
 print("")
 print("✅ CUDA verificado!")
