@@ -4,7 +4,7 @@ services:
   ar-diagnostic-mvp-nano:
     build:
       context: .
-      dockerfile: docker/Dockerfile.jetson
+      dockerfile: docker/Dockerfile.jetson-nano
     container_name: ar-diagnostic-mvp-nano
     ports:
       - "8000:8000"
