@@ -32,24 +32,67 @@ def _generate_batch_id() -> str:
     return f"batch_{timestamp}_{hash_suffix}"
 
 
-def _detect_environment() -> str:
-    """Detecta se está rodando em Jetson ou Desktop"""
+def _get_environment() -> str:
+    """Retorna o environment detectando pela máquina ou YAML"""
+    import socket
+    import os
+    
+    # Opção 1: Usar variável de ambiente (se setada)
+    env_var = os.environ.get('AR_ENVIRONMENT')
+    if env_var:
+        return env_var.lower()
+    
+    # Opção 2: Usar YAML config se disponível  
     try:
-        # Tenta importar tipos específicos de Jetson
-        import torch
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        
-        if torch.cuda.is_available():
-            device_name = torch.cuda.get_device_name(0).lower()
-            if 'jetson' in device_name or 'orin' in device_name or 'nano' in device_name:
-                return 'jetson-orin'
-            elif 'rtx' in device_name or 'quadro' in device_name or 'tesla' in device_name:
-                return 'desktop-rtx'
-            else:
-                return 'desktop-gpu'
-        else:
-            return 'unknown'
+        config = Config()
+        env_from_yaml = config.get('environment', None)
+        if env_from_yaml and env_from_yaml.lower() != 'unknown':
+            if env_from_yaml.lower() == 'jetson':
+                # Se é "jetson" no YAML, detectar qual tipo
+                return _detect_jetson_type()
+            return env_from_yaml.lower()
     except:
+        pass
+    
+    # Opção 3: Detectar pelo hostname (mais confiável)
+    try:
+        hostname = socket.gethostname().lower()
+        logger.info(f"DEBUG: hostname = {hostname}")
+        if 'nano' in hostname:
+            return 'jetson-nano'
+        elif 'orin' in hostname:
+            return 'jetson-orin'
+        elif 'legion' in hostname or 'pc062' in hostname:
+            return 'desktop-legion'
+        elif 'farmacia' in hostname:
+            return 'jetson-orin'  # farmaciaback = Orin
+    except Exception as e:
+        logger.warning(f"DEBUG: Error detecting hostname: {e}")
+    
+    # Opção 4: Detectar pela GPU
+    return _detect_jetson_type()
+
+
+def _detect_jetson_type() -> str:
+    """Detecta tipo de Jetson ou desktop pela GPU"""
+    try:
+        import torch
+        if not torch.cuda.is_available():
+            return 'cpu'
+        
+        device_name = torch.cuda.get_device_name(0).lower()
+        logger.info(f"DEBUG: GPU device_name = {device_name}")
+        
+        if 'orin' in device_name:
+            return 'jetson-orin'
+        elif 'nano' in device_name or 'tegra' in device_name or 'maxwell' in device_name:
+            return 'jetson-nano'
+        elif 'rtx' in device_name or 'quadro' in device_name or 'tesla' in device_name:
+            return 'desktop-rtx'
+        else:
+            return 'desktop-gpu'
+    except Exception as e:
+        logger.error(f"DEBUG: Error detecting GPU: {e}")
         return 'unknown'
 
 
@@ -307,7 +350,7 @@ def _process_diagnose_batch_internal(images: List[Image.Image], filenames: List[
             'metadata': {
                 'timestamp': datetime.now().isoformat(),
                 'batch_id': batch_id or 'unknown',
-                'environment': _detect_environment(),
+                'environment': _get_environment(),
                 'model': config.get('models.default', 'qwen'),
                 'device': config.get('models.device', 'cuda'),
                 'quantization': '4-bit' if config.get('models.use_4bit', False) else 'fp32',

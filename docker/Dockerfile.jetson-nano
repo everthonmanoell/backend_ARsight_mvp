@@ -10,37 +10,16 @@ FROM nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3
 
 WORKDIR /app
 
-# ── Sistema: Python 3.8 (base tem 3.6; transformers >= 4.47 exige >= 3.8) ───
-# RUN apt-get update && apt-get install -y --no-install-recommends \
-#     python3.8 \
-#     python3.8-dev \
-#     python3.8-distutils \
-#     curl \
-#     && rm -rf /var/lib/apt/lists/*
-RUN find /etc/apt/ -type f \( -name "*.list" -o -name "*.sources" \) -exec sed -i '/apt\.kitware\.com/d' {} \; \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        python3.8 \
-        python3.8-dev \
-        python3.8-distutils \
-        curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# pip para Python 3.8
-RUN curl -sS https://bootstrap.pypa.io/pip/3.8/get-pip.py | python3.8
-
-# ── PyTorch 1.10 — wheel oficial NVIDIA para Python 3.8 + CUDA 10.2 ────────
-# Referência: https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
-
-# # PyTorch já vem na imagem base nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3
-# RUN python3.8 -m pip install --no-cache-dir \
-#     https://developer.download.nvidia.com/compute/redist/jp/v461/pytorch/torch-1.10.0a0+git36449ea-cp38-cp38-linux_aarch64.whl
+# ⚠️ CRÍTICO: Usar python3 NATIVO da imagem base, não instalar python3.8
+# Instalar python3.8 via apt-get quebra os links do torch CUDA na imagem base!
+# A imagem base já vem com python3 + PyTorch 1.10 com CUDA 10.2
 
 # ── Dependências da aplicação ────────────────────────────────────────────────
 COPY requirements-jetson.txt .
-# Instala sem reconstruir PyTorch (evita reinstalar versão CPU-only)
 # PyTorch 1.10 já vem na imagem base com suporte CUDA 10.2
-RUN python3.8 -m pip install --no-cache-dir --no-build-isolation -r requirements-jetson.txt
+# Usamos python3 nativo (não instalar python3.8 que quebra CUDA!)
+# Nota: imagem base tem Python 3.6, --no-build-isolation é antigo
+RUN python3 -m pip install --no-cache-dir -r requirements-jetson.txt
 
 # ── Aplicação ────────────────────────────────────────────────────────────────
 COPY app/ ./app/
@@ -52,10 +31,11 @@ RUN mkdir -p logs data/uploads
 EXPOSE 8000
 
 ENV PYTHONUNBUFFERED=1
-# ENV TRANSFORMERS_CACHE=/app/models/cache
 ENV HF_HOME=/app/models/cache
 # Expõe a GPU para o container no nvidia-container-runtime (JetPack 4.6)
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+# 🎯 CRÍTICO: Set environment explicitly for hostname-less Docker
+ENV AR_ENVIRONMENT=jetson-nano
 
-CMD ["python3.8", "-m", "uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python3", "-m", "uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
