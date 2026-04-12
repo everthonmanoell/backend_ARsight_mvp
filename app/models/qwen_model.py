@@ -91,20 +91,23 @@ class QwenARModel(ARDiagnosticModel):
         logger.info(f"Loading {self.MODEL_NAME}...")
         
         try:
-            # Jetson Orin: use fp16 sem quantização 4-bit (bitsandbytes foi removido)
-            # torch 2.0.1 é estável em L4T R36 mas não suporta BitsAndBytesConfig
-            # NOTA: Na Jetson Nano (torch 1.10), device_map="auto" não funciona bem
-            # Precisamos forçar .to(device) explicitamente
+            # ⚠️ CRÍTICO: Jetson Nano (torch 1.10) - NÃO usar device_map="auto"
+            # Funciona melhor com carregamento em CPU e .to(device) explícito
+            # device_map="auto" não funciona bem em torch 1.10 aarch64
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.MODEL_NAME,
                 trust_remote_code=True,
-                torch_dtype=torch.float32 if self.device == 'cpu' else torch.float16
+                torch_dtype=torch.float32 if self.device == 'cpu' else torch.float16,
+                # Sem device_map - vamos usar .to() explícito abaixo
             )
             
-            # CRÍTICO: Colocar modelo explicitamente no device correto
-            # Jetson Nano/Orin (PyTorch 1.10-2.x) requer .to() explícito
+            # CRÍTICO: Colocar modelo explicitamente no device correto (forte inference)
             self.model = self.model.to(self.device)
-            logger.info(f"Model loaded on {self.device} (fp16)")
+            logger.info(f"✅ Model moved to {self.device} via .to() method")
+            
+            # Log VRAM para debug
+            if self.device == 'cuda':
+                logger.info(f"VRAM after .to(cuda): {torch.cuda.memory_allocated() / 1e9:.2f} GB allocated")
 
 
             # Colocar modelo em modo de inferência (desativa dropout, batch norm em modo treino, etc.)
