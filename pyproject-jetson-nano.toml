@@ -4,36 +4,35 @@ version = "0.1.0"
 description = "AR Scene Illumination Diagnostic MVP - Jetson Nano (L4T R32.7)"
 authors = ["TCC Team <tcc@example.com>"]
 readme = "README.md"
-packages = [{include = "app"}]
+packages = [{ include = "app" }]
 
 [tool.poetry.dependencies]
 # Jetson Nano: L4T R32.7.x, JetPack 4.6, Python 3.6.9
-# CRITICAL: Use >=3.6.2,<3.7 to satisfy anyio (transitively required by fastapi->starlette)
 python = ">=3.6.2,<3.7"
 
-# API stack - versões compatíveis com Python 3.6
+# API stack - compatível com Python 3.6
 fastapi = "~0.83.0"
 uvicorn = "~0.16.0"
 python-multipart = "~0.0.5"
 pydantic = "~1.9"
 
-# Core - conservative versions for Python 3.6
+# Core
 pyyaml = "~5.4.1"
 numpy = "~1.19.5"
-pillow = "~6.2.0"  # Last version to support Python 3.6
+pillow = "~6.2.2"
 
-# LLM (torch/torchvision instalados via setup_poetry_nano.sh)
+# LLM / utilidades
 transformers = "~4.18.0"
 huggingface-hub = "~0.4.0"
 
-# Utilities
+# Logging / misc
 python-json-logger = "~2.0.7"
 python-dotenv = "~0.19.0"
 requests = "~2.27.1"
 click = "~7.1.2"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.4"  # Última versão que suporta Python 3.6
+pytest = "^5.4"
 pytest-asyncio = "^0.12.0"
 
 [tool.poetry.scripts]
