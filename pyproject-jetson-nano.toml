@@ -2,7 +2,7 @@
 name = "ar-diagnostic-mvp"
 version = "0.1.0"
 description = "AR Scene Illumination Diagnostic MVP - Jetson Nano (L4T R32.7)"
-authors = ["TCC Team <tcc@example.com>"]
+authors = ["Daniela Amorim de Sá <daniela.amorimdesa@gmail.com>"]
 readme = "README.md"
 packages = [{ include = "app" }]
 
