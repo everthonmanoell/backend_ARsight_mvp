@@ -12,14 +12,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from app.models.base_model import ARDiagnosticModel
 from app.config.config import Config
 
-# optimum-quanto: quantização INT8 pure-PyTorch, sem restrição de compute CUDA
-# Compatível com Jetson Nano (Maxwell/compute 5.3) ao contrário do bitsandbytes
-try:
-    from optimum.quanto import quantize, qint8
-    _QUANTO_AVAILABLE = True
-except ImportError:
-    _QUANTO_AVAILABLE = False
-
 logger = logging.getLogger(__name__)
 
 # classe específica para o modelo Qwen 0.5B, com otimizações para baixa latência e uso eficiente de VRAM, ideal para Jetson Nano/Xavier NX
@@ -33,7 +25,7 @@ class QwenARModel(ARDiagnosticModel):
     - Ideal para Jetson Nano/Xavier NX
     """
     
-    MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
+    MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"  # Default (sobrescrito pelo YAML em __init__)
     
     def __init__(self, use_4bit: bool = True, device: str = None):
         """
@@ -55,6 +47,12 @@ class QwenARModel(ARDiagnosticModel):
         
         # Carrega configurações de geração do YAML
         config = Config()
+        
+        # Lê a versão específica do Qwen do YAML (permite trocar versões: 0.5B, 1B, etc)
+        # Padrão: Qwen/Qwen2.5-0.5B-Instruct (override via config YAML)
+        self.model_name = config.get('models.qwen.name', self.MODEL_NAME)
+        logger.info(f"Qwen model version from config: {self.model_name}")
+        
         self.max_tokens = config.get('models.qwen.max_tokens', 30)
         self.summary_max_tokens = config.get('models.qwen.summary_tokens', 40)
 
@@ -71,14 +69,11 @@ class QwenARModel(ARDiagnosticModel):
         # Comprimento máximo do prompt em tokens. Prompts no Jetson são pequenos (< 150 tokens tipicamente);
         # reduzir de 512 para 256 evita alocações desnecessárias e reduz tempo de tokenização/atenção.
         self.prompt_max_length = config.get('models.prompt_max_length', 512)
-
-        # Flag para quantização INT8 via optimum-quanto (compatível com Maxwell/compute 5.3)
-        self.use_int8 = config.get('models.use_int8', False)
         
         logger.info(
             f"Generation params: max_tokens={self.max_tokens}, summary_max_tokens={self.summary_max_tokens}, "
             f"temp={self.temperature}, top_p={self.top_p}, greedy={self.greedy_decoding}, "
-            f"prompt_max_length={self.prompt_max_length}, use_int8={self.use_int8}"
+            f"prompt_max_length={self.prompt_max_length}"
         )
         
         # Carrega modelo
@@ -88,7 +83,7 @@ class QwenARModel(ARDiagnosticModel):
     def _load_model(self):
         """Carrega Qwen 0.5B com otimizações"""
 
-        logger.info(f"Loading {self.MODEL_NAME}...")
+        logger.info(f"Loading {self.model_name}...")
         
         try:
             # 🔍 PRE-LOAD DEBUG: Verificação de CUDA
@@ -101,9 +96,9 @@ class QwenARModel(ARDiagnosticModel):
             
             # ⚠️ CRÍTICO: Jetson Nano (torch 1.10) - NÃO usar device_map="auto"
             # device_map="auto" não funciona bem em torch 1.10 aarch64
-            logger.info(f"🔍 Loading model from {self.MODEL_NAME}...")
+            logger.info(f"🔍 Loading model from {self.model_name}...")
             self.model = AutoModelForCausalLM.from_pretrained(
-                self.MODEL_NAME,
+                self.model_name,
                 trust_remote_code=True,
                 torch_dtype=torch.float32 if self.device == 'cpu' else torch.float16,
             )
@@ -139,21 +134,6 @@ class QwenARModel(ARDiagnosticModel):
             # Colocar modelo em modo de inferência (desativa dropout, batch norm em modo treino, etc.)
             self.model.eval()
 
-            # Quantização INT8 via optimum-quanto: reduz uso de memória ~50% e diminui pressão na
-            # largura de banda de memória durante geração — compatível com qualquer compute CUDA (incluindo Maxwell).
-            # Deve ser aplicado APÓS o carregamento e ANTES do freeze para que os pesos sejam quantizados in-place.
-            if self.use_int8 and self.device == 'cuda':
-                if _QUANTO_AVAILABLE:
-                    logger.info("Applying INT8 quantization via optimum-quanto...")
-                    quantize(self.model, weights=qint8)
-                    # freeze() omitido: requer torch.compile/tracing não disponível no PyTorch 1.10 (Jetson Nano)
-                    logger.info("INT8 quantization applied (unfrozen, compatible with JetPack 4.6).")
-                else:
-                    logger.warning(
-                        "use_int8=true mas 'optimum-quanto' não está instalado. "
-                        "Execute: pip install optimum[quanto]  — rodando em FP16 sem quantização."
-                    )
-
             # Libera cache CUDA após carregamento para maximizar VRAM disponível para inferência
             if self.device == 'cuda':
                 torch.cuda.empty_cache()
@@ -165,7 +145,7 @@ class QwenARModel(ARDiagnosticModel):
             # O parâmetro padding_side='left' é crucial para modelos decoder-only, garantindo que o padding seja adicionado à esquerda dos prompts,
             # alinhando corretamente os tokens de entrada e permitindo uma geração mais eficiente e coerente, especialmente em batch.
             self.tokenizer = AutoTokenizer.from_pretrained(
-                self.MODEL_NAME,
+                self.model_name,
                 trust_remote_code=True, 
                 padding_side='left'  # Requerido para decoder-only em batch
             )

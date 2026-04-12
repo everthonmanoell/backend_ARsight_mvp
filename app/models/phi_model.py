@@ -31,7 +31,7 @@ class PhiARModel(ARDiagnosticModel):
     - Alternativa ao Qwen para maior qualidade
     """
     
-    MODEL_NAME = "microsoft/Phi-3-mini-4k-instruct"
+    MODEL_NAME = "microsoft/Phi-3-mini-4k-instruct"  # Default (sobrescrito pelo YAML em __init__)
     
     def __init__(self, use_4bit: bool = True, device: str = None):
         """
@@ -58,6 +58,12 @@ class PhiARModel(ARDiagnosticModel):
         
         # Carrega configurações de geração do YAML
         config = Config()
+        
+        # Lê a versão específica do Phi do YAML (permite trocar versões: 3-mini, 3.5-mini, etc)
+        # Padrão: microsoft/Phi-3-mini-4k-instruct (override via config YAML)
+        self.model_name = config.get('models.phi.name', self.MODEL_NAME)
+        logger.info(f"Phi model version from config: {self.model_name}")
+        
         self.max_tokens = config.get('models.phi.max_tokens', 35)
         self.summary_max_tokens = config.get('models.phi.summary_tokens', 50)
 
@@ -77,7 +83,7 @@ class PhiARModel(ARDiagnosticModel):
     def _load_model(self):
         """Carrega Phi-3 Mini"""
 
-        logger.info(f"Loading {self.MODEL_NAME}...")
+        logger.info(f"Loading {self.model_name}...")
         
         try:
             # Configuração de quantização 4-bit (apenas se disponível)
@@ -90,7 +96,7 @@ class PhiARModel(ARDiagnosticModel):
                 )
                 
                 self.model = AutoModelForCausalLM.from_pretrained(
-                    self.MODEL_NAME,
+                    self.model_name,
                     quantization_config=quantization_config,
                     device_map="auto",
                     dtype=torch.float16,
@@ -99,7 +105,7 @@ class PhiARModel(ARDiagnosticModel):
             else:
                 # CPU ou sem quantização (FP16 para CUDA/Jetson, FP32 para CPU)
                 self.model = AutoModelForCausalLM.from_pretrained(
-                    self.MODEL_NAME,
+                    self.model_name,
                     device_map="auto",
                     dtype=torch.float16 if self.device == 'cuda' else torch.float32,
                     attn_implementation="eager"
@@ -111,7 +117,7 @@ class PhiARModel(ARDiagnosticModel):
             # O parâmetro padding_side='left' é crucial para modelos decoder-only, garantindo que o padding seja adicionado à esquerda dos prompts,
             # alinhando corretamente os tokens de entrada e permitindo uma geração mais eficiente e coerente, especialmente em batch.
             self.tokenizer = AutoTokenizer.from_pretrained(
-                self.MODEL_NAME,
+                self.model_name,
                 padding_side='left'  # Requerido para decoder-only em batch
             )
             

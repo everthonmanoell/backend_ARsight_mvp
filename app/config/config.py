@@ -8,7 +8,6 @@ import os
 from pathlib import Path
 from typing import Dict, Any
 import torch
-import platform
 
 # classe de configurações, responsável por carregar e fornecer acesso às configurações do sistema, como thresholds do rule engine e parâmetros dos modelos
 class Config:
@@ -43,11 +42,12 @@ class Config:
         # usando caminho customizado se fornecido, senão procura arquivo padrão
         if config_path is None:
             # Permite sobrescrever o arquivo de config via variável de ambiente
-            # Útil para injetar thresholds.jetson.yaml no Docker sem alterar o código
+            # Ex: export AR_CONFIG_FILE=/path/to/thresholds.yaml
             env_config = os.environ.get('AR_CONFIG_FILE')
             if env_config:
                 config_path = Path(env_config)
             else:
+                # Usa thresholds.yaml padrão (edite conforme o ambiente: Jetson, Desktop, etc)
                 current_dir = Path(__file__).parent
                 config_path = current_dir / 'thresholds.yaml'
         

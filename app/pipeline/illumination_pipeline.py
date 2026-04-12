@@ -10,6 +10,7 @@ from typing import Dict
 from app.pdi.illumination import IlluminationAnalyzer
 from app.models.qwen_model import QwenARModel
 from app.models.phi_model import PhiARModel
+from app.models.dialogpt_model import DialoGPTARModel
 from app.config.config import Config
 
 # configura logger para este módulo
@@ -67,8 +68,10 @@ class IlluminationPipeline:
                 self.model = QwenARModel(use_4bit=self.use_4bit, device=self.device)
             elif self.model_type == 'phi':
                 self.model = PhiARModel(use_4bit=self.use_4bit, device=self.device)
+            elif self.model_type == 'dialogpt-small':
+                self.model = DialoGPTARModel(use_4bit=False, device=self.device)
             else:
-                raise ValueError(f"Unknown model type: {self.model_type}")
+                raise ValueError(f"Unknown model type: {self.model_type}. Valid options: 'qwen', 'phi', 'dialogpt-small'")
             
             logger.info("Model loaded successfully!")
 

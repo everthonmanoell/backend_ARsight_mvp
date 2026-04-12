@@ -18,8 +18,8 @@ services:
       - PYTHONUNBUFFERED=1
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      # Jetson Nano tem menos memória — usar config específica
-      - AR_CONFIG_FILE=/app/app/config/thresholds.jetson.yaml
+      # Edite thresholds.yaml antes de build: default: tiny-llama ou gemma-2b
+      # Se necessário override: -e AR_CONFIG_FILE=/app/app/config/thresholds.yaml
     # JetPack 4.6.x (L4T R32.7.x) com nvidia-container-runtime
     runtime: nvidia
     restart: unless-stopped

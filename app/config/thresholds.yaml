@@ -1,26 +1,37 @@
-# AR Diagnostic MVP - Configuration
-# Illumination-only pipeline for Jetson deployment
+# AR Diagnostic MVP - Configuration (Environment-independent)
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 models:
-  default: qwen             # Qwen 0.5B (rápido, 1GB mem) ou Phi mini (mais lento, 2GB mem): qwen ou phi
-  device: cuda              # 'cuda', 'cpu', ou 'auto'
-  use_4bit: true            # Desabilitado para FP16 puro (mais rápido que 4-bit)
-  use_int8: false           # INT8 desabilitado (usar apenas se instalar optimum-quanto)
-  greedy_decoding: false    # Sampling com temperature/top_p
-  prompt_max_length: 512    # Max tokens na entrada
-  warmup_on_startup: true   # Ativado: modelo carrega no startup para requisições rápidas
+  default: dialogpt-small             # Editar: qwen (Jetson Orin/Desktop), dialogpt-small (Jetson Nano)
+  device: cuda                        # cuda, cpu, ou auto
+  use_4bit: false                     # false (Jetson Nano), true (Jetson Orin/Desktop com bitsandbytes)
+  greedy_decoding: true               # true (Nano - velocidade), false (Orin/Desktop - qualidade)
+  prompt_max_length: 256              # 512 tokens (Reduzir para 256 em Jetson Nano se necessário)
+  warmup_on_startup: true
   
   qwen:
+    # Qwen 2.5 - 0.5B: Rápido, qualidade média
     name: Qwen/Qwen2.5-0.5B-Instruct
-    max_tokens: 100         # BASELINE EXACT (achieved 6.39s)
+    max_tokens: 100
     summary_tokens: 150
     temperature: 0.3
     top_p: 0.85
   
   phi:
+    # Phi-3-mini: Qualidade superior, ~3.8B params
+    # Jetson Orin: Sim (12GB VRAM). Jetson Nano: Não (4GB)
     name: microsoft/Phi-3-mini-4k-instruct
-    max_tokens: 120         # BASELINE EXACT
+    max_tokens: 120
     summary_tokens: 200
+    temperature: 0.3
+    top_p: 0.85
+  
+  dialogpt-small:
+    # Microsoft DialoGPT-small: Ultra-leve, 117M params
+    # Compatível: PyTorch 1.10, transformers 4.8.2
+    # VRAM estimada: ~250MB em FP16
+    name: microsoft/DialoGPT-small
+    max_tokens: 30
+    summary_tokens: 40
     temperature: 0.3
     top_p: 0.85
 
@@ -50,8 +61,8 @@ pdi:
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # Ambiente de execução — define subdiretório de saída dos resultados JSON
-# 'jetson' -> outputs/jetson/   'legion' -> outputs/legion/
-environment: legion
+# Editar conforme o deploy: 'jetson-nano', 'jetson-orin', 'legion'
+environment: jetson-nano
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # API Configuration
