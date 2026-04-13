@@ -4,8 +4,8 @@ models:
   default: dialogpt-small             # Editar: qwen/phi (Jetson Orin/Desktop), dialogpt-small (Jetson Nano)
   device: cuda                        # cuda, cpu, ou auto
   use_4bit: false                     # false (Jetson Nano), true (Jetson Orin/Desktop com bitsandbytes)
-  greedy_decoding: true               # true (Nano - velocidade + controle), false (Orin/Desktop - qualidade)
-  prompt_max_length: 256              # 256 (Nano - reduzido para controle), 512 (Orin/Desktop)
+  greedy_decoding: true               # true (Nano - velocidade), false (Orin/Desktop - qualidade)
+  prompt_max_length: 512              # 512 tokens (Reduzir para 256 em Jetson Nano se necessário)
   warmup_on_startup: true
   
   qwen:
@@ -31,8 +31,8 @@ models:
     # VRAM estimada: ~250MB em FP16
     name: /home/das9/models/DialoGPT-small     # Local (evita download automático, necessário para Jetson Nano)
     # name: microsoft/DialoGPT-small     # HuggingFace Hub (auto-downloads)
-    max_tokens: 20
-    summary_tokens: 32
+    max_tokens: 40
+    summary_tokens: 60
     temperature: 0.3
     top_p: 0.85
 
