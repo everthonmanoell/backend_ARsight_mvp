@@ -26,12 +26,11 @@ RUN find /etc/apt/ -type f \( -name "*.list" -o -name "*.sources" \) -exec sed -
 # pip para Python 3.8
 RUN curl -sS https://bootstrap.pypa.io/pip/3.8/get-pip.py | python3.8
 
-# ── PyTorch 1.10 — wheel oficial NVIDIA para Python 3.8 + CUDA 10.2 ────────
-# Referência: https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
-# Usando mirror de JetPack 4.6 (L4T R32.7)
-
-RUN python3.8 -m pip install --no-cache-dir \
-    https://nvidia.box.com/shared/static/yhlmaey27akah9octvuus2c4yatji151.whl
+# ── PyTorch 1.10 — compilado para Python 3.8 + CUDA 10.2 + ARM64 ────────────
+# Wheel NVIDIA oficial para Jetson Nano com JetPack 4.6 (L4T R32.7)
+RUN python3.8 -m pip install --no-cache-dir --no-deps \
+    torch==1.10.0 torchvision==0.11.0 -f https://developer.download.nvidia.com/compute/redist/jp/v461/pytorch/ || \
+    python3.8 -m pip install --no-cache-dir torch==1.10.0 -i https://download.pytorch.org/whl/cu102
 
 # ── Dependências da aplicação ────────────────────────────────────────────────
 COPY requirements-jetson.txt .
