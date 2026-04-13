@@ -24,22 +24,21 @@ echo "✓ Setting up environment..."
 if [ ! -d ".venv_py38" ]; then
     echo "Creating virtual environment..."
     python3.8 -m venv .venv_py38 || {
-        echo "❌ venv creation failed. Trying alternative..."
-        python3.8 -m pip install --user virtualenv
+        echo "venv failed, trying virtualenv..."
+        python3.8 -m pip install --user virtualenv --quiet
         python3.8 -m virtualenv .venv_py38
     }
     echo "Virtual environment created at .venv_py38"
+else
+    echo "Virtual environment already exists at .venv_py38"
 fi
 
-if [ ! -f ".venv_py38/bin/activate" ]; then
-    echo "❌ Virtual environment activation script not found!"
-    echo "Checking directory structure:"
-    ls -la .venv_py38/ 2>/dev/null || echo "Directory empty or missing"
-    exit 1
+# Ativar do venv
+if [ -f ".venv_py38/bin/activate" ]; then
+    source .venv_py38/bin/activate
+else
+    echo "⚠️  Warning: activate script not found, proceeding anyway..."
 fi
-
-source .venv_py38/bin/activate
-echo "✅ Virtual environment activated"
 
 # 3. Upgrade pip
 echo ""
@@ -96,15 +95,15 @@ fi
 
 # 5. Instalar Poetry (se ainda não instalado)
 echo ""
-echo "✓ Installing Poetry..."
+echo "✓ Installing/Checking Poetry..."
 if ! command -v poetry &> /dev/null; then
-    curl -sSL https://install.python-poetry.org | python3.8 - 2>/dev/null || \
-        echo "⚠️  Poetry installation via curl failed, trying pip..."
-    python3.8 -m pip install --user poetry 2>/dev/null || \
-        echo "⚠️  Poetry installation failed"
+    echo "   Poetry not found, installing..."
+    curl -sSL https://install.python-poetry.org 2>/dev/null | python3.8 - 2>/dev/null || \
+        python3.8 -m pip install --user poetry --quiet 2>/dev/null || \
+        echo "⚠️  Poetry installation failed (will use pip directly)"
 fi
 export PATH="$HOME/.local/bin:$PATH"
-poetry --version 2>/dev/null || echo "⚠️  Poetry not available, will use pip directly"
+poetry --version 2>/dev/null || echo "⚠️  Poetry not available"
 
 # 6. Instalar dependências com Poetry
 echo ""
