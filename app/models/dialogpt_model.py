@@ -188,26 +188,51 @@ class DialoGPTARModel(ARDiagnosticModel):
         Summary é o texto principal da interface.
         Mantém variedade e naturalidade, mas sem abrir demais o modelo.
         Prefers framing com contexto de dados concretos.
+        Detecta condições mistas (over + under) para summary melhor.
         """
         import random
 
         total = agg['total']
         problem_count = agg['problem_count']
         dominant_label = agg['dominant_label']
+        label_breakdown = agg.get('label_breakdown', {})
+        
+        # Detecta se há condições MISTAS (tanto overexposed quanto underexposed)
+        has_overexposed = label_breakdown.get('overexposed', 0) > 0
+        has_underexposed = label_breakdown.get('underexposed', 0) > 0
+        mixed_conditions = has_overexposed and has_underexposed
 
         if problem_count > 0:
-            prompts = [
-                f"Frame batch review ({total} total): {problem_count} frames detected with {dominant_label} conditions. "
-                f"Write one concise sentence about the AR impact.",
-                f"Summary of {total} analyzed frames: {problem_count} exhibit {dominant_label} lighting. "
-                f"Write one short sentence about how this affects AR tracking.",
-                f"{total} frames analyzed. Issue detected in {problem_count} frames: {dominant_label} lighting. "
-                f"Write one concise sentence summarizing the AR risk.",
-                f"In this batch of {total} frames, {problem_count} show {dominant_label} lighting. "
-                f"Describe in one short sentence the effect on AR performance.",
-                f"Batch contains {total} frames with {problem_count} having {dominant_label} illumination. "
-                f"Write one concise AR impact sentence.",
-            ]
+            if mixed_conditions:
+                # Condições mistas: menciona ambas em vez de apenas a dominante
+                over_count = label_breakdown.get('overexposed', 0)
+                under_count = label_breakdown.get('underexposed', 0)
+                prompts = [
+                    f"Frame batch: {total} total frames analyzed. {under_count} frames underexposed (too dark), {over_count} overexposed (too bright). "
+                    f"Write one concise sentence about mixed lighting impact on AR.",
+                    f"Summary of {total} frames: {problem_count} problematic frames with mixed lighting (both too bright and too dark). "
+                    f"Write one short sentence describing AR tracking challenges.",
+                    f"Batch contains {under_count} underexposed and {over_count} overexposed frames out of {total} total. "
+                    f"Write one concise sentence about how this lighting variability affects AR.",
+                    f"Analysis of {total} frames reveals inconsistent lighting: {under_count} too dark, {over_count} too bright. "
+                    f"Write one short sentence about AR stability concerns.",
+                    f"{problem_count} of {total} frames show problematic conditions (mixed dark and bright areas). "
+                    f"Write one concise AR impact assessment.",
+                ]
+            else:
+                # Condição única (dominante)
+                prompts = [
+                    f"Frame batch review ({total} total): {problem_count} frames detected with {dominant_label} conditions. "
+                    f"Write one concise sentence about the AR impact.",
+                    f"Summary of {total} analyzed frames: {problem_count} exhibit {dominant_label} lighting. "
+                    f"Write one short sentence about how this affects AR tracking.",
+                    f"{total} frames analyzed. Issue detected in {problem_count} frames: {dominant_label} lighting. "
+                    f"Write one concise sentence summarizing the AR risk.",
+                    f"In this batch of {total} frames, {problem_count} show {dominant_label} lighting. "
+                    f"Describe in one short sentence the effect on AR performance.",
+                    f"Batch contains {total} frames with {problem_count} having {dominant_label} illumination. "
+                    f"Write one concise AR impact sentence.",
+                ]
         else:
             prompts = [
                 f"Batch analysis complete: all {total} frames show adequate lighting for AR applications. "
@@ -231,6 +256,7 @@ class DialoGPTARModel(ARDiagnosticModel):
         Valida contra:
         - Junk responses (contagens, meta-comentários)
         - Camera gear hallucinations (Canon, Nikon, lentes, etc)
+        - Conversational hallucinations (chat-style responses, questions)
         """
         import re
         
@@ -282,6 +308,28 @@ class DialoGPTARModel(ARDiagnosticModel):
         for pattern in gear_patterns:
             if re.search(pattern, lowered):
                 logger.warning(f"Detected camera-gear hallucination in response: {text[:80]}...")
+                return None
+        
+        # Detecta "conversational hallucinations" - modelo entrando em chat mode
+        # Respostas esperadas são explicações curtas, não diálogos ou perguntas
+        conversational_patterns = [
+            r"\?$",                           # Termina com pergunta
+            r"^what\s+is",                    # Começa pergunta
+            r"^how\s+is",                     # Começa pergunta
+            r"^where\s+is",                   # Começa pergunta
+            r"^why\s+is",                     # Começa pergunta
+            r"\bi would like\b",              # Chat conversacional
+            r"\bi am not\s+(sure|a scientist)\b",  # Chat conversacional
+            r"\bi think\b",                   # Chat conversacional
+            r"\bi'm\b",                       # Contrações ("I'm not a scientist...")
+            r"\bi cannot\b",                  # Chat conversacional
+            r"\bi don't\b",                   # Chat conversacional
+            r"\bi don't know\b",              # Chat conversacional
+        ]
+        
+        for pattern in conversational_patterns:
+            if re.search(pattern, lowered):
+                logger.warning(f"Detected conversational hallucination (chat mode): {text[:80]}...")
                 return None
         
         return text if text else None
