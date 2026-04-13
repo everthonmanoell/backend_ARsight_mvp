@@ -1,0 +1,38 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Requirements para Jetson Nano — Python 3.8 + PyTorch 1.11 + Qwen
+# ─────────────────────────────────────────────────────────────────────────────
+# Uso: pip install -r requirements-jetson-py38.txt
+# OU:  bash setup_jetson_nano_py38.sh
+#
+# NOTAS:
+#  - PyTorch 1.11.0 ARM64 wheels podem não estar em PyPI
+#    Se falhar, tentar PyTorch 1.9.0 ou compilar localmente
+#  - numpy 1.24.x é compatível com Python 3.8
+#  - pillow 10.x suporta Python 3.8 (11.x requer 3.9+)
+#  - transformers 4.30.0 é compatível com Python 3.8
+# ─────────────────────────────────────────────────────────────────────────────
+
+# API
+fastapi==0.104.0
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+pydantic==2.4.0
+
+# Core utilities
+pyyaml==6.0
+numpy==1.24.0
+pillow==10.0.0
+opencv-python-headless==4.8.0
+
+# LLM - Qwen Support
+# NOTA: torch deve ser instalado separadamente via wheel ARM64
+# Por exemplo: python3.8 -m pip install torch==1.11.0 -f ...
+transformers==4.30.0
+huggingface-hub==0.14.0
+accelerate==0.27.0
+
+# Logging/Utilities
+python-json-logger==2.0.7
+python-dotenv==1.0.0
+requests==2.31.0
+click==8.1.0
