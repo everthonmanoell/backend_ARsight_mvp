@@ -254,7 +254,7 @@ class DialoGPTARModel(ARDiagnosticModel):
             logger.warning(f"Rejected: Conversational question: {text[:60]}...")
             return None
         
-        # CRITÉRIO 3: Rejeita respostas com padrão chat ("I would like", "I think you", "I'm not sure")
+        # CRITÉRIO 3: Rejeita respostas com padrão chat ("I would like", "I think you", "I'm not sure", "I have")
         chat_patterns = [
             r"\bi would like\b",
             r"\bi think you\b",
@@ -263,6 +263,10 @@ class DialoGPTARModel(ARDiagnosticModel):
             r"\bi am not\b",
             r"\bi am a\b",
             r"\bI don't know\b",
+            r"\bi have a\b",        # "I have a bright light..."
+            r"\bi have the\b",      # "I have the..."
+            r"\bi have been\b",     # "I have been..."
+            r"\bwe have\b",         # "We have..."
         ]
         text_lower = text.lower()
         for pattern in chat_patterns:
