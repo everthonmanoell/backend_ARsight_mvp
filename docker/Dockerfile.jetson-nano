@@ -1,55 +1,40 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Dockerfile.jetson — Jetson Nano (DEPRECATED)
+# Jetson Nano — JetPack 4.6.x  (L4T R32.7.x · CUDA 10.2 · Ubuntu 18.04)
 #
-# ⚠️  ESTE DOCKERFILE É APENAS PARA JETSON NANO (JetPack 4.6.x, L4T R32.7.x)
-# 
-# Para Jetson Orin, use: Dockerfile.jetson-orin (L4T R36.x, JetPack 6.x)
-# Para Desktop, use: Dockerfile.legion (CUDA 12.1+)
+# ⚠️  NÃO compatível com JetPack 5.x (Xavier NX / AGX Orin usam r35.x)
 # ─────────────────────────────────────────────────────────────────────────────
 FROM nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3
 
 WORKDIR /app
 
-# ⚠️ CRÍTICO: Usar python3 NATIVO da imagem base, não instalar python3.8
-# Instalar python3.8 via apt-get quebra os links do torch CUDA na imagem base!
-# A imagem base já vem com python3 + PyTorch 1.10 com CUDA 10.2
+# ── Sistema: Python 3.8 (base tem 3.6; transformers >= 4.47 exige >= 3.8) ───
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     python3.8 \
+#     python3.8-dev \
+#     python3.8-distutils \
+#     curl \
+#     && rm -rf /var/lib/apt/lists/*
+RUN find /etc/apt/ -type f \( -name "*.list" -o -name "*.sources" \) -exec sed -i '/apt\.kitware\.com/d' {} \; \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        python3.8 \
+        python3.8-dev \
+        python3.8-distutils \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# pip para Python 3.8
+RUN curl -sS https://bootstrap.pypa.io/pip/3.8/get-pip.py | python3.8
+
+# ── PyTorch 1.10 — wheel oficial NVIDIA para Python 3.8 + CUDA 10.2 ────────
+# Referência: https://forums.developer.nvidia.com/t/pytorch-for-jetson/72048
+
+RUN python3.8 -m pip install --no-cache-dir \
+    https://developer.download.nvidia.com/compute/redist/jp/v461/pytorch/torch-1.10.0a0+git36449ea-cp38-cp38-linux_aarch64.whl
 
 # ── Dependências da aplicação ────────────────────────────────────────────────
-# 🔍 CRÍTICO para CUDA: usar requirements-jetson-nano.txt com versões pinadas
-# que funcionam com PyTorch 1.10 e Python 3.6
-COPY requirements-jetson-nano.txt .
-COPY setup_jetson_nano.sh .
-
-# Instalar curl e build tools (necessário para rustup e compilação)
-RUN rm -f /etc/apt/sources.list.d/*.list && \
-    sed -i '/apt.kitware.com/d' /etc/apt/sources.list && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-    curl \
-    build-essential && \
-    rm -rf /var/lib/apt/lists/*
-
-# Instalar Rust via rustup (necessário para compilar tokenizers)
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-    . $HOME/.cargo/env && \
-    rustc --version && cargo --version
-
-# Atualizar pip e wheel
-RUN python3 -m pip install --upgrade pip wheel
-
-# Instalar dependências
-# Tenta --only-binary primeiro (mais rápido), fallback para build com Rust se necessário
-RUN python3 -m pip install --no-cache-dir --only-binary :all: -r requirements-jetson-nano.txt || \
-    (export PATH="$HOME/.cargo/bin:$PATH" && python3 -m pip install --no-cache-dir -r requirements-jetson-nano.txt)
-
-# Verificar que CUDA está disponível (falhar build se não estiver)
-RUN python3 -c "\
-import torch; \
-print(f'torch version: {torch.__version__}'); \
-print(f'CUDA version: {torch.version.cuda}'); \
-print(f'CUDA device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"NOT AVAILABLE\"}'); \
-assert torch.cuda.is_available(), 'CUDA is not available!'; \
-print('✓ CUDA verified in image')"
+COPY requirements-jetson.txt .
+RUN python3.8 -m pip install --no-cache-dir -r requirements-jetson.txt
 
 # ── Aplicação ────────────────────────────────────────────────────────────────
 COPY app/ ./app/
@@ -61,11 +46,10 @@ RUN mkdir -p logs data/uploads
 EXPOSE 8000
 
 ENV PYTHONUNBUFFERED=1
+# ENV TRANSFORMERS_CACHE=/app/models/cache
 ENV HF_HOME=/app/models/cache
 # Expõe a GPU para o container no nvidia-container-runtime (JetPack 4.6)
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
-# 🎯 CRÍTICO: Set environment explicitly for hostname-less Docker
-ENV AR_ENVIRONMENT=jetson-nano
 
-CMD ["python3", "-m", "uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python3.8", "-m", "uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
