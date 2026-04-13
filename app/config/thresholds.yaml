@@ -6,7 +6,7 @@ models:
   use_4bit: false                     # false (Jetson Nano), true (Jetson Orin/Desktop com bitsandbytes)
   greedy_decoding: true               # true (Nano - velocidade), false (Orin/Desktop - qualidade)
   prompt_max_length: 128              # 256 tokens (Jetson Nano: velocidade + controle), 512 tokens (Jetson Orin/Desktop: melhor qualidade)
-  warmup_on_startup: false            # true (acelera respostas iniciais), false (economiza recursos na inicialização)
+  warmup_on_startup: true            # true (acelera respostas iniciais), false (economiza recursos na inicialização)
   
   # qwen:
   #   # Qwen 2.5 - 0.5B: Rápido, qualidade média
