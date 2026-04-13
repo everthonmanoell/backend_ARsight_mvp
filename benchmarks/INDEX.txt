@@ -1,0 +1,136 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                   BENCHMARKS - ÍNDICE DE NAVEGAÇÃO                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📍 VOCÊ ESTÁ EM: benchmarks/
+   Tudo relacionado a testes de performance e relatórios está aqui.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📖 DOCUMENTAÇÃO
+═══════════════════════════════════════════════════════════════════════════════
+
+  README.md
+    └─ 👉 LEIA PRIMEIRO - Visão geral, estrutura e quick start
+
+  BENCHMARKING_GUIDE.md
+    └─ Guia completo: como executar, métricas, gráficos recomendados
+
+  BENCHMARK_QUICK_REFERENCE.sh
+    └─ Comandos prontos para copiar e executar (fácil!)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔧 SCRIPTS PYTHON
+═══════════════════════════════════════════════════════════════════════════════
+
+scripts/
+├── benchmark_jetson_vs_legion.py
+│   └─ Script principal - Compara desempenho entre ambientes
+│      USO: python scripts/benchmark_jetson_vs_legion.py --help
+│
+├── generate_comparison_report.py
+│   └─ Gera relatório HTML + CSV + gráficos
+│      USO: python scripts/generate_comparison_report.py --help
+│
+├── analyze_perf.py
+│   └─ Extrai métricas de performance dos resultados
+│
+├── compare_perf.py
+│   └─ Compara dois conjuntos de teste
+│
+└── check_*.py
+    └─ Verificações rápidas (config, baseline, final, latest)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📊 RESULTADOS DOS TESTES
+═══════════════════════════════════════════════════════════════════════════════
+
+outputs/
+│
+├── comparison/                        ← ÚLTIMO(S) TESTE(S)
+│   ├── runs_raw.csv                   Dados brutos completos
+│   ├── summary_by_env_model_batch.csv Resumo consolidado
+│   ├── speedup_vs_desktop_legion.csv  Comparação de velocidade
+│   ├── benchmark_report.html          📈 Relatório visual (abrir no navegador)
+│   ├── benchmark_report.md            📄 Relatório em texto
+│   └── plots/                         🖼️ Gráficos PNG
+│       ├── bar_*.png                  Gráficos de barras
+│       ├── line_*.png                 Gráficos de linha
+│       └── boxplot_*.png              Distribuições
+│
+└── legacy/                            ← HISTÓRICO ANTIGO
+    ├── desktop-legion/batch{1-6}/     Dados do Desktop RTX
+    ├── jetson-nano/batch{1-6}/        Dados do Jetson Nano
+    └── jetson-orin/batch{1-6}/        Dados do Jetson Orin
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📝 RELATÓRIOS
+═══════════════════════════════════════════════════════════════════════════════
+
+reports/
+├── BENCHMARK_SUMMARY.md               Resumo executivo
+├── BENCHMARK_UPDATE.md                Atualizações recentes
+└── CHANGELOG_BENCHMARKS.md            Histórico de mudanças
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📂 DADOS DE ENTRADA
+═══════════════════════════════════════════════════════════════════════════════
+
+data/
+└── images/                            Imagens para testes (criar conforme necessário)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🚀 GUIA RÁPIDO
+═══════════════════════════════════════════════════════════════════════════════
+
+PRIMEIRA VEZ? Leia isto:
+  1. cat README.md                    ← Começar aqui
+  2. cat BENCHMARKING_GUIDE.md        ← Entender o workflow
+  3. bash BENCHMARK_QUICK_REFERENCE.sh ← Copiar comandos
+
+VER ÚLTIMO RELATÓRIO:
+  open outputs/comparison/benchmark_report.html  (macOS)
+  xdg-open outputs/comparison/benchmark_report.html  (Linux)
+  start outputs/comparison/benchmark_report.html  (Windows)
+
+RODAR NOVO TESTE:
+  bash BENCHMARK_QUICK_REFERENCE.sh
+
+GERAR NOVO RELATÓRIO:
+  cd scripts
+  python generate_comparison_report.py --input-dir ../outputs/comparison/
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📍 ESTRUTURA DE PASTAS
+═══════════════════════════════════════════════════════════════════════════════
+
+benchmarks/
+├── README.md .......................... 👈 Visão geral
+├── INDEX.txt .......................... 👈 Você está aqui
+├── BENCHMARKING_GUIDE.md .............. Guia completo
+├── BENCHMARK_QUICK_REFERENCE.sh ....... Comandos prontos
+├── scripts/ ........................... Scripts Python
+├── outputs/ ........................... Resultados (comparison/ + legacy/)
+├── reports/ ........................... Docs para TCC
+└── data/ ............................. Dados de entrada
+
+═══════════════════════════════════════════════════════════════════════════════
+
+💡 DICAS
+═══════════════════════════════════════════════════════════════════════════════
+
+• Tudo nessa pasta é sobre BENCHMARKING
+• Encontrou arquivo em outputs/? -> Leia outputs/comparison/README primeiro
+• Quer rodar teste rápido? -> Veja BENCHMARK_QUICK_REFERENCE.sh
+• Confuso? -> cat README.md
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Última atualização: 2026-04-13
+Version: 2.0 (Centralizada)
