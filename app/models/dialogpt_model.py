@@ -185,31 +185,43 @@ class DialoGPTARModel(ARDiagnosticModel):
     #---------------------------------------------------------------------
     def _build_summary_prompt(self, agg: Dict) -> str:
         """
-        Constrói prompt de sumarização para lote de frames (DialoGPT style)
-        Muito curto e bem fechado
+        Summary é o texto principal da interface.
+        Mantém variedade e naturalidade, mas sem abrir demais o modelo.
+        Prefers framing com contexto de dados concretos.
         """
-        
         import random
-        
+
         total = agg['total']
         problem_count = agg['problem_count']
         dominant_label = agg['dominant_label']
-        
+
         if problem_count > 0:
             prompts = [
-                f"Batch of {total} frames: {problem_count} have {dominant_label} lighting. "
-                f"Summarize impact on AR in one sentence.",
-                f"{total} frames analyzed. {problem_count} show {dominant_label} conditions. "
-                f"Is this batch suitable for AR?",
+                f"Frame batch review ({total} total): {problem_count} frames detected with {dominant_label} conditions. "
+                f"Write one concise sentence about the AR impact.",
+                f"Summary of {total} analyzed frames: {problem_count} exhibit {dominant_label} lighting. "
+                f"Write one short sentence about how this affects AR tracking.",
+                f"{total} frames analyzed. Issue detected in {problem_count} frames: {dominant_label} lighting. "
+                f"Write one concise sentence summarizing the AR risk.",
+                f"In this batch of {total} frames, {problem_count} show {dominant_label} lighting. "
+                f"Describe in one short sentence the effect on AR performance.",
+                f"Batch contains {total} frames with {problem_count} having {dominant_label} illumination. "
+                f"Write one concise AR impact sentence.",
             ]
         else:
             prompts = [
-                f"All {total} frames have adequate lighting. "
-                f"Confirm they are suitable for AR in one sentence.",
-                f"Batch review: {total} frames, all lighting OK. "
-                f"Brief summary for AR tracking.",
+                f"Batch analysis complete: all {total} frames show adequate lighting for AR applications. "
+                f"Write one concise summary sentence.",
+                f"Review of {total} frames confirms stable lighting conditions throughout. "
+                f"Write one short sentence about AR readiness.",
+                f"Full batch analyzed ({total} frames) with no lighting issues detected. "
+                f"Write one concise sentence confirming AR suitability.",
+                f"All {total} frames meet lighting requirements for stable AR tracking. "
+                f"Write one short summary sentence.",
+                f"{total} frames checked — consistent lighting throughout supports reliable AR performance. "
+                f"Write one concise confirmation sentence.",
             ]
-        
+
         return random.choice(prompts)
     
     #---------------------------------------------------------------------

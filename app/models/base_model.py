@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List
 import logging
 import re
+import random
 from collections import Counter
 
 from app.core.rule_engine import RuleEngine
@@ -476,25 +477,36 @@ class ARDiagnosticModel(ABC):
         # VALIDAÇÃO: Verifica alucinações e qualidade, mas permite geração natural
         if not self.validator.is_valid_explanation(summary_text):
             logger.debug(f"Summary failed validation, generating fallback")
-            # Fallback simples - gera uma descrição baseada nos dados agregados
-            # Mas o modelo agora terá a chance de gerar texto natural primeiro
+            # Fallback variado - múltiplas opções determinísticas baseadas em dados
+            # Isso evita repetição e mantém consistência com os dados do batch
+            
             label_desc = {
                 'overexposed': 'excessive brightness',
                 'underexposed': 'insufficient lighting',
                 'poor': 'uneven illumination',
             }
             dominant_desc = label_desc.get(dominant_label, 'lighting issues')
+            total_frames = n
             
             if problem_count > 0:
                 modal_verb = 'could' if overall_risk == 'high' else 'may'
-                summary_text = (
-                    f"The scene exhibits {dominant_desc}, which {modal_verb} affect AR performance. "
-                    f"Improved lighting conditions would enhance tracking stability and accuracy."
-                )
+                fallback_options = [
+                    f"In this batch, {problem_count} of {total_frames} frames show {dominant_desc}, which {modal_verb} affect AR tracking stability.",
+                    f"The batch contains {problem_count} problematic frames with {dominant_desc}; AR performance {modal_verb} be reduced.",
+                    f"{dominant_desc.capitalize()} appears in {problem_count} of {total_frames} frames, creating risk for reliable AR tracking.",
+                    f"Lighting analysis shows {problem_count}/{total_frames} frames with {dominant_desc}, which {modal_verb} impact AR quality.",
+                    f"Frame batch review ({total_frames} total): {problem_count} frames detected with {dominant_label} conditions. AR performance {modal_verb} be affected.",
+                ]
+                summary_text = random.choice(fallback_options)
             else:
-                summary_text = (
-                    f"The scene offers suitable lighting conditions that can support reliable AR tracking and interaction."
-                )
+                fallback_options = [
+                    f"All {total_frames} frames show lighting conditions suitable for stable AR tracking.",
+                    f"No lighting issues were detected in this batch of {total_frames} frames; the scene is ready for AR.",
+                    f"The batch presents consistent illumination across {total_frames} frames, supporting reliable AR performance.",
+                    f"Lighting is adequate throughout the {total_frames}-frame batch, enabling good AR tracking conditions.",
+                    f"All {total_frames} frames meet lighting requirements for AR; conditions are favorable for reliable tracking.",
+                ]
+                summary_text = random.choice(fallback_options)
         
         summary_text = self.validator.sanitize_explanation(summary_text)
 
