@@ -5,7 +5,7 @@ models:
   device: cuda                        # cuda, cpu, ou auto
   use_4bit: false                     # false (Jetson Nano), true (Jetson Orin/Desktop com bitsandbytes)
   greedy_decoding: true               # true (Nano - velocidade), false (Orin/Desktop - qualidade)
-  prompt_max_length: 512              # 512 tokens (Reduzir para 256 em Jetson Nano se necessário)
+  prompt_max_length: 256              # 256 tokens (Jetson Nano: reduzido para velocidade)
   warmup_on_startup: true
   
   qwen:

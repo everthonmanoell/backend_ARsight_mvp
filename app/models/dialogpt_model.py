@@ -232,6 +232,59 @@ class DialoGPTARModel(ARDiagnosticModel):
         return prompt
     
     #---------------------------------------------------------------------
+    def _postprocess_dialogpt_text(self, text: str) -> str:
+        """
+        Validação específica para DialoGPT-small
+        Detecta e rejeita respostas conversacionais/alucinadas
+        Retorna None se detect junk (trigga fallback para template)
+        """
+        import re
+        
+        text = text.strip()
+        if not text:
+            return None
+        
+        # CRITÉRIO 1: Rejeita respostas que terminam com "?"
+        if text.endswith("?"):
+            logger.warning(f"Rejected: Response is a question: {text[:60]}...")
+            return None
+        
+        # CRITÉRIO 2: Rejeita perguntas interrogativas (What, How, Why, Where, When, Do, Can, etc)
+        if re.match(r'^(what|how|why|where|when|do|can|is|are|would|could)\s', text.lower()):
+            logger.warning(f"Rejected: Conversational question: {text[:60]}...")
+            return None
+        
+        # CRITÉRIO 3: Rejeita respostas com padrão chat ("I would like", "I think you", "I'm not sure")
+        chat_patterns = [
+            r"\bi would like\b",
+            r"\bi think you\b",
+            r"\bi think the\b",
+            r"\bi'm not sure\b",
+            r"\bi am not\b",
+            r"\bi am a\b",
+            r"\bI don't know\b",
+        ]
+        text_lower = text.lower()
+        for pattern in chat_patterns:
+            if re.search(pattern, text_lower):
+                logger.warning(f"Rejected: Chat pattern detected: {text[:60]}...")
+                return None
+        
+        # CRITÉRIO 4: Rejeita repetições de tokens (AR.AR.AR.AR ou qualquer repetição >4)
+        # Padrão: palavra seguida de ponto, repetida múltiplas vezes
+        repeat_pattern = r'(\b\w+\.){4,}'
+        if re.search(repeat_pattern, text):
+            logger.warning(f"Rejected: Token repetition detected: {text[:60]}...")
+            return None
+        
+        # CRITÉRIO 5: Rejeita sufixos ".I." ou ".I" (token de córte mal formatado)
+        if re.search(r'\.\s*I\.?\s*$', text):
+            logger.warning(f"Rejected: Malformed token suffix '.I': {text[-20:]}...")
+            return None
+        
+        return text
+    
+    #---------------------------------------------------------------------
     def _call_model(self, prompt: str, max_new_tokens: int = None) -> str:
         """
         Chama DialoGPT-small para gerar explicação (single prompt)
@@ -290,6 +343,11 @@ class DialoGPTARModel(ARDiagnosticModel):
             if not response or len(response) < 10:
                 logger.warning("Empty response from model, using full output")
                 response = self.tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+            
+            # Valida alucinações específicas do DialoGPT
+            response = self._postprocess_dialogpt_text(response)
+            if response is None:
+                return ""  # Retorna vazio para ativar fallback de template
             
             return self._clean_response(response)
             
@@ -363,7 +421,14 @@ class DialoGPTARModel(ARDiagnosticModel):
                 if not response or len(response) < 10:
                     response = self.tokenizer.decode(output, skip_special_tokens=True).strip()
                 
-                responses.append(self._clean_response(response))
+                # Valida alucinações específicas do DialoGPT
+                response = self._postprocess_dialogpt_text(response)
+                if response is None:
+                    response = ""  # Vazio para ativar fallback de template
+                else:
+                    response = self._clean_response(response)
+                
+                responses.append(response)
             
             t5 = time.time()
             logger.debug(f"Batch decoding: {(t5-t4)*1000:.1f}ms")
