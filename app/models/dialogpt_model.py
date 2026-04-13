@@ -257,6 +257,7 @@ class DialoGPTARModel(ARDiagnosticModel):
         # CRITÉRIO 3: Rejeita respostas com padrão chat ("I would like", "I think you", "I'm not sure", "I have")
         chat_patterns = [
             r"\bi would like\b",
+            r"\bi would\s+(recommend|suggest)",  # "I would recommend..." "I would suggest..."
             r"\bi think you\b",
             r"\bi think the\b",
             r"\bi'm not sure\b",
@@ -274,15 +275,28 @@ class DialoGPTARModel(ARDiagnosticModel):
                 logger.warning(f"Rejected: Chat pattern detected: {text[:60]}...")
                 return None
         
-        # CRITÉRIO 4: Rejeita repetições de tokens (AR.AR.AR.AR ou qualquer repetição >4)
+        # CRITÉRIO 4: Rejeita repetições de palavras-chave (ex: "brightness diagnostic. brightness diagnostic")
+        # Detecta quando palavras principais se repetem muito
+        words = text_lower.split()
+        if len(words) > 2:
+            word_counts = {}
+            for word in words:
+                word_counts[word] = word_counts.get(word, 0) + 1
+            # Se alguma palavra aparece >3 vezes, é repetição excessiva
+            if any(count > 3 for count in word_counts.values()):
+                logger.warning(f"Rejected: Word repetition detected: {text[:60]}...")
+                return None
+        
+        # CRITÉRIO 5: Rejeita repetições de tokens (AR.AR.AR.AR ou qualquer repetição >4)
         # Padrão: palavra seguida de ponto, repetida múltiplas vezes
         repeat_pattern = r'(\b\w+\.){4,}'
         if re.search(repeat_pattern, text):
             logger.warning(f"Rejected: Token repetition detected: {text[:60]}...")
             return None
         
-        # CRITÉRIO 5: Rejeita sufixos ".I." ou ".I" (token de córte mal formatado)
-        if re.search(r'\.\s*I\.?\s*$', text):
+        # CRITÉRIO 6: Rejeita sufixos ".I." ou ".I" ou ".I. e" (token de córte mal formatado)
+        # Pode ter espaços e letras após
+        if re.search(r'\.\s*I\.(\s+\w+)*\s*$', text):
             logger.warning(f"Rejected: Malformed token suffix '.I': {text[-20:]}...")
             return None
         
