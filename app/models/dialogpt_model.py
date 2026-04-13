@@ -316,6 +316,19 @@ class DialoGPTARModel(ARDiagnosticModel):
                 logger.warning(f"Rejected: Corrupted suffix detected: {text[-30:]}...")
                 return None
         
+        # CRITÉRIO 8: Rejeita respostas que não mencionam contexto de iluminação
+        # Resposta válida deve ter pelo menos uma palavra-chave relacionada
+        illumination_keywords = [
+            'light', 'lighting', 'illumination', 'brightness', 'bright', 'exposure',
+            'exposed', 'underexposed', 'overexposed', 'shadow', 'dark', 'dim',
+            'uniform', 'uniformity', 'feature', 'visibility', 'contrast', 'luma',
+            'visual', 'detect', 'detection', 'tracking', 'ar', 'scene'
+        ]
+        has_context = any(keyword in text_lower for keyword in illumination_keywords)
+        if not has_context:
+            logger.warning(f"Rejected: No illumination context keywords: {text[:50]}...")
+            return None
+        
         return text
     
     #---------------------------------------------------------------------
