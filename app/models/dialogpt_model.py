@@ -148,7 +148,7 @@ class DialoGPTARModel(ARDiagnosticModel):
     def _build_prompt(self, metrics: Dict, status: str, risk_level: str, triggered_rules: List[str]) -> str:
         """
         Constrói prompt específico para DialoGPT-small
-        Curto, fechado, mas natural — sem muita margem de fuga
+        Instrução direta (não pergunta) — evita modo "fórum de fotografia"
         """
         
         import random
@@ -158,7 +158,6 @@ class DialoGPTARModel(ARDiagnosticModel):
         mean_luma = metrics.get('mean_luma', 0.0)
         uniformity = metrics.get('uniformity', 0.0)
 
-        # Variação mínima para naturalidade, mas contexto muito fechado
         openers = [
             "AR lighting analysis.",
             "Scene lighting assessment.",
@@ -166,18 +165,19 @@ class DialoGPTARModel(ARDiagnosticModel):
 
         if status == 'pass':
             prompts = [
+                f"{random.choice(openers)} Conditions: {illumination_label}. "
+                f"Brightness {mean_luma:.0f}/255, uniformity {uniformity:.0%}. "
+                f"Write one short sentence saying this lighting supports AR tracking.",
                 f"{random.choice(openers)} Brightness {mean_luma:.0f}, uniformity {uniformity:.0%}. "
-                f"This is good for AR. One sentence.",
-                f"{random.choice(openers)} Conditions: {illumination_label}, "
-                f"brightness {mean_luma:.0f}/255. Why is this suitable for AR tracking?",
+                f"Describe in one sentence why this is good for AR.",
             ]
         else:
             prompts = [
-                f"{random.choice(openers)} Conditions are {illumination_label}. "
-                f"Brightness {mean_luma:.0f}, uniformity {uniformity:.0%}. "
-                f"Why is this problematic for AR?",
-                f"Scene is {illumination_label}. Brightness {mean_luma:.0f}/255. "
-                f"Explain briefly why AR tracking is affected.",
+                f"{random.choice(openers)} Conditions: {illumination_label}. "
+                f"Brightness {mean_luma:.0f}/255, uniformity {uniformity:.0%}. "
+                f"Write one short sentence saying this lighting harms AR tracking.",
+                f"{random.choice(openers)} Brightness {mean_luma:.0f}, uniformity {uniformity:.0%}. "
+                f"Describe in one sentence why this problematic for AR.",
             ]
         
         return random.choice(prompts)
@@ -216,8 +216,12 @@ class DialoGPTARModel(ARDiagnosticModel):
     def _postprocess_dialogpt_text(self, text: str) -> str:
         """
         Limpeza de artefatos comuns em respostas de DialoGPT
-        Também valida se resposta tem "junk" óbvio
+        Valida contra:
+        - Junk responses (contagens, meta-comentários)
+        - Camera gear hallucinations (Canon, Nikon, lentes, etc)
         """
+        import re
+        
         text = text.strip()
         
         # Remove artefatos conhecidos
@@ -238,6 +242,34 @@ class DialoGPTARModel(ARDiagnosticModel):
         for indicator in junk_indicators:
             if indicator in text:
                 logger.warning(f"Detected junk indicator '{indicator}' in response: {text[:60]}...")
+                return None
+        
+        # Detecta "camera gear hallucinations"
+        # Modelo fica falando sobre câmeras/lentes em vez de iluminação
+        gear_patterns = [
+            r"\bcanon\b",
+            r"\bnikon\b",
+            r"\bsony\b",
+            r"\bfujifilm\b",
+            r"\bpentax\b",
+            r"\b5d\b",
+            r"\b6d\b",
+            r"\b7d\b",
+            r"\bmark\s*(ii|iii|iv|i)\b",
+            r"\b\d{2,3}mm\b",
+            r"\bf\s*/?\s*\d",
+            r"\bi have a\b",
+            r"\bwith the same issue\b",
+            r"\bwith 35mm\b",
+            r"\bwith\s+an?\s+(35mm|50mm|24mm|85mm)\b",
+            r"\faperture\b",
+            r"\blens\b.*\b(macro|prime|zoom)\b",
+        ]
+        
+        lowered = text.lower()
+        for pattern in gear_patterns:
+            if re.search(pattern, lowered):
+                logger.warning(f"Detected camera-gear hallucination in response: {text[:80]}...")
                 return None
         
         return text if text else None
