@@ -148,49 +148,50 @@ class DialoGPTARModel(ARDiagnosticModel):
     def _build_prompt(self, metrics: Dict, status: str, risk_level: str, triggered_rules: List[str]) -> str:
         """
         Constrói prompt específico para DialoGPT-small
-        DialoGPT é um modelo conversacional simples — usa prompts mais naturais sem estrutura ChatML
+        Orientado por dados, sem "resposta pronta" — deixa o modelo interpretar
         """
         
         import random
         
         # Extrai métricas
         illumination_label = metrics.get('illumination_label', 'unknown')
-        illumination_score = metrics.get('illumination', 0.0)
         mean_luma = metrics.get('mean_luma', 0.0)
         uniformity = metrics.get('uniformity', 0.0)
-        
-        # Templates para PASS
-        if status == 'pass':
-            pass_templates = [
-                f"Scene lighting analysis: {illumination_label} conditions detected. Brightness is {mean_luma:.0f}/255 with {uniformity:.0%} uniformity. This supports AR operations well.",
-                f"Lighting diagnostic: {illumination_label} lighting (brightness {mean_luma:.0f}/255) detected. Scene uniformity {uniformity:.0%}. Suitable for AR.",
-                f"The scene has {illumination_label} illumination. Measured brightness {mean_luma:.0f}/255. Uniformity {uniformity:.0%}. AR tracking conditions are adequate.",
-                f"Illumination check: {illumination_label} reading confirmed. Brightness {mean_luma:.0f}/255, uniformity {uniformity:.0%}. Good for AR applications."
-            ]
-            prompt = random.choice(pass_templates)
-        else:
-            # Mapeia label para causa legível
-            cause_map = {
-                'overexposed': 'bright lighting causes reduced contrast and feature visibility',
-                'underexposed': 'dim lighting creates increased noise and feature detection difficulty',
-                'poor': 'uneven lighting creates inconsistent contrast across the scene'
-            }
-            cause = cause_map.get(illumination_label, 'compromised lighting degrades image quality')
-            
-            fail_templates = [
-                f"Scene analysis shows {illumination_label} lighting at brightness {mean_luma:.0f}/255. Problem: {cause}. AR tracking affected.",
-                f"Lighting diagnostic: {illumination_label} detected (brightness {mean_luma:.0f}/255). Issue: {cause}. Consider adjusting environment.",
-                f"Scene illumination is {illumination_label} with brightness {mean_luma:.0f}/255. This causes {cause}. Affects AR performance.",
-                f"Analysis: {illumination_label} lighting observed (brightness {mean_luma:.0f}/255). {cause.capitalize()}. Recommend correction."
-            ]
-            prompt = random.choice(fail_templates)
-        
+        pct_dark = metrics.get('pct_clipped_dark', 0.0)
+        pct_bright = metrics.get('pct_clipped_bright', 0.0)
+
+        openers = [
+            "AR lighting check.",
+            "AR scene assessment.",
+            "Lighting diagnostic for AR.",
+        ]
+
+        style_hints = [
+            "Write one natural sentence.",
+            "Respond with one concise sentence.",
+            "Give one short, natural explanation.",
+        ]
+
+        prompt = (
+            f"{random.choice(openers)} "
+            f"Status: {status}. "
+            f"Risk: {risk_level}. "
+            f"Label: {illumination_label}. "
+            f"Brightness: {mean_luma:.0f}/255. "
+            f"Uniformity: {uniformity:.0%}. "
+            f"Dark clipping: {pct_dark:.1%}. "
+            f"Bright clipping: {pct_bright:.1%}. "
+            f"{random.choice(style_hints)} "
+            f"Explain whether this scene is good for AR."
+        )
+
         return prompt
     
     #---------------------------------------------------------------------
     def _build_summary_prompt(self, agg: Dict) -> str:
         """
         Constrói prompt de sumarização para lote de frames (DialoGPT style)
+        Orientado por dados agregados, mas aberto para o modelo interpretar
         """
         
         import random
@@ -198,25 +199,45 @@ class DialoGPTARModel(ARDiagnosticModel):
         total = agg['total']
         problem_count = agg['problem_count']
         dominant_label = agg['dominant_label']
-        
-        if problem_count > 0:
-            summary_templates = [
-                f"Batch analysis of {total} frames: {problem_count} frames show {dominant_label} lighting. This impacts AR tracking quality in the batch.",
-                f"Frame batch review ({total} total): {problem_count} frames detected with {dominant_label} conditions. AR performance may be affected.",
-                f"Summary of {total} analyzed frames: {problem_count} exhibit {dominant_label} lighting. Recommendation: adjust environment for better AR conditions.",
-                f"{total} frames analyzed. Issue detected in {problem_count} frames: {dominant_label} lighting. Consider scene optimization."
-            ]
-            prompt = random.choice(summary_templates)
-        else:
-            summary_templates = [
-                f"Batch analysis complete: all {total} frames show adequate lighting for AR applications.",
-                f"Review of {total} frames confirms optimal lighting conditions throughout. AR tracking feasible.",
-                f"Full batch analyzed ({total} frames) — no lighting issues detected. Scene ready for AR.",
-                f"{total} frames checked with positive result: lighting is suitable for AR operations."
-            ]
-            prompt = random.choice(summary_templates)
-        
+        overall_risk = agg['overall_risk']
+        avg_mean_luma = agg.get('avg_mean_luma', 0.0)
+        avg_uniformity = agg.get('avg_uniformity', 0.0)
+
+        starters = [
+            "Batch lighting summary for AR.",
+            "AR batch review.",
+            "Scene-wide lighting assessment.",
+        ]
+
+        style_hints = [
+            "Write one natural sentence.",
+            "Respond in one concise sentence.",
+            "Give one short summary sentence.",
+        ]
+
+        prompt = (
+            f"{random.choice(starters)} "
+            f"Frames: {total}. "
+            f"Problematic frames: {problem_count}. "
+            f"Dominant issue: {dominant_label}. "
+            f"Overall risk: {overall_risk}. "
+            f"Average brightness: {avg_mean_luma:.0f}/255. "
+            f"Average uniformity: {avg_uniformity:.0%}. "
+            f"{random.choice(style_hints)} "
+            f"Summarize the AR lighting condition of the batch."
+        )
+
         return prompt
+    
+    #---------------------------------------------------------------------
+    def _postprocess_dialogpt_text(self, text: str) -> str:
+        """
+        Limpeza de artefatos comuns em respostas de DialoGPT
+        """
+        text = text.strip()
+        text = text.replace("AR.I.", "AR.")
+        text = text.replace("..", ".")
+        return text
     
     #---------------------------------------------------------------------
     def _call_model(self, prompt: str, max_new_tokens: int = None) -> str:
@@ -256,6 +277,8 @@ class DialoGPTARModel(ARDiagnosticModel):
                     top_p=self.top_p if use_sampling else 1.0,
                     top_k=None if not use_sampling else 20,
                     do_sample=use_sampling,
+                    repetition_penalty=1.08,
+                    no_repeat_ngram_size=3,
                     pad_token_id=self.tokenizer.pad_token_id,
                     eos_token_id=self.tokenizer.eos_token_id
                 )
@@ -273,12 +296,12 @@ class DialoGPTARModel(ARDiagnosticModel):
             t5 = time.time()
             logger.debug(f"Decoding: {(t5-t4)*1000:.1f}ms")
             
-            # Fallback se resposta vazia
-            if not response or len(response) < 10:
-                logger.warning("Empty response from model, using full output")
-                response = self.tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+            # Validação: resposta muito curta indica falha
+            if not response or len(response.strip()) < 12:
+                logger.warning("Short response from model, returning empty")
+                return ""
             
-            return self._clean_response(response)
+            return self._clean_response(self._postprocess_dialogpt_text(response))
             
         except Exception as e:
             logger.error(f"Error in _call_model: {e}")
@@ -328,6 +351,8 @@ class DialoGPTARModel(ARDiagnosticModel):
                     top_p=self.top_p if use_sampling else 1.0,
                     top_k=None if not use_sampling else 20,
                     do_sample=use_sampling,
+                    repetition_penalty=1.08,
+                    no_repeat_ngram_size=3,
                     pad_token_id=self.tokenizer.pad_token_id,
                     eos_token_id=self.tokenizer.eos_token_id
                 )
@@ -346,11 +371,13 @@ class DialoGPTARModel(ARDiagnosticModel):
                 generated_tokens = output[input_length:]
                 response = self.tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
                 
-                # Fallback se vazio
-                if not response or len(response) < 10:
-                    response = self.tokenizer.decode(output, skip_special_tokens=True).strip()
+                # Validação: resposta muito curta indica falha
+                if not response or len(response.strip()) < 12:
+                    response = ""
+                else:
+                    response = self._postprocess_dialogpt_text(response)
                 
-                responses.append(self._clean_response(response))
+                responses.append(self._clean_response(response) if response else "")
             
             t5 = time.time()
             logger.debug(f"Batch decoding: {(t5-t4)*1000:.1f}ms")
