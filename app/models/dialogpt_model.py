@@ -148,7 +148,7 @@ class DialoGPTARModel(ARDiagnosticModel):
     def _build_prompt(self, metrics: Dict, status: str, risk_level: str, triggered_rules: List[str]) -> str:
         """
         Constrói prompt específico para DialoGPT-small
-        Orientado por dados, sem "resposta pronta" — deixa o modelo interpretar
+        Curto, fechado, mas natural — sem muita margem de fuga
         """
         
         import random
@@ -157,41 +157,36 @@ class DialoGPTARModel(ARDiagnosticModel):
         illumination_label = metrics.get('illumination_label', 'unknown')
         mean_luma = metrics.get('mean_luma', 0.0)
         uniformity = metrics.get('uniformity', 0.0)
-        pct_dark = metrics.get('pct_clipped_dark', 0.0)
-        pct_bright = metrics.get('pct_clipped_bright', 0.0)
 
+        # Variação mínima para naturalidade, mas contexto muito fechado
         openers = [
-            "AR lighting check.",
-            "AR scene assessment.",
-            "Lighting diagnostic for AR.",
+            "AR lighting analysis.",
+            "Scene lighting assessment.",
         ]
 
-        style_hints = [
-            "Write one natural sentence.",
-            "Respond with one concise sentence.",
-            "Give one short, natural explanation.",
-        ]
-
-        prompt = (
-            f"{random.choice(openers)} "
-            f"Status: {status}. "
-            f"Risk: {risk_level}. "
-            f"Label: {illumination_label}. "
-            f"Brightness: {mean_luma:.0f}/255. "
-            f"Uniformity: {uniformity:.0%}. "
-            f"Dark clipping: {pct_dark:.1%}. "
-            f"Bright clipping: {pct_bright:.1%}. "
-            f"{random.choice(style_hints)} "
-            f"Explain whether this scene is good for AR."
-        )
-
-        return prompt
+        if status == 'pass':
+            prompts = [
+                f"{random.choice(openers)} Brightness {mean_luma:.0f}, uniformity {uniformity:.0%}. "
+                f"This is good for AR. One sentence.",
+                f"{random.choice(openers)} Conditions: {illumination_label}, "
+                f"brightness {mean_luma:.0f}/255. Why is this suitable for AR tracking?",
+            ]
+        else:
+            prompts = [
+                f"{random.choice(openers)} Conditions are {illumination_label}. "
+                f"Brightness {mean_luma:.0f}, uniformity {uniformity:.0%}. "
+                f"Why is this problematic for AR?",
+                f"Scene is {illumination_label}. Brightness {mean_luma:.0f}/255. "
+                f"Explain briefly why AR tracking is affected.",
+            ]
+        
+        return random.choice(prompts)
     
     #---------------------------------------------------------------------
     def _build_summary_prompt(self, agg: Dict) -> str:
         """
         Constrói prompt de sumarização para lote de frames (DialoGPT style)
-        Orientado por dados agregados, mas aberto para o modelo interpretar
+        Muito curto e bem fechado
         """
         
         import random
@@ -199,50 +194,59 @@ class DialoGPTARModel(ARDiagnosticModel):
         total = agg['total']
         problem_count = agg['problem_count']
         dominant_label = agg['dominant_label']
-        overall_risk = agg['overall_risk']
-        avg_mean_luma = agg.get('avg_mean_luma', 0.0)
-        avg_uniformity = agg.get('avg_uniformity', 0.0)
-
-        starters = [
-            "Batch lighting summary for AR.",
-            "AR batch review.",
-            "Scene-wide lighting assessment.",
-        ]
-
-        style_hints = [
-            "Write one natural sentence.",
-            "Respond in one concise sentence.",
-            "Give one short summary sentence.",
-        ]
-
-        prompt = (
-            f"{random.choice(starters)} "
-            f"Frames: {total}. "
-            f"Problematic frames: {problem_count}. "
-            f"Dominant issue: {dominant_label}. "
-            f"Overall risk: {overall_risk}. "
-            f"Average brightness: {avg_mean_luma:.0f}/255. "
-            f"Average uniformity: {avg_uniformity:.0%}. "
-            f"{random.choice(style_hints)} "
-            f"Summarize the AR lighting condition of the batch."
-        )
-
-        return prompt
+        
+        if problem_count > 0:
+            prompts = [
+                f"Batch of {total} frames: {problem_count} have {dominant_label} lighting. "
+                f"Summarize impact on AR in one sentence.",
+                f"{total} frames analyzed. {problem_count} show {dominant_label} conditions. "
+                f"Is this batch suitable for AR?",
+            ]
+        else:
+            prompts = [
+                f"All {total} frames have adequate lighting. "
+                f"Confirm they are suitable for AR in one sentence.",
+                f"Batch review: {total} frames, all lighting OK. "
+                f"Brief summary for AR tracking.",
+            ]
+        
+        return random.choice(prompts)
     
     #---------------------------------------------------------------------
     def _postprocess_dialogpt_text(self, text: str) -> str:
         """
         Limpeza de artefatos comuns em respostas de DialoGPT
+        Também valida se resposta tem "junk" óbvio
         """
         text = text.strip()
+        
+        # Remove artefatos conhecidos
         text = text.replace("AR.I.", "AR.")
         text = text.replace("..", ".")
-        return text
+        
+        # Detecta "junk responses" que indicam alucinação
+        junk_indicators = [
+            "I.",                    # Começo com "I."
+            "edit formatting",       # Meta-comentário
+            "formatting error",      # Meta-comentário
+            "13 14 15 16 17",       # Contagem estranha
+            "1,2, 3 and 4 5 7",     # Números soltos
+            "Lightpassing",          # Não-palavra
+        ]
+        
+        # Se detectar junk, retorna None para ativar fallback
+        for indicator in junk_indicators:
+            if indicator in text:
+                logger.warning(f"Detected junk indicator '{indicator}' in response: {text[:60]}...")
+                return None
+        
+        return text if text else None
     
     #---------------------------------------------------------------------
     def _call_model(self, prompt: str, max_new_tokens: int = None) -> str:
         """
         Chama DialoGPT-small para gerar explicação (single prompt)
+        Com validação forte contra junk responses
         """
         
         try:
@@ -297,11 +301,17 @@ class DialoGPTARModel(ARDiagnosticModel):
             logger.debug(f"Decoding: {(t5-t4)*1000:.1f}ms")
             
             # Validação: resposta muito curta indica falha
-            if not response or len(response.strip()) < 12:
+            if not response or len(response.strip()) < 8:
                 logger.warning("Short response from model, returning empty")
                 return ""
             
-            return self._clean_response(self._postprocess_dialogpt_text(response))
+            # Pós-processamento + validação de junk
+            cleaned = self._postprocess_dialogpt_text(response)
+            if cleaned is None:
+                logger.warning("Response rejected as junk, returning empty")
+                return ""
+            
+            return self._clean_response(cleaned)
             
         except Exception as e:
             logger.error(f"Error in _call_model: {e}")
@@ -311,6 +321,7 @@ class DialoGPTARModel(ARDiagnosticModel):
     def _call_model_batch(self, prompts: List[str]) -> List[str]:
         """
         Processa múltiplos prompts em batch (TRUE BATCH INFERENCE)
+        Com validação forte contra junk responses
         """
         
         if not prompts:
@@ -371,13 +382,18 @@ class DialoGPTARModel(ARDiagnosticModel):
                 generated_tokens = output[input_length:]
                 response = self.tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
                 
-                # Validação: resposta muito curta indica falha
-                if not response or len(response.strip()) < 12:
-                    response = ""
-                else:
-                    response = self._postprocess_dialogpt_text(response)
+                # Validação: resposta muito curta
+                if not response or len(response.strip()) < 8:
+                    responses.append("")
+                    continue
                 
-                responses.append(self._clean_response(response) if response else "")
+                # Pós-processamento + validação de junk
+                cleaned = self._postprocess_dialogpt_text(response)
+                if cleaned is None:
+                    responses.append("")
+                    continue
+                
+                responses.append(self._clean_response(cleaned))
             
             t5 = time.time()
             logger.debug(f"Batch decoding: {(t5-t4)*1000:.1f}ms")
