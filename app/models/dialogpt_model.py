@@ -300,6 +300,22 @@ class DialoGPTARModel(ARDiagnosticModel):
             logger.warning(f"Rejected: Malformed token suffix '.I': {text[-20:]}...")
             return None
         
+        # CRITÉRIO 7: Rejeita sufixos corrompidos (palavra comum + ponto no final)
+        # Padrão: palavra comum tecnicamente (camera, device, light, system, etc) seguida de ponto no final da frase
+        corrupted_suffixes = [
+            r'\.camera\.?\s*$',
+            r'\.device\.?\s*$',
+            r'\.light\.?\s*$',
+            r'\.system\.?\s*$',
+            r'\.mode\.?\s*$',
+            r'\.setting\.?\s*$',
+            r'\.\w{4,}\.?\s*$'  # Qualquer palavra de 4+ chars seguida de ponto no final
+        ]
+        for suffix_pattern in corrupted_suffixes:
+            if re.search(suffix_pattern, text_lower):
+                logger.warning(f"Rejected: Corrupted suffix detected: {text[-30:]}...")
+                return None
+        
         return text
     
     #---------------------------------------------------------------------
