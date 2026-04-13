@@ -485,7 +485,18 @@ class ARDiagnosticModel(ABC):
                 'underexposed': 'insufficient lighting',
                 'poor': 'uneven illumination',
             }
-            dominant_desc = label_desc.get(dominant_label, 'lighting issues')
+            
+            # Detecta condições mistas (both over e underexposed)
+            has_overexposed = label_breakdown.get('overexposed', 0) > 0
+            has_underexposed = label_breakdown.get('underexposed', 0) > 0
+            mixed_conditions = has_overexposed and has_underexposed
+            
+            # Se há condições mistas, usa "inadequate lighting" em vez da dominante
+            if mixed_conditions:
+                dominant_desc = 'inadequate lighting'
+            else:
+                dominant_desc = label_desc.get(dominant_label, 'lighting issues')
+            
             total_frames = n
             
             if problem_count > 0:
@@ -495,7 +506,7 @@ class ARDiagnosticModel(ABC):
                     f"The batch contains {problem_count} problematic frames with {dominant_desc}; AR performance {modal_verb} be reduced.",
                     f"{dominant_desc.capitalize()} appears in {problem_count} of {total_frames} frames, creating risk for reliable AR tracking.",
                     f"Lighting analysis shows {problem_count}/{total_frames} frames with {dominant_desc}, which {modal_verb} impact AR quality.",
-                    f"Frame batch review ({total_frames} total): {problem_count} frames detected with {dominant_label} conditions. AR performance {modal_verb} be affected.",
+                    f"Frame batch review ({total_frames} total): {problem_count} frames detected with {dominant_desc}. AR performance {modal_verb} be affected.",
                 ]
                 summary_text = random.choice(fallback_options)
             else:

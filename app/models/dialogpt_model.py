@@ -191,6 +191,7 @@ class DialoGPTARModel(ARDiagnosticModel):
     def _build_summary_prompt(self, agg: Dict) -> str:
         """
         Constrói prompt de sumarização para lote de frames (DialoGPT style)
+        Detecta condições mistas (over + underexposed) para usar "inadequate" em vez da dominante
         """
         
         import random
@@ -198,13 +199,25 @@ class DialoGPTARModel(ARDiagnosticModel):
         total = agg['total']
         problem_count = agg['problem_count']
         dominant_label = agg['dominant_label']
+        label_breakdown = agg.get('label_breakdown', {})
+        
+        # Detecta se há condições mistas (tanto overexposed quanto underexposed)
+        has_overexposed = label_breakdown.get('overexposed', 0) > 0
+        has_underexposed = label_breakdown.get('underexposed', 0) > 0
+        mixed_conditions = has_overexposed and has_underexposed
+        
+        # Se há condições mistas, usa "inadequate" em vez da etiqueta dominante
+        if mixed_conditions:
+            condition_label = 'inadequate'
+        else:
+            condition_label = dominant_label
         
         if problem_count > 0:
             summary_templates = [
-                f"Batch analysis of {total} frames: {problem_count} frames show {dominant_label} lighting. This impacts AR tracking quality in the batch.",
-                f"Frame batch review ({total} total): {problem_count} frames detected with {dominant_label} conditions. AR performance may be affected.",
-                f"Summary of {total} analyzed frames: {problem_count} exhibit {dominant_label} lighting. Recommendation: adjust environment for better AR conditions.",
-                f"{total} frames analyzed. Issue detected in {problem_count} frames: {dominant_label} lighting. Consider scene optimization."
+                f"Batch analysis of {total} frames: {problem_count} frames show {condition_label} lighting. This impacts AR tracking quality in the batch.",
+                f"Frame batch review ({total} total): {problem_count} frames detected with {condition_label} conditions. AR performance may be affected.",
+                f"Summary of {total} analyzed frames: {problem_count} exhibit {condition_label} lighting. Recommendation: adjust environment for better AR conditions.",
+                f"{total} frames analyzed. Issue detected in {problem_count} frames: {condition_label} lighting. Consider scene optimization."
             ]
             prompt = random.choice(summary_templates)
         else:
