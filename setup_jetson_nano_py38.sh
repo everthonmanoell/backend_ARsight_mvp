@@ -18,14 +18,28 @@ if ! command -v python3.8 &> /dev/null; then
 fi
 python3.8 --version
 
-# 2. Criar venv com Python 3.8 (opcional, se usar Poetry com pyenv)
+# 2. Criar venv com Python 3.8
 echo ""
 echo "✓ Setting up environment..."
 if [ ! -d ".venv_py38" ]; then
-    python3.8 -m venv .venv_py38
+    echo "Creating virtual environment..."
+    python3.8 -m venv .venv_py38 || {
+        echo "❌ venv creation failed. Trying alternative..."
+        python3.8 -m pip install --user virtualenv
+        python3.8 -m virtualenv .venv_py38
+    }
     echo "Virtual environment created at .venv_py38"
 fi
+
+if [ ! -f ".venv_py38/bin/activate" ]; then
+    echo "❌ Virtual environment activation script not found!"
+    echo "Checking directory structure:"
+    ls -la .venv_py38/ 2>/dev/null || echo "Directory empty or missing"
+    exit 1
+fi
+
 source .venv_py38/bin/activate
+echo "✅ Virtual environment activated"
 
 # 3. Upgrade pip
 echo ""
@@ -36,68 +50,93 @@ python3.8 -m pip install --upgrade pip setuptools wheel
 # Referência: PyTorch wheels para Jetson em download.pytorch.org não têm ARM64
 # Solução: usar o que compilou a comunidade ou construir localmente
 echo ""
-echo "✓ Installing PyTorch 1.11.0 (ARM64 for Jetson Nano)..."
-# Tentar do repositório de wheels pré-compilados
+echo "✓ Installing PyTorch (ARM64 for Jetson Nano)..."
+
+# Tentar diferentes versões em ordem de preferência
+PYTORCH_INSTALLED=0
+
+# Tentar 1.11.0 primeiro
+echo "   Trying PyTorch 1.11.0..."
 python3.8 -m pip install --no-cache-dir \
     torch==1.11.0 torchvision==0.12.0 \
-    -f https://download.pytorch.org/whl/torch_stable.html || \
-    echo "⚠️  PyTorch wheel not found in standard mirrors. Trying alternative..."
+    -f https://download.pytorch.org/whl/torch_stable.html 2>/dev/null && PYTORCH_INSTALLED=1
 
-# Se falhar, tentar construir uma versão mais aceita
-if ! python3.8 -c "import torch; print(f'PyTorch {torch.__version__}')"; then
-    echo ""
-    echo "❌ PyTorch 1.11 não disponível para ARM64. Alternativas:"
-    echo "   1. Usar PyTorch 1.10 (pode estar em cache local)"
-    echo "   2. Compilar PyTorch localmente (muito lento - 2-3 horas)"
-    echo "   3. Usar Docker com wheel pré-compilada"
-    echo ""
-    echo "Tentando PyTorch 1.9.0 (mais compatível)..."
+# Tentar 1.9.0 se 1.11 falhar
+if [ $PYTORCH_INSTALLED -eq 0 ]; then
+    echo "   Trying PyTorch 1.9.0..."
     python3.8 -m pip install --no-cache-dir \
-        torch==1.9.0 torchvision==0.10.0 || \
-        echo "⚠️  Todas as versões podem ter restrições ARM64. Verifique arquitetura."
+        torch==1.9.0 torchvision==0.10.0 \
+        -f https://download.pytorch.org/whl/torch_stable.html 2>/dev/null && PYTORCH_INSTALLED=1
+fi
+
+# Tentar versão latest do PyTorch
+if [ $PYTORCH_INSTALLED -eq 0 ]; then
+    echo "   Trying PyTorch latest (may not have CUDA support)..."
+    python3.8 -m pip install --no-cache-dir torch torchvision 2>/dev/null && PYTORCH_INSTALLED=1
+fi
+
+if [ $PYTORCH_INSTALLED -eq 0 ]; then
+    echo ""
+    echo "❌ PyTorch installation failed for all versions."
+    echo "   Jetson Nano ARM64 wheels podem não estar disponíveis."
+    echo ""
+    echo "Alternativas:"
+    echo "   1. Compilar PyTorch localmente (2-3 horas)"
+    echo "   2. Usar Docker com PyTorch pré-compilado"
+    echo "   3. Manter Python 3.6 + DialoGPT (funciona 100%)"
+    echo ""
+    read -p "Continuar mesmo sem PyTorch? [s/N] " -n 1 -r
+    echo ""
+    if [[ ! $REPLY =~ ^[Ss]$ ]]; then
+        exit 1
+    fi
+else
+    python3.8 -c "import torch; print(f'✅ PyTorch {torch.__version__} (CUDA: {torch.cuda.is_available()})')" || true
 fi
 
 # 5. Instalar Poetry (se ainda não instalado)
 echo ""
 echo "✓ Installing Poetry..."
-curl -sSL https://install.python-poetry.org | python3.8 - || true
+if ! command -v poetry &> /dev/null; then
+    curl -sSL https://install.python-poetry.org | python3.8 - 2>/dev/null || \
+        echo "⚠️  Poetry installation via curl failed, trying pip..."
+    python3.8 -m pip install --user poetry 2>/dev/null || \
+        echo "⚠️  Poetry installation failed"
+fi
 export PATH="$HOME/.local/bin:$PATH"
+poetry --version 2>/dev/null || echo "⚠️  Poetry not available, will use pip directly"
 
 # 6. Instalar dependências com Poetry
 echo ""
-echo "✓ Installing dependencies with Poetry..."
-poetry env use python3.8 || true
-poetry install -vv --no-interaction --with-all-groups \
-    --from pyproject-jetson-nano-py38.toml || \
-    echo "⚠️  Poetry install falhou. Tentando pip direto..."
+echo "✓ Installing dependencies..."
 
-# Fallback: pip direto
-if ! poetry show > /dev/null 2>&1; then
-    echo "Instalando com pip direto..."
-    python3.8 -m pip install --no-cache-dir \
-        fastapi==0.104.0 \
-        uvicorn[standard]==0.24.0 \
-        python-multipart==0.0.6 \
-        pydantic==2.4.0 \
-        pyyaml==6.0 \
-        numpy==1.24.0 \
-        pillow==10.0.0 \
-        opencv-python-headless==4.8.0 \
-        transformers==4.30.0 \
-        huggingface-hub==0.14.0 \
-        accelerate==0.27.0 \
-        python-json-logger==2.0.7 \
-        python-dotenv==1.0.0 \
-        requests==2.31.0 \
-        click==8.1.0
+# Tentar com Poetry primeiro
+if command -v poetry &> /dev/null; then
+    echo "   Using Poetry..."
+    poetry env use python3.8 2>/dev/null || true
+    poetry install -vv --no-interaction \
+        --with-all-groups \
+        --from pyproject-jetson-nano-py38.toml 2>/dev/null && \
+        echo "✅ Poetry install successful" || \
+        echo "⚠️  Poetry install had issues, trying pip..."
+fi
+
+# Se Poetry falhou ou não está disponível, usar pip direto
+if ! python3.8 -c "import fastapi" 2>/dev/null; then
+    echo "   Using pip (fallback)..."
+    python3.8 -m pip install --no-cache-dir -r requirements-jetson-py38.txt || \
+        echo "❌ Pip install failed"
 fi
 
 # 7. Verificar instalação
 echo ""
 echo "✓ Verifying installation..."
-python3.8 -c "import torch; print(f'✅ PyTorch {torch.__version__} (CUDA: {torch.cuda.is_available()})')"
-python3.8 -c "import transformers; print(f'✅ Transformers {transformers.__version__}')"
-python3.8 -c "import fastapi; print(f'✅ FastAPI {fastapi.__version__}')"
+python3.8 -c "import torch; print(f'✅ PyTorch {torch.__version__} (CUDA: {torch.cuda.is_available()})')" 2>/dev/null || \
+    echo "⚠️  PyTorch not available (CPU mode)"
+python3.8 -c "import transformers; print(f'✅ Transformers {transformers.__version__}')" 2>/dev/null || \
+    echo "⚠️  Transformers not available"
+python3.8 -c "import fastapi; print(f'✅ FastAPI {fastapi.__version__}')" 2>/dev/null || \
+    echo "⚠️  FastAPI not available"
 
 # 8. Criar script de startup
 echo ""
@@ -114,13 +153,29 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✅ Setup completo!"
 echo ""
-echo "Para usar o novo stack Python 3.8:"
+echo "📋 Status:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+python3.8 --version
+[ -f ".venv_py38/bin/activate" ] && echo "✅ Virtual environment: .venv_py38" || echo "❌ Virtual environment: NOT FOUND"
+python3.8 -c "import torch" 2>/dev/null && echo "✅ PyTorch: installed" || echo "⚠️  PyTorch: NOT installed (CPU fallback)"
+python3.8 -c "import transformers" 2>/dev/null && echo "✅ Transformers: installed" || echo "❌ Transformers: NOT installed"
+python3.8 -c "import fastapi" 2>/dev/null && echo "✅ FastAPI: installed" || echo "❌ FastAPI: NOT installed"
+echo ""
+echo "🚀 Para usar o novo stack Python 3.8:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "  source .venv_py38/bin/activate"
-echo "  poetry install --from pyproject-jetson-nano-py38.toml"
 echo "  poetry run ar-api"
 echo ""
 echo "Ou simplesmente:"
 echo ""
 echo "  bash start_py38.sh"
+echo ""
+echo "🔧 Se PyTorch não foi instalado:"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "   Jetson Nano ARM64 wheels podem não estar em PyPI."
+echo "   Opções:"
+echo "   1. Usar Python 3.6 (DialoGPT funciona 100%)"
+echo "   2. Docker com PyTorch pré-compilado"
+echo "   3. Compilar PyTorch localmente (2-3 horas)"
 echo ""
