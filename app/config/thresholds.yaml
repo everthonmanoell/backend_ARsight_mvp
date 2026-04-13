@@ -1,30 +1,21 @@
 # AR Diagnostic MVP - Configuration (Environment-independent)
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 models:
-  default: qwen             # Editar: qwen/phi (Jetson Orin/Desktop), dialogpt-small (Jetson Nano)
+  default: dialogpt-small             # Editar: qwen/phi (Jetson Orin/Desktop), dialogpt-small (Jetson Nano)
   device: cuda                        # cuda, cpu, ou auto
   use_4bit: false                     # false (Jetson Nano), true (Jetson Orin/Desktop com bitsandbytes)
   greedy_decoding: true               # true (Nano - velocidade), false (Orin/Desktop - qualidade)
-  prompt_max_length: 128              # 256 tokens (Jetson Nano: velocidade + controle), 512 tokens (Jetson Orin/Desktop: melhor qualidade)
-  warmup_on_startup: true            # true (acelera respostas iniciais), false (economiza recursos na inicialização)
+  prompt_max_length: 256              # 256 tokens (Jetson Nano: velocidade + controle), 512 tokens (Jetson Orin/Desktop: melhor qualidade)
+  warmup_on_startup: true             # true (acelera respostas iniciais), false (economiza recursos na inicialização)
   
-  # qwen:
-  #   # Qwen 2.5 - 0.5B: Rápido, qualidade média
-  #   name: Qwen/Qwen2.5-0.5B-Instruct
-  #   max_tokens: 100
-  #   summary_tokens: 150
-  #   temperature: 0.3
-  #   top_p: 0.85
-
-  # testar Qwen na Jetson Nano com essas configurações mais leves para avaliar desempenho e qualidade 
-  # (mudar prompt_max_length: 128 para reduzir latência)
   qwen:
-    name: /home/das9/models/Qwen2.5-0.5B-Instruct
-    max_tokens: 20
-    summary_tokens: 32
-    temperature: 0.2
-    top_p: 0.9
-  
+    # Qwen 2.5 - 0.5B: Rápido, qualidade média
+    name: Qwen/Qwen2.5-0.5B-Instruct
+    max_tokens: 100
+    summary_tokens: 150
+    temperature: 0.3
+    top_p: 0.85
+
   phi:
     # Phi-3-mini: Qualidade superior, ~3.8B params
     # Jetson Orin: Sim (12GB VRAM). Jetson Nano: Não (4GB)
@@ -39,7 +30,7 @@ models:
     # Compatível: PyTorch 1.10, transformers 4.8.2
     # VRAM estimada: ~250MB em FP16
     name: /home/das9/models/DialoGPT-small     # Local (evita download automático, necessário para Jetson Nano)
-    # name: microsoft/DialoGPT-small     # HuggingFace Hub (auto-downloads)
+    # name: microsoft/DialoGPT-small             # HuggingFace Hub (auto-downloads)
     max_tokens: 40
     summary_tokens: 60
     temperature: 0.3
