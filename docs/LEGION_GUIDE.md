@@ -1,444 +1,305 @@
-# Legion Desktop Setup & Deployment Guide
+# Desktop Legion Setup & Deployment Guide
 
-Guia completo para setup e deploy no **PC Legion com Windows + RTX**.
+## Overview
 
-> **Recomendação:** Usar **Phi-3-mini** para melhor qualidade. Alternativa: **Qwen2.5-0.5B** para mais velocidade. Ver [MODEL_SELECTION.md](MODEL_SELECTION.md).
+Guia completo para setup e execução do AR Diagnostic MVP no desktop Legion com GPU NVIDIA.
 
-## ✅ Hardware Verificado
+⚠️ **Este guia reflete a stack validada experimentalmente no projeto.**  
+O foco principal é o uso de setup local com Poetry, com suporte aos modelos utilizados nos benchmarks principais do sistema.
 
-| Item | Versão | Status |
-|---|---|---|
-| **PC Legion** | Desktop | ✅ Testado |
-| **GPU** | RTX 3080 (10GB VRAM) | ✅ Testado |
-| **Windows** | 11 | ✅ Compatível |
-| **CUDA** | 12.1+ | ✅ Funciona |
-| **Python** | 3.10+ | ✅ Recomendado |
-| **PyTorch** | 2.0+ | ✅ Suporta CUDA 12.1 |
+## Recommended Models on Legion
 
----
+- **Qwen2.5-0.5B**: melhor trade-off entre latência e qualidade
+- **Phi-3-mini**: melhor qualidade textual, com maior custo de inferência
 
-## 📋 Pré-requisitos
+Ver [MODEL_SELECTION.md](MODEL_SELECTION.md) para comparação detalhada.
 
-### 1. NVIDIA Driver (Versão 550+)
+## Validated Scope
 
-1. Baixar em [NVIDIA Driver Download](https://www.nvidia.com/Download/driverDetails.aspx/)
-2. Selecionar GPU RTX
-3. Download versão 550+ para suportar CUDA 12.1
-4. Instalar e **reiniciar**
+Este guia se refere ao ambiente desktop Legion utilizado nos experimentos do projeto.
 
-Verificar:
-```powershell
+| Component | Version / Family | Status | Notes |
+|---|---|---|---|
+| **Desktop Legion** | x86_64 workstation / laptop | ✅ Validated | Main desktop benchmark platform |
+| **OS** | Ubuntu 22.04 | ✅ Stable | Validated in project environment |
+| **Python** | 3.10+ | ✅ Stable | Compatible with modern ML stack |
+| **PyTorch** | 2.x | ✅ Stable | CUDA-enabled |
+| **CUDA** | 12.x | ✅ Stable | Desktop NVIDIA stack |
+| **Transformers** | 4.4x+ | ✅ Compatible | Supports recent architectures |
+| **Qwen2.5-0.5B** | Supported | ✅ Recommended | Best latency/quality trade-off |
+| **Phi-3-mini** | Supported | ✅ Optional | Better quality, higher latency |
+
+## Main Recommendation
+
+**Use the local Poetry-based setup.**
+
+```bash
+cd ~/backend_tcc_mvp
+
+# Use the desktop Legion configuration
+cp pyproject-legion.toml pyproject.toml
+
+# Install dependencies
+poetry install
+
+# Run API
+poetry run ar-api
+```
+
+**This is the recommended workflow for:**
+
+- development
+- testing
+- benchmark execution
+- model comparison
+
+## Prerequisites
+
+**Check Python**
+
+```bash
+python3 --version
+# Expected: 3.10.x or newer
+```
+
+**Check CUDA availability**
+
+```bash
+python3 -c "import torch; print(torch.cuda.is_available())"
+# Expected: True
+```
+
+**Check NVIDIA driver**
+
+```bash
 nvidia-smi
-# Deve mostrar GPU, driver 550+, CUDA 12.1
 ```
 
-### 2. CUDA Toolkit 12.1 (Opcional)
+## Local Setup with Poetry
 
-Se `nvidia-smi` não mostrar CUDA:
+**Recommended**
 
-1. Download [CUDA 12.1 Toolkit](https://developer.nvidia.com/cuda-12-1-0-download-archive)
-2. Escolher: Windows → 11 → x86_64 → exe (local)
-3. Instalar
-4. Reiniciar
-
-### 3. Python 3.10+
-
-```powershell
-python --version  # Esperado: 3.10.x ou 3.11.x
+```bash
+cd ~/backend_tcc_mvp
+cp pyproject-legion.toml pyproject.toml
+poetry env use python3
+poetry install
+poetry run ar-api
 ```
 
-### 4. Poetry
+**If Poetry is not installed**
 
-```powershell
-pip install poetry
+```bash
+curl -sSL https://install.python-poetry.org | python3 -
+export PATH="$HOME/.local/bin:$PATH"
 poetry --version
 ```
 
----
+**Persist path if needed**
 
-## 🚀 Setup com Script Automatizado (Recomendado)
-
-### Windows PowerShell
-
-```powershell
-cd backend_tcc_mvp
-.\setup_legion.ps1
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
-O script fará:
-- ✅ Validar Python + Poetry + CUDA
-- ✅ Copiar `pyproject-legion.toml` para `pyproject.toml`
-- ✅ Rebuild `poetry.lock` para RTX
-- ✅ Instalar PyTorch com CUDA 12.1
-- ✅ Validar GPU disponível
+## Configuration (YAML)
 
-Se houver erro de policy:
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-.\setup_legion.ps1
-```
-
----
-
-## 🚀 Setup Manual
-
-### 1. Copiar Configuration
-
-```powershell
-cd backend_tcc_mvp
-
-# Ativar configuração Legion (com CUDA 12.1 + Phi-3)
-Copy-Item pyproject-legion.toml pyproject.toml -Force
-```
-
-### 2. Instalar Dependências
-
-```powershell
-# Remover lock anterior
-Remove-Item poetry.lock -Force -ErrorAction SilentlyContinue
-
-# Rebuild lock
-poetry lock
-
-# Instalar (inclui PyTorch com CUDA 12.1)
-poetry install
-```
-
-Tempo estimado: 5-10 minutos (PyTorch download ~2GB)
-
-### 3. Verificar CUDA
-
-```powershell
-poetry run python -c "
-import torch
-print(f'✅ PyTorch {torch.__version__}')
-print(f'✅ CUDA: {torch.cuda.is_available()}')
-print(f'✅ GPU: {torch.cuda.get_device_name(0)}')
-if not torch.cuda.is_available():
-    exit(1)
-"
-```
-
----
-
-## ⚙️ Configuração (YAML)
-
-### Recomendação: Phi-3-mini
+**Typical configuration for Qwen on Legion:**
 
 ```yaml
 models:
-  default: phi               # Excelente qualidade, ~300 ms
+  default: qwen
   device: cuda
-  precision: fp16
-  use_4bit: false            # RTX 3080 tem espaço, não necessário
-
-phi_config:
-  model_name: "microsoft/Phi-3-mini-4k-instruct"
-  prompt_max_length: 256
-  max_tokens: 32
-  summary_max_tokens: 64
-  temperature: 0.7
-  top_p: 0.95
+  use_4bit: false
   greedy_decoding: false
+  prompt_max_length: 512
+  warmup_on_startup: true
+
+  qwen:
+    name: Qwen/Qwen2.5-0.5B-Instruct
+    max_tokens: 100
+    summary_tokens: 150
+    temperature: 0.3
+    top_p: 0.85
+
+  phi:
+    name: microsoft/Phi-3-mini-4k-instruct
+    max_tokens: 120
+    summary_tokens: 200
+    temperature: 0.3
+    top_p: 0.85
 ```
 
-### Alternativa: Qwen2.5-0.5B (mais rápido)
+**Suggested usage**
 
-```yaml
-models:
-  default: qwen              # Qualidade boa, ~100 ms
-  device: cuda
-  precision: fp16
+- Qwen → recommended for production and benchmarks
+- Phi-3-mini → recommended when explanation quality is prioritized over latency
 
-qwen_config:
-  model_path: "Qwen/Qwen2.5-0.5B-Instruct"  # Download automático
-  prompt_max_length: 128
-  max_tokens: 20
-  summary_max_tokens: 32
-  temperature: 0.2
-  top_p: 0.9
-```
+## Validation
 
-### DialoGPT (ultrarrápido)
+**CUDA status**
 
-```yaml
-models:
-  default: dialogpt          # ~50 ms, qualidade aceitável
-  device: cuda
-  precision: fp16
-```
-
----
-
-## 🏃 Executar API
-
-### Opção 1: Poetry (Desenvolvimento)
-
-```powershell
-poetry run ar-api
-# Acessa em: http://localhost:8000
-```
-
-### Opção 2: Docker (Produção)
-
-```powershell
-# Build
-docker build -t ar-diagnostic-mvp:legion .
-
-# Run
-docker run --rm `
-  --gpus all `
-  -p 8000:8000 `
-  -v $(Get-Location)\data:/app/data `
-  -v $(Get-Location)\logs:/app/logs `
-  ar-diagnostic-mvp:legion
-```
-
-### Opção 3: Docker Compose
-
-```powershell
-docker-compose up -d
-
-# Logs
-docker-compose logs -f
-
-# Parar
-docker-compose down
-```
-
----
-
-## 🧪 Validação
-
-### 1. API Health
-
-```powershell
-curl http://localhost:8000/health
-# Esperado: {"status":"healthy"}
-```
-
-### 2. Teste com Imagem
-
-```powershell
-# Preparar imagem
-cp data\illumination\normal\sample.jpg .\test.jpg
-
-# Enviar
-curl -X POST http://localhost:8000/diagnose `
-  -F "file=@test.jpg" `
-  -F "frame_index=0"
-
-# Esperado: JSON com diagnosis
-```
-
-### 3. Benchmark de Performance
-
-```powershell
-poetry run python -c "
+```bash
+python3 -c "
 import torch
-import time
-
-# Teste GPU performance
-x = torch.randn(1000, 1000).cuda()
-y = torch.randn(1000, 1000).cuda()
-
-torch.cuda.synchronize()
-start = time.time()
-z = torch.matmul(x, y)
-torch.cuda.synchronize()
-elapsed = time.time() - start
-
-print(f'✅ GPU performance: {1/elapsed:.0f} ops/sec')
-print(f'✅ GPU memory: {torch.cuda.memory_allocated() / 1e9:.1f} GB')
+print(f'CUDA available: {torch.cuda.is_available()}')
+if torch.cuda.is_available():
+    print(f'Device: {torch.cuda.get_device_name(0)}')
+    print(f'Capability: {torch.cuda.get_device_capability(0)}')
 "
 ```
 
----
+**API health**
 
-## 📊 Performance Esperada
-
-**Legion RTX 3080:**
-
-| Modelo | Latência | VRAM | Status |
-|---|---|---|---|
-| DialoGPT | ~50 ms/frame | 500 MB | ✅ Ultrarrápido |
-| Qwen 0.5B | ~100 ms/frame | 1.5 GB | ✅ Excelente |
-| Phi-3-mini | ~300 ms/frame | 7.6 GB | ✅ Recomendado |
-
-**Tempo total (batch 10 frames):**
-- DialoGPT: ~1.5s ✅
-- Qwen: ~2s ✅
-- Phi-3: ~3-4s ✅
-
----
-
-## 🛠️ Troubleshooting
-
-### Erro: `nvidia-smi` não encontrado
-
-```powershell
-# Verificar PATH do sistema
-$env:PATH
-
-# Se não tiver NVIDIA, reinstalar drivers:
-# 1. Download NVIDIA Driver 550+
-# 2. Clean install (desabilitar Old driver)
-# 3. Reiniciar
+```bash
+curl http://localhost:8000/health
 ```
 
-### Erro: CUDA not available
+**Test request**
 
-```powershell
-# 1. Verificar driver
+```bash
+curl -X POST http://localhost:8000/diagnose \
+  -F "file=@image.jpg" \
+  -F "frame_index=0"
+```
+
+## Performance Expectations
+
+**Performance depends on:**
+
+- selected model
+- batch size
+- prompt length
+- warmup state
+- CUDA / PyTorch tuning
+
+**Observed behavior in the project**
+
+| Model | Profile | Notes |
+|---|---|---|
+| DialoGPT-small | Fastest baseline | Lowest explanation quality |
+| Qwen2.5-0.5B | Best trade-off | Recommended option |
+| Phi-3-mini | Highest quality | Slower than Qwen |
+
+**Typical batch behavior**
+
+For batch processing with 10 frames:
+
+- Qwen: best overall trade-off on Legion
+- Phi-3-mini: feasible, with higher latency
+- DialoGPT-small: useful as lightweight baseline
+
+**Exact latency should be reported from the benchmark outputs generated in this repository.**
+
+## Troubleshooting
+
+**CUDA not available**
+
+```bash
+python3 -c "import torch; print(torch.cuda.is_available())"
+```
+
+If False:
+
+- verify NVIDIA driver installation
+- verify CUDA-enabled PyTorch
+- verify environment setup
+
+**CPU-only PyTorch installed**
+
+```bash
+python3 -c "import torch; print(torch.__version__)"
+```
+
+If the version indicates CPU-only build, reinstall the CUDA-enabled package used in the validated setup.
+
+**Model loading fails**
+
+Check:
+
+- model path
+- transformers version
+- available GPU memory
+- YAML configuration
+
+**High VRAM usage**
+
+```bash
 nvidia-smi
-
-# 2. Reinstalar PyTorch para CUDA 12.1
-poetry run pip uninstall -y torch
-poetry run pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# 3. Validar
-poetry run python -c "import torch; print(torch.cuda.is_available())"
 ```
 
-### Erro: Phi-3 não carrega (OutOfMemory)
+If memory becomes too high:
 
-RTX 3080 tem 10GB. Verificar:
+- close other GPU-intensive applications
+- reduce concurrent processes
+- reduce batch size for debugging
 
-```powershell
-# 1. Verificar VRAM disponível
-poetry run python -c "import torch; print(torch.cuda.get_device_properties(0))"
+## Monitoring
 
-# 2. Se falhar, usar Qwen em vez de Phi
-# 3. Ou usar quantização FP8:
-#    pip install bitsandbytes
-#    use_4bit: true (no YAML)
+**Use:**
+
+```bash
+nvidia-smi
 ```
 
-### Erro: torch installation fails
+This is the recommended monitoring tool on the Legion desktop. It provides:
 
-```powershell
-# Limpar cache
-poetry cache clear --all
+- GPU memory usage
+- GPU utilization
+- driver and CUDA information
+- running GPU processes
 
-# Reinstalar explicito
-poetry run pip install --force-reinstall torch==2.0.0 --index-url https://download.pytorch.org/whl/cu121
-```
+## Docker Status
 
-### GPU muito quente (>85°C)
+⚠️ **Docker is not the recommended path for the Legion setup in this project.**
 
-```powershell
-# Monitorar temperatura
-# Task Manager → Performance → GPU
+The validated workflow is the local Poetry-based environment.
 
-# Se muito quente:
-# 1. Verificar ventilação
-# 2. Reduzir batch size
-# 3. Usar FP32 em vez de FP16 (mais lento mas menos heat)
-#    precision: fp32 (no YAML)
-```
+Docker may still be used experimentally, but it is not the primary execution path documented here.
 
----
+## Known Trade-offs
 
-## 📈 Monitoramento
+**Qwen vs Phi**
 
-### Task Manager (Windows)
+| Model | Advantage | Drawback |
+|---|---|---|
+| Qwen2.5-0.5B | Better latency | Slightly lower explanation quality |
+| Phi-3-mini | Better explanation quality | Higher latency |
 
-Performance → GPU → exibe:
-- GPU utilização
-- Memória
-- Temperatura
-- Power consump
+**Legion vs Orin**
 
-### Logs da aplicação
+The Legion may outperform Jetson Orin in practice depending on:
 
-```powershell
-# Poetry
-poetry run ar-api 2>&1 | Tee-Object -FilePath app.log
+- x86 vs ARM software maturity
+- NVIDIA desktop driver stack
+- CUDA / PyTorch optimization
+- model loading behavior
 
-# Docker
-docker logs -f ar-diagnostic-mvp
-```
+## FAQ
 
-### gpumon (opcional)
+**Which model should I use on Legion?**
 
-```powershell
-pip install gpumon
-gpumon --interval 1
-# Exibe GPU stats em tempo real
-```
+Use Qwen2.5-0.5B as the default choice. It offers the best balance between throughput and explanation quality.
 
----
+**Can I use Phi-3-mini on Legion?**
 
-## 🔄 Atualizações
+Yes. It is feasible and useful when explanation quality is more important than latency.
 
-```powershell
-cd backend_tcc_mvp
+**Is 4-bit quantization required?**
 
-# Atualizar código
-git pull origin main
+No. The Legion can run the validated models without requiring 4-bit quantization. FP16 is often the safer default.
 
-# Reinstalar dependências
-poetry install
+**Is Legion faster than Orin?**
 
-# Se usar Docker
-docker-compose build --no-cache
-docker-compose up -d
-```
+Often yes, depending on the software stack and optimization level.
 
----
+**Should I use Docker on Legion?**
 
-## 🔒 Segurança (Rede)
+Not as the main workflow for this project. Prefer the local Poetry-based setup.
 
-### Windows Firewall
+## References
 
-```powershell
-# Permitir porta 8000 (local only)
-New-NetFirewallRule -DisplayName "AR-API" `
-  -Direction Inbound -Action Allow `
-  -Protocol TCP -LocalPort 8000 `
-  -RemoteAddress 192.168.0.0/16
-```
-
-### HTTPS com nginx (opcional)
-
-```powershell
-# Instalar nginx via WSL2 ou standalone
-# Configurar SSL certificate
-# Usar nginx como reverse proxy para API
-```
-
----
-
-## 📚 Referências
-
-- [NVIDIA Drivers](https://www.nvidia.com/Download/driverDetails.aspx)
-- [CUDA 12.1 Toolkit](https://developer.nvidia.com/cuda-12-1-0-download-archive)
-- [PyTorch Windows Install](https://pytorch.org/get-started/locally/)
-- [Phi-3-mini - Hugging Face](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct)
-- [Qwen2.5 - Hugging Face](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct)
-- [Docker Desktop Windows](https://docs.docker.com/desktop/install/windows-install/)
-
----
-
-## ❓ FAQ
-
-**P: Qual modelo para Legion?**  
-A: **Phi-3-mini** (recomendado). Excelente qualidade, rápido (~300ms), cabe confortável em 10GB.
-
-**P: Posso rodar em CPU só?**  
-A: Sim, mas ~10x mais lento. Configure `device: cpu` no YAML.
-
-**P: Quanto de VRAM preciso?**  
-A: Mínimo 6GB (DialoGPT). 8GB confortável (Qwen). 10GB+ para Phi-3.
-
-**P: RTX 3080 vs RTX 4090?**  
-A: RTX 4090 (~50% mais rápido). Mas RTX 3080 é mais que suficiente para este projeto.
-
-**P: Posso usar GPU integrada (iGPU)?**  
-A: Não. iGPU é compartilhada com RAM (muito lento). Precisa de GPU dedicada.
-
-**P: Quantos concurrent requests a API suporta?**  
-A: ~5-10 com batch processing. PyTorch não é muito thread-safe, use fila.
-
-**P: Posso servir a API na internet?**  
-A: Sim, com HTTPS + auth. Configurar nginx reverse proxy ou usar ngrok para testing.
+- [PyTorch](https://pytorch.org/)
+- [Hugging Face Transformers](https://huggingface.co/transformers/)
+- [Qwen2.5-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct)
+- [Phi-3-mini-4k-instruct](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct)

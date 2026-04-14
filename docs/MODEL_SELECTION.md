@@ -1,322 +1,262 @@
-# Seleção de Modelos — AR Diagnostic MVP
+# Model Selection — AR Diagnostic MVP
 
-Este documento explica os 3 modelos de linguagem disponíveis no projeto, suas características, requisitos de hardware, e quando usar cada um.
+This document summarizes the language models evaluated in the project, their main characteristics, hardware requirements, and recommended usage across the validated execution environments.
 
-## 📊 Comparação dos Modelos
+The project considered three model families:
 
-| Aspecto | **DialoGPT-small** | **Qwen2.5-0.5B** | **Phi-3-mini** |
+- DialoGPT-small
+- Qwen2.5-0.5B
+- Phi-3-mini
+
+The final recommendation depends on the target platform and the trade-off between latency, compatibility, and explanation quality.
+
+## Model Comparison
+
+| Aspect | DialoGPT-small | Qwen2.5-0.5B | Phi-3-mini |
 |---|---|---|---|
-| **Tamanho** | 117M params | 494M params | 3.8B params |
-| **VRAM (FP16)** | ~250 MB | ~1 GB | ~7.6 GB |
-| **Latência (Nano)** | ~250 ms/frame | ~500 ms/frame | ❌ Não cabe |
-| **Latência (Orin)** | ~150 ms/frame | ~300 ms/frame | ~800 ms/frame |
-| **Latência (Legion RTX)** | ~50 ms/frame | ~100 ms/frame | ~300 ms/frame |
-| **Qualidade** | Boa (tuned) | Excelente | Excelente |
-| **Tipo** | Conversacional | Instruct | Instruct |
-| **Jetson Nano** | ✅ Obrigatório | ❌ Incompatível | ❌ Sem espaço |
-| **Jetson Orin** | ✅ Funciona | ✅ Trade-off: Rápido | ✅ Trade-off: Qualidade |
-| **Legion (RTX)** | ✅ Funciona | ✅ Trade-off: Rápido | ✅ Trade-off: Qualidade |
+| Model family | Conversational | Instruction-tuned | Instruction-tuned |
+| Size | 117M params | ~0.5B params | ~3.8B params |
+| Typical VRAM footprint (FP16) | Low | Moderate | High |
+| Explanation quality | Acceptable | Strong | Best |
+| Latency | Lowest | Moderate | Highest |
+| Jetson Nano | ✅ Supported | ❌ Not supported in validated stack | ❌ Not supported |
+| Jetson AGX Orin | ✅ Supported | ✅ Recommended | ✅ Optional |
+| Desktop Legion | ✅ Supported | ✅ Recommended | ✅ Recommended |
 
----
 
-## 1️⃣ DialoGPT-small (Microsoft)
+## 1. DialoGPT-small
 
-### Características
-- **Conversacional** — treinado em diálogos
-- **Ultracompacto** — 117M params, ~250 MB
-- **Rápido** — ideal para edge computing
-- **Determinístico** — com `greedy_decoding=true`
+### Characteristics
 
-### Quando usar
-- ✅ Jetson Nano (única opção com CUDA viável)
-- ✅ Testes rápidos de prototipagem
-- ✅ Quando latência < 500 ms é crítico
-- ❌ Quando qualidade máxima é necessária
+- Lightweight conversational model
+- Very low memory footprint
+- Fastest inference among the evaluated options
+- Suitable for highly constrained embedded environments
 
-### Configuração YAML
+### Recommended usage
+
+- Jetson Nano: default and validated choice
+- Fast prototyping
+- Baseline latency measurements
+- Scenarios where low latency is more important than maximum explanation quality
+
+### Main limitation
+
+- Lower explanation quality than Qwen and Phi
+- Requires stronger prompt control and validation to avoid conversational drift
+
+### Typical role in the project
+
+DialoGPT-small was the validated model for Jetson Nano, where software-stack and hardware constraints made larger models impractical.
+
+### Example configuration
+
 ```yaml
 models:
-  default: dialogpt
-  device: cuda              # GPU quando disponível
-  precision: fp16           # Reduz consumo de memória
-  
-dialogpt_config:
-  model_name: "microsoft/DialoGPT-small"
-  prompt_max_length: 256
-  max_tokens: 20            # Per-frame
-  summary_tokens: 32
-  temperature: 0.3
-  top_p: 0.85
+  default: dialogpt-small
+  device: cuda
+  use_4bit: false
   greedy_decoding: true
+  prompt_max_length: 256
+  warmup_on_startup: true
+
+  dialogpt-small:
+    name: /home/das9/models/DialoGPT-small
+    max_tokens: 20
+    summary_tokens: 32
+    temperature: 0.3
+    top_p: 0.85
 ```
 
-### Performance no Jetson Nano
-```
-Tempo total (batch 10 frames): ~3.4s
-- PDI (rule engine): ~91 ms/frame
-- DialoGPT inference: ~250 ms/frame (total)
-```
 
-### Validação
-```bash
-poetry run python -c "
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+## 2. Qwen2.5-0.5B
 
-model_name = 'microsoft/DialoGPT-small'
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name).cuda()
+### Characteristics
 
-input_ids = tokenizer.encode('Hello', return_tensors='pt').cuda()
-output = model.generate(input_ids, max_length=20)
-print('✅ DialoGPT working')
-"
-```
+- Instruction-tuned model
+- Better prompt following than DialoGPT-small
+- Better explanation quality for the diagnostic task
+- Good trade-off between quality and latency on modern platforms
 
----
+### Recommended usage
 
-## 2️⃣ Qwen2.5-0.5B (Alibaba)
+- Jetson AGX Orin: recommended default choice
+- Desktop Legion: recommended for production and benchmarks
+- General-purpose deployment when explanation quality matters and latency must remain practical
 
-### Características
-- **Instrução-tuned** — segue prompts melhor que DialoGPT
-- **Qualidade superior** — melhor compreensão de contexto
-- **Compacto** — 494M params, ~1 GB em FP16
-- **Multilíngue** — suporta 30+ idiomas
+### Main limitation
 
-### Quando usar
-- ✅ Jetson Nano com budget de latência (500-600 ms ok)
-- ✅ Jetson Orin/RTX quando qualidade > velocidade (trade-off: 2-3x mais lento que Phi)
-- ✅ Quando a qualidade de respostas é mais importante
-- ❌ Se precisar máxima latência (< 300 ms)
+- Not supported in the validated Jetson Nano stack
+- Requires a newer software stack than the one stabilized for JetPack 4.6 / Python 3.6
 
-### Configuração YAML
+### Important note on Jetson Nano
+
+Although Qwen2.5-0.5B is much smaller than Phi-3-mini, it was not supported in the final validated Nano setup.
+The issue was not only memory pressure, but also software-stack compatibility.
+
+### Typical role in the project
+
+Qwen2.5-0.5B became the main recommendation for Orin and Legion, offering the best balance between throughput and explanation quality.
+
+### Example configuration
+
 ```yaml
 models:
   default: qwen
   device: cuda
-  precision: fp16
-  
-qwen_config:
-  model_path: "/home/das9/models/Qwen2.5-0.5B-Instruct"  # Local cache
-  prompt_max_length: 128
-  max_tokens: 20
-  summary_max_tokens: 32
-  temperature: 0.2
-  top_p: 0.9
-  greedy_decoding: true
+  use_4bit: false
+  greedy_decoding: false
+  prompt_max_length: 512
+  warmup_on_startup: true
+
+  qwen:
+    name: Qwen/Qwen2.5-0.5B-Instruct
+    max_tokens: 100
+    summary_tokens: 150
+    temperature: 0.3
+    top_p: 0.85
 ```
 
-### Performance
 
-**Jetson Nano:**
-```
-Tempo total (batch 10 frames): ~5-6s
-- PDI: ~91 ms/frame
-- Qwen inference: ~500 ms/frame (total)
-Target: 3.5s ❌ (exceeds for Nano)
-```
+## 3. Phi-3-mini
 
-**Jetson Orin:**
-```
-Tempo total (batch 10 frames): ~3-4s
-- PDI: ~50 ms/frame
-- Qwen inference: ~250 ms/frame (total)
-Target: 3.5s ✅
-```
+### Characteristics
 
-### Validação
-```bash
-poetry run python -c "
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+- Highest reasoning and explanation quality among the evaluated models
+- Strong instruction following
+- Best option when textual quality is prioritized over latency
 
-model_path = '/home/das9/models/Qwen2.5-0.5B-Instruct'
-tokenizer = AutoTokenizer.from_pretrained(model_path)
-model = AutoModelForCausalLM.from_pretrained(model_path).cuda()
+### Recommended usage
 
-input_ids = tokenizer.encode('Brightness:', return_tensors='pt').cuda()
-output = model.generate(input_ids, max_length=20)
-print('✅ Qwen working')
-"
-```
+- Jetson AGX Orin: optional, when quality is prioritized
+- Desktop Legion: recommended when latency budget allows it
+- Comparative evaluation against smaller models
 
----
+### Main limitation
 
-## 3️⃣ Phi-3-mini (Microsoft)
+- Higher latency than Qwen
+- Higher memory consumption
+- Not suitable for Jetson Nano
 
-### Características
-- **Alta qualidade** — 3.8B params
-- **Instruct-tuned** — segue instruções complexas
-- **Inteligente** — melhor raciocínio que Qwen 0.5B
-- **Pesado** — ~7.6 GB em FP16
+### Typical role in the project
 
-### Quando usar
-- ✅ Jetson Orin/RTX quando qualidade máxima é necessária (trade-off: até 3x mais lento que Qwen)
-- ✅ Quando o sistema pode tolerar latência ~300-800 ms
-- ❌ Jetson Nano (sem espaço VRAM)
-- ❌ Quando latência é crítico (< 300 ms)
+Phi-3-mini was evaluated as the highest-quality option, especially relevant in Orin and Legion experiments, but with a clear cost in inference time.
 
-### Configuração YAML
+### Example configuration
+
 ```yaml
 models:
   default: phi
   device: cuda
-  precision: fp16
-  
-phi_config:
-  model_name: "microsoft/Phi-3-mini-4k-instruct"
-  prompt_max_length: 256
-  max_tokens: 32
-  summary_max_tokens: 64
-  temperature: 0.7
-  top_p: 0.95
+  use_4bit: false
   greedy_decoding: false
+  prompt_max_length: 512
+  warmup_on_startup: true
+
+  phi:
+    name: microsoft/Phi-3-mini-4k-instruct
+    max_tokens: 120
+    summary_tokens: 200
+    temperature: 0.3
+    top_p: 0.85
 ```
 
-### Performance
+## Platform Decision Matrix
 
-**Jetson Orin:**
-```
-Tempo total (batch 10 frames): ~8-10s
-- PDI: ~50 ms/frame
-- Phi inference: ~800 ms/frame (total)
-Target: 3.5s ❌ (muito lento para uso produção)
-```
+### Jetson Nano
 
-**Legion RTX 3080:**
-```
-Tempo total (batch 10 frames): ~3-4s
-- PDI: ~10 ms/frame
-- Phi inference: ~300 ms/frame (total)
-Target: 3.5s ✅ (aceita)
-```
+**Recommended model:** DialoGPT-small
 
-### Validação
-```bash
-poetry run python -c "
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+**Reason:**
 
-model_name = 'microsoft/Phi-3-mini-4k-instruct'
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name).cuda()
+- validated with the final stable Nano stack
+- compatible with JetPack 4.6 / Python 3.6 / PyTorch 1.10
+- acceptable latency for embedded deployment
 
-input_ids = tokenizer.encode('Analyze:', return_tensors='pt').cuda()
-output = model.generate(input_ids, max_length=32)
-print('✅ Phi-3 working')
-"
-```
+**Not recommended:**
 
----
+- Qwen2.5-0.5B → unsupported in the validated Nano stack
+- Phi-3-mini → exceeds practical memory / latency constraints
 
-## 🎯 Matriz de Decisão
+### Jetson AGX Orin
 
-### Jetson Nano (4GB VRAM)
-```
-┌─────────────────────────────────┐
-│  Jetson Nano – Escolha de Modelo │
-└─────────────────────────────────┘
+**Recommended default model:** Qwen2.5-0.5B
 
-Priority: Latência (< 3.5s)?
-├─ SIM → Usar DialoGPT-small ✅
-│        Tempo: ~3.4s
-│        Qualidade: Boa (tuned para iluminação)
-│
-└─ NÃO (qualidade > speed)?
-   ├─ Qwen 0.5B (experimentar)
-   │  Tempo: ~5-6s ⚠️
-   │  Qualidade: Excelente
-   │
-   └─ Phi-3 ❌
-      Memória: Não cabe
-```
+**Reason:**
 
-### Jetson Orin (32GB VRAM)
-```
-┌─────────────────────────────────┐
-│  Jetson Orin – Escolha de Modelo │
-└─────────────────────────────────┘
+- strong explanation quality
+- practical latency
+- better trade-off for deployment
 
-Priority: Performance vs Qualidade?
-├─ Speed (3s baseline) → Qwen 0.5B ✅
-│  Tempo: ~3.5s
-│  Qualidade: Excelente
-│
-├─ Quality (< 5s ok) → Phi-3 ✅
-│  Tempo: ~8-10s
-│  Qualidade: Superior
-│
-└─ Best of Both → Qwen 0.5B (recomendado)
-```
+**Alternative:** Phi-3-mini
 
-### Legion Windows (RTX 3080+)
-```
-┌────────────────────────────────┐
-│ Legion RTX – Escolha de Modelo │
-└────────────────────────────────┘
+**Reason:**
 
-Recomendado: Phi-3-mini ✅
-├─ Tempo: ~3-4s (muito rápido)
-├─ Qualidade: Superior
-├─ Custo: Baixo (offline)
-│
-Alternativas:
-├─ Qwen 0.5B (mais rápido ainda: ~1s)
-└─ DialoGPT-small (ultrarrápido: ~0.5s)
-```
+- better textual quality
+- useful when explanation quality is more important than throughput
 
----
+### Desktop Legion
 
-## 🔧 Como Trocar Modelos
+**Recommended default model:** Qwen2.5-0.5B
 
-### 1. Editar `app/config/thresholds.yaml`
+**Reason:**
 
-```yaml
-# Antes (DialoGPT)
-models:
-  default: dialogpt
+- best overall balance for production-style runs and benchmarks
 
-# Depois (Qwen)
-models:
-  default: qwen
-```
+**Quality-oriented option:** Phi-3-mini
 
-### 2. Copiar modelo se necessário
+**Reason:**
 
-```bash
-# Para Qwen (já em cache na Nano)
-mkdir -p ~/.cache/huggingface/hub
-cp -r /path/to/Qwen2.5-0.5B-Instruct ~/.cache/huggingface/hub/
+- strong explanation quality
+- desktop environment tolerates higher inference cost better than embedded platforms
 
-# Para Phi (download automático na primeira execução)
-# Requer ~8 GB de espaço livre
-```
+**Fast baseline:** DialoGPT-small
 
-### 3. Rodar com novo modelo
+**Reason:**
 
-```bash
-# Poetry
-poetry run ar-api
+- useful as lightweight reference model
 
-# Docker
-docker-compose up --build
-```
+## Recommended Summary by Platform
 
----
-
-## 📌 Resumo Recomendado
-
-| Ambiente | Modelo | Razão |
+| Platform | Recommended model | Why |
 |---|---|---|
-| **Jetson Nano** | DialoGPT-small | Único que cabe com latência < 3.5s |
-| **Jetson Orin** | Qwen 0.5B | Qualidade excelente + latência aceitável |
-| **Legion RTX** | Phi-3-mini | Melhor qualidade + tempo rápido |
+| Jetson Nano | DialoGPT-small | Only model validated in the final Nano stack |
+| Jetson AGX Orin | Qwen2.5-0.5B | Best latency/quality trade-off |
+| Desktop Legion | Qwen2.5-0.5B | Best overall balance |
+| Desktop Legion (quality-first) | Phi-3-mini | Best explanation quality |
 
----
+## Selection Guidelines
 
-## 🔗 Links úteis
+**Choose DialoGPT-small when:**
 
-- [DialoGPT - Hugging Face](https://huggingface.co/microsoft/DialoGPT-small)
-- [Qwen2.5-0.5B - Hugging Face](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct)
-- [Phi-3-mini - Hugging Face](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct)
-- [Otimização de modelos - PyTorch](https://pytorch.org/docs/stable/quantization.html)
+- the target platform is Jetson Nano
+- latency is the highest priority
+- the environment is highly constrained
+- a lightweight baseline is needed
+
+**Choose Qwen2.5-0.5B when:**
+
+- explanation quality matters more than minimal latency
+- the target platform is Orin or Legion
+- you want the best practical trade-off
+
+**Choose Phi-3-mini when:**
+
+- explanation quality is the top priority
+- the platform has enough memory and compute budget
+- higher latency is acceptable
+
+## Practical Notes
+
+- Jetson Nano should be treated as a constrained deployment target, not as a general-purpose LLM platform.
+- Jetson AGX Orin supports modern models more comfortably, but still involves embedded-system trade-offs.
+- Desktop Legion offers the most flexible environment for experiments and high-quality inference.
+
+For exact benchmark values, refer to the measurement outputs stored in the repository under the benchmark and platform-specific output folders.
+
+## Useful Links
+
+- [DialoGPT-small](https://huggingface.co/microsoft/DialoGPT-small)
+- [Qwen2.5-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct)
+- [Phi-3-mini-4k-instruct](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct)
+- [PyTorch Documentation](https://pytorch.org/)

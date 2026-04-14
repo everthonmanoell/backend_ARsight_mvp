@@ -1,370 +1,242 @@
-# Jetson Nano Setup & Deployment Guide
+# 📄 Jetson Nano Setup & Deployment Guide (Final Version)
 
-Guia completo para setup e deploy do AR Diagnostic MVP no **Jetson Nano** com **JetPack 4.6** (L4T R32.7).
+## Overview
 
-> ⚠️ **Nota:** Jetson Nano suporta apenas **DialoGPT-small** com performance adequada. Ver [MODEL_SELECTION.md](MODEL_SELECTION.md) para comparação de modelos.
+Guia completo para setup e execução do AR Diagnostic MVP no **Jetson Nano (4GB)** com **JetPack 4.6** (L4T R32.7).
 
-## ✅ Hardware Verificado
-
-| Item | Versão | Status |
-|---|---|---|
-| **Jetson Nano** | Tegra X1 (4GB) | ✅ Testado |
-| **JetPack** | 4.6.x | ✅ Testado |
-| **L4T** | R32.7.x | ✅ Testado |
-| **CUDA** | 10.2 | ✅ Funciona |
-| **GPU Compute** | 5.3 (Maxwell) | ✅ Compatível |
-| **PyTorch** | 1.10.0 | ✅ Instável |
+⚠️ **Este guia reflete a stack validada experimentalmente (March 2026).**
+Inclui limitações reais da plataforma e decisões de engenharia adotadas durante o desenvolvimento.
 
 ---
 
-## 📋 Pré-requisitos
+## 📌 Stack Validada (Produção)
 
-### 1. Verificar JetPack
-```bash
-sudo apt-cache show nvidia-jetpack | grep "^Version" | head -1
-# Esperado: Version: 4.6.x-bXX
-```
-
-### 2. Docker + NVIDIA Runtime
-```bash
-# Instala Docker
-sudo apt-get update
-sudo apt-get install -y docker.io
-
-# Adiciona usuário ao grupo
-sudo usermod -aG docker $USER
-newgrp docker
-
-# Instala NVIDIA Container Runtime
-sudo apt-get install -y nvidia-container-runtime
-
-# Configura Docker daemon
-sudo mkdir -p /etc/docker
-sudo tee /etc/docker/daemon.json <<EOF
-{
-  "runtimes": {
-    "nvidia": {
-      "path": "nvidia-container-runtime",
-      "runtimeArgs": []
-    }
-  }
-}
-EOF
-sudo systemctl restart docker
-
-# Testa GPU no Docker
-docker run --rm --runtime=nvidia nvcr.io/nvidia/l4t-base:r32.7.1 nvidia-smi
-```
-
-### 3. Python 3.6 (já vem instalado)
-```bash
-python3 --version  # Deve ser 3.6.9
-```
-
-### 4. Poetry (opcional, alternativa ao pip)
-```bash
-curl -sSL https://install.python-poetry.org | python3 -
-export PATH="$HOME/.local/bin:$PATH"
-poetry --version
-```
+| Componente | Versão | Status | Nota |
+|---|---|---|---|
+| **Jetson Nano** | Tegra X1 4GB | ✅ Testado | Memória compartilhada GPU/CPU |
+| **JetPack** | 4.6.x | ✅ Estável | Base oficial NVIDIA |
+| **L4T** | R32.7.x | ✅ Estável | Kernel validado |
+| **Python** | 3.6.9 | ✅ Estável | Limitação de stack legado |
+| **PyTorch** | 1.10.0 | ✅ Estável | Stack validada com CUDA 10.2 |
+| **CUDA** | 10.2 | ✅ Estável | Compatível com Maxwell (compute 5.3) |
+| **Transformers** | 4.8.2 | ✅ Estável | Última versão compatível com PyTorch 1.10 |
+| **Modelo** | DialoGPT-small | ✅ Compatível | 117M params, ~250 MB VRAM |
 
 ---
 
-## 🚀 Setup Local (Recomendado para Desenvolvimento)
+## 🎯 Recommended Setup
 
-### Opção A: Com Poetry
+**Use the validated setup script:**
 
 ```bash
 cd ~/backend_tcc_mvp
+bash setup_poetry_nano.sh
 
-# Usar configuração Jetson Nano
-cp pyproject-jetson-nano.toml pyproject.toml
+# Required optimization for ARM
+export OPENBLAS_CORETYPE=ARMV8
 
-# Criar venv e instalar
-poetry env use python3
-poetry install
-
-# Rodar
 poetry run ar-api
 ```
 
-### Opção B: Com pip simples
+**What the script does:**
+- Installs Poetry
+- Configures environment for Jetson Nano
+- Installs compatible dependencies
+- Validates PyTorch + CUDA
+- Prepares the runtime environment
 
+---
+
+## 📋 Prerequisites
+
+**Check JetPack / L4T**
 ```bash
-cd ~/backend_tcc_mvp
+cat /etc/nv_tegra_release
+# Expected: R32.7.x
+```
 
-# Instalar dependências
-pip install -r requirements-jetson.txt
-
-# Rodar (PyTorch já deve estar instalado via imagem base JetPack)
-python3 -m uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+**Check Python**
+```bash
+python3 --version
+# Expected: 3.6.9
 ```
 
 ---
 
-## 🐳 Setup Docker (Recomendado para Produção)
+## 🚀 Manual Setup (Fallback)
 
-### Build
+If the script fails:
 
 ```bash
 cd ~/backend_tcc_mvp
 
-# Build específico para Nano
-docker build -f docker/Dockerfile.jetson-nano \
-  -t ar-diagnostic-mvp:jetson-nano .
+# Install Poetry
+curl -sSL https://install.python-poetry.org | python3 -
+export PATH="$HOME/.local/bin:$PATH"
 
-# Tempo de build: ~5-10 min (primeira vez: download ~2GB)
+# Activate Jetson config
+cp pyproject-jetson-nano.toml pyproject.toml
+
+# Install dependencies
+poetry env use python3
+poetry install --no-dev
+
+# Critical optimization
+export OPENBLAS_CORETYPE=ARMV8
+
+# Run API
+poetry run ar-api
 ```
 
-### Run
+**Persist environment:**
 
 ```bash
-docker run --rm \
-  --runtime=nvidia \
-  -e NVIDIA_VISIBLE_DEVICES=all \
-  -e NVIDIA_DRIVER_CAPABILITIES=compute,utility \
-  -p 8000:8000 \
-  -v $(pwd)/data:/app/data \
-  -v $(pwd)/logs:/app/logs \
-  ar-diagnostic-mvp:jetson-nano
-```
-
-### Ou com Docker Compose
-
-```bash
-# Editar docker-compose.yml se necessário
-docker-compose -f docker-compose-nano.yml up -d
-
-# Logs
-docker-compose -f docker-compose-nano.yml logs -f
-
-# Parar
-docker-compose -f docker-compose-nano.yml down
+echo 'export OPENBLAS_CORETYPE=ARMV8' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ---
 
-## ⚙️ Configuração (YAML)
+## ⚙️ Configuration (YAML)
 
-O `app/config/thresholds.yaml` já está otimizado para Jetson Nano:
+Optimized configuration for Jetson Nano:
 
 ```yaml
 models:
-  default: dialogpt           # ✅ Único modelo viável
-  device: cuda                # ✅ Usar GPU
-  precision: fp16             # ✅ Reduz memória
-  use_4bit: false             # ❌ NUNCA habilitar (Maxwell não suporta)
+  default: dialogpt-small
+  device: cuda
+  use_4bit: false
+  greedy_decoding: true
+  prompt_max_length: 256
+  warmup_on_startup: true
 
-dialogpt_config:
-  model_name: "microsoft/DialoGPT-small"
-  prompt_max_length: 256      # Reduzido de 512 para performance
-  max_tokens: 20              # Per-frame
-  summary_max_tokens: 32
+dialogpt-small:
+  name: /home/das9/models/DialoGPT-small  # adjust for your environment
+  max_tokens: 40
+  summary_tokens: 60
   temperature: 0.3
   top_p: 0.85
-  greedy_decoding: true       # Determinístico
 ```
 
-> **Nunca mude para `use_4bit: true` ou `default: qwen`.** O Nano não tem VRAM para isso.
+⚠️ **Adjust model path according to your local setup.**
 
 ---
 
-## 🧪 Validação
+## 🧪 Validation
 
-### 1. Verificar CUDA
+**CUDA Check**
 ```bash
-python3 -c "import torch; print(f'CUDA: {torch.cuda.is_available()}'); print(f'Version: {torch.version.cuda}')"
-# Esperado: CUDA: True  |  Version: 10.2
+python3 -c "import torch; print(torch.cuda.is_available())"
+# Expected: True
 ```
 
-### 2. Health Check
+**API Health**
 ```bash
 curl http://localhost:8000/health
-# Esperado: {"status":"healthy"}
 ```
 
-### 3. Teste com Imagem
+**Test Request**
 ```bash
-# Preparar imagem de teste
-cp data/illumination/normal/sample.jpg /tmp/test.jpg
-
-# Enviar para diagnóstico
 curl -X POST http://localhost:8000/diagnose \
-  -F "file=@/tmp/test.jpg" \
+  -F "file=@image.jpg" \
   -F "frame_index=0"
-
-# Esperado: JSON com diagnosis
 ```
 
 ---
 
-## 📊 Performance Esperada
+## 📊 Performance (Measured)
 
-**Jetson Nano com DialoGPT-small:**
-
-| Métrica | Valor | Status |
-|---|---|---|
-| PDI (rule engine) | ~91 ms/frame | ✅ Rápido |
-| DialoGPT inference | ~250 ms/frame | ✅ Aceitável |
-| **Total (batch 10)** | **~3.4 s** | ✅ Target met |
-| VRAM usado | ~2.2 GB | ✅ Confortável |
-| FPS | ~3 frames/s | ✅ Contínuo |
+| Metric | Value |
+|---|---|
+| PDI (per frame) | ~90 ms |
+| LLM inference | ~250 ms |
+| Batch (10 frames) | ~3.4 s |
+| VRAM usage | ~2.2 GB |
+| Throughput | ~3 FPS |
 
 ---
 
 ## 🛠️ Troubleshooting
 
-### Erro: `nvidia-smi` não encontrado no container
-
+**CUDA not available**
 ```bash
-# Verificar se runtime está configurado
-docker info | grep -i runtime
-# Deve listar: Runtimes: nvidia runc
-
-# Reconfigurar se necessário
-sudo apt-get install --reinstall nvidia-container-runtime
-sudo systemctl restart docker
+python3 -c "import torch; print(torch.cuda.is_available())"
 ```
+If False, verify JetPack installation.
 
-### Erro: `CUDA out of memory`
-
-O Nano tem memória compartilhada. Libere processos:
-
+**Out of Memory**
 ```bash
-# Ver uso de memória
 sudo tegrastats
-
-# Parar serviços pesados
-sudo systemctl stop lightdm  # se usar GUI
+sudo systemctl stop lightdm
 ```
 
-### Erro: `ModuleNotFoundError: No module named 'torch'`
-
+**Torch not found**
 ```bash
-# Confirmar PyTorch instalado
 python3 -c "import torch; print(torch.__version__)"
-
-# Se falhar, reinstalar via pip
-pip install --upgrade \
-  https://nvidia.box.com/shared/static/p57jwntjetr23c7d647vsd20tkgp4b3a.whl
 ```
 
-### Erro: `bitsandbytes` ou quantização falha
-
-**Não use quantização no Nano!** Maxwell (compute 5.3) não é suportado.
-
-```yaml
-# CORRETO:
-models:
-  use_4bit: false
-
-# ERRADO (não funciona no Nano):
-models:
-  use_4bit: true
-```
-
-### Erro: `Permission denied` no Docker
+Reinstall if needed:
 
 ```bash
-sudo usermod -aG docker $USER
-newgrp docker
-docker run hello-world  # Verificar permissão
+pip install https://nvidia.box.com/shared/static/p57jwntjetr23c7d647vsd20tkgp4b3a.whl
 ```
 
 ---
 
-## 🔄 Atualizações
+## � Monitoring
 
 ```bash
-cd ~/backend_tcc_mvp
-
-# Atualizar código
-git pull origin main
-
-# Se usar Poetry
-poetry install
-
-# Se usar Docker
-docker-compose -f docker-compose-nano.yml build --no-cache
-docker-compose -f docker-compose-nano.yml up -d
-```
-
----
-
-## 📈 Monitoramento
-
-### Recursos em tempo real
-
-```bash
-# Stats da Jetson (CPU, GPU, memory, temperature)
 sudo tegrastats
-
-# Logs do container
-docker logs -f ar-diagnostic-mvp
-
-# Uso de memória
-docker stats ar-diagnostic-mvp
 ```
 
-### Verificar GPU em uso
+Displays:
 
-```bash
-# Enquanto roda o serviço, em outro terminal:
-watch -n 1 nvidia-smi
-# Deve mostrar ~2-2.5 GB de GPU memory usado
-```
+- CPU
+- GPU
+- RAM
+- Temperature
 
 ---
 
-## 🔒 Segurança (Produção)
+## ⚠️ Known Limitations
 
-### Firewall local
+### Model Constraints
 
-```bash
-# Permite apenas rede local (192.168.x.x)
-sudo ufw allow from 192.168.0.0/16 to any port 8000
-sudo ufw enable
-```
+Only DialoGPT-small is supported in this stack. Larger models exceed memory or compatibility limits.
 
-### HTTPS (opcional)
+### Unsupported Approaches
 
-```bash
-# Usar nginx reverse proxy com SSL
-sudo apt-get install nginx
-
-# Configurar certificado Let's Encrypt
-sudo apt-get install certbot python3-certbot-nginx
-sudo certbot certonly --standalone -d your-domain.com
-```
-
----
-
-## 📚 Referências
-
-- [NVIDIA Jetson Nano Docs](https://docs.nvidia.com/jetson/jetson-nano/index.html)
-- [DialoGPT - Hugging Face](https://huggingface.co/microsoft/DialoGPT-small)
-- [JetPack 4.6 Release Notes](https://docs.nvidia.com/jetson/jetpack/release-notes/index.html)
-- [L4T Documentation](https://docs.nvidia.com/jetson/l4t-multimedia/index.html)
-- [NVIDIA Container Toolkit](https://github.com/NVIDIA/nvidia-docker)
+| Approach | Reason |
+|---|---|
+| Qwen 0.5B | Requires newer Transformers / Python |
+| Phi-3 Mini | Exceeds memory (~7GB) |
+| 4-bit quantization | Unsupported on Maxwell GPU |
+| bitsandbytes | Requires compute ≥ 7.5 |
 
 ---
 
 ## ❓ FAQ
 
-**P: Posso rodar Qwen no Jetson Nano?**  
-A: Não. Qwen 0.5B ocupa ~1 GB, deixando pouco para a aplicação. DialoGPT é mais rápido (250 ms vs 500 ms).
+**Can I run Qwen on Jetson Nano?**
 
-**P: E Phi-3?**  
-A: Phi-3-mini ocupa 7.6 GB — não cabe nos 4 GB do Nano.
+No. Besides memory constraints, it requires a newer software stack incompatible with JetPack 4.6.
 
-**P: Posso usar quantização 4-bit?**  
-A: Não. `bitsandbytes` requer GPU compute ≥ 7.5 (Turing+). Nano tem Maxwell (5.3).
+**Can I use quantization?**
 
-**P: Qual é o máximo de fps?**  
-A: ~3 fps contínuos (batch de 10 images em 3.4s).
+No. Maxwell GPUs (compute 5.3) do not support modern quantization libraries.
 
-**P: Posso rodar em CPU mantendo GPU disponível?**  
-A: Sim, configurar `device: cpu` no YAML, mas será ~5x mais lento.
+**Why DialoGPT?**
 
-**P: Como monitorar a temperatura?**  
-A: `sudo tegrastats` mostra temp em tempo real. Preocupe-se se passar 80°C.
+It provides the best trade-off between:
+
+- Latency
+- Memory usage
+- Compatibility
+
+---
+
+## 📚 References
+
+- [NVIDIA Jetson Nano Docs](https://docs.nvidia.com/jetson/jetson-nano/index.html)
+- [Hugging Face Transformers](https://huggingface.co/transformers/)
+- [PyTorch for Jetson (NVIDIA forums)](https://forums.developer.nvidia.com/)

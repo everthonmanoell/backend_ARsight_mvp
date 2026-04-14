@@ -1,421 +1,322 @@
-# Jetson Orin Setup & Deployment Guide
+# Jetson AGX Orin Setup & Deployment Guide
 
-Guia completo para setup e deploy do AR Diagnostic MVP no **Jetson Orin** com **JetPack 5.x+** (L4T R35.x).
+## Overview
 
-> **Recomendação:** Usar **Qwen2.5-0.5B** para melhor balanço qualidade/performance. Ver [MODEL_SELECTION.md](MODEL_SELECTION.md) para comparação.
+Guia completo para setup e execução do AR Diagnostic MVP no **Jetson AGX Orin**.
 
-## ✅ Hardware Suportado
+⚠️ **Este guia reflete a stack validada experimentalmente no projeto.**  
+O foco principal é o uso de setup local com Poetry, com suporte a modelos maiores que os utilizados no Jetson Nano.
 
-| Modelo | RAM | JetPack | L4T | CUDA | Status |
-|---|---|---|---|---|---|
-| **Jetson Orin Nano** | 8GB | 5.x+ | R35+ | 11.4 | ✅ Testado |
-| **Jetson Orin NX** | 8GB | 5.x+ | R35+ | 11.4 | ✅ Compatível |
-| **Jetson AGX Orin** | 32GB | 5.x+ | R35+ | 11.4 | ✅ Compatível |
+## Modelos recomendados no Orin
 
----
+- **Qwen2.5-0.5B**: melhor trade-off entre latência e qualidade
+- **Phi-3-mini**: melhor qualidade textual, com maior custo de inferência
 
-## ⚠️ Diferenças vs. Jetson Nano
+Ver [MODEL_SELECTION.md](MODEL_SELECTION.md) para comparação detalhada.
 
-| Aspecto | Nano | Orin | Impacto |
+## Validated Scope
+
+Este guia se refere ao ambiente Jetson AGX Orin utilizado nos experimentos do projeto.
+
+| Component | Version / Family | Status | Notes |
 |---|---|---|---|
-| **RAM** | 4 GB | 8-32 GB | Orin pode rodar Phi-3 |
-| **JetPack** | 4.6 | 5.x+ | Diferentes drivers/CUDA |
-| **CUDA** | 10.2 | 11.4 | Melhor support |
-| **GPU Compute** | 5.3 | 8.7 | Suporta quantização |
-| **Performance** | ~3.4s (batch 10) | ~3.5s (batch 10) | Similar para Qwen |
+| **Jetson AGX Orin** | Ampere-based Jetson platform | ✅ Validated | Edge deployment target |
+| **JetPack** | 6.x | ✅ Stable | Modern NVIDIA stack |
+| **L4T** | R36.x | ✅ Stable | CUDA-enabled environment |
+| **Python** | 3.10 | ✅ Stable | Compatible with modern libraries |
+| **PyTorch** | 2.x | ✅ Stable | CUDA-enabled |
+| **CUDA** | 12.x | ✅ Stable | Validated in project environment |
+| **Transformers** | 4.4x+ | ✅ Compatible | Supports recent architectures |
+| **Qwen2.5-0.5B** | Supported | ✅ Recommended | Best latency/quality trade-off |
+| **Phi-3-mini** | Supported | ✅ Optional | Better quality, higher latency |
 
 ---
 
-## 📋 Pré-requisitos
+## Main Recommendation
 
-### 1. Verificar JetPack
-```bash
-cat /etc/nv_tegra_release
-# Esperado: L4T R35.x (JetPack 5.x)
-```
-
-### 2. Docker + NVIDIA Runtime
-
-```bash
-sudo apt-get update
-sudo apt-get install -y docker.io
-
-# NVIDIA Container Runtime (diferente do Nano)
-sudo apt-get install -y nvidia-container-runtime
-
-# Daemon config
-sudo mkdir -p /etc/docker
-sudo tee /etc/docker/daemon.json <<EOF
-{
-  "runtimes": {
-    "nvidia": {
-      "path": "nvidia-container-runtime",
-      "runtimeArgs": []
-    }
-  }
-}
-EOF
-sudo systemctl restart docker
-
-# Testar
-docker run --rm --runtime=nvidia nvcr.io/nvidia/l4t-base:r35.4.1 nvidia-smi
-```
-
-### 3. Python 3.8+ (já vem)
-```bash
-python3 --version  # Esperado: 3.8.x ou 3.10.x
-```
-
-### 4. Poetry
-```bash
-curl -sSL https://install.python-poetry.org | python3 -
-export PATH="$HOME/.local/bin:$PATH"
-```
-
----
-
-## 🚀 Setup Local
-
-### Com Poetry
+**Use the local Poetry-based setup.**
 
 ```bash
 cd ~/backend_tcc_mvp
 
-# Usar configuração Jetson (genérico, funciona para Nano e Orin)
-cp pyproject-jetson.toml pyproject.toml
+# Use the Orin configuration
+cp pyproject-jetson-orin.toml pyproject.toml
 
-# Opcional: se tiver pyproject-jetson-orin.toml customizado
-# cp pyproject-jetson-orin.toml pyproject.toml
-
-# Instalar
+# Install dependencies
 poetry install
 
-# Rodar
+# Run API
 poetry run ar-api
 ```
 
-### Com pip
+**This is the recommended workflow for:**
+
+- development
+- testing
+- benchmark execution
+- model comparison
+
+## Prerequisites
+
+**Check L4T / JetPack**
+```bash
+cat /etc/nv_tegra_release
+# Expected: R36.x
+```
+
+**Check Python**
+```bash
+python3 --version
+# Expected: 3.10.x
+```
+
+**Check CUDA availability**
+```bash
+python3 -c "import torch; print(torch.cuda.is_available())"
+# Expected: True
+```
+
+---
+
+## Local Setup with Poetry
+
+**Recommended**
 
 ```bash
 cd ~/backend_tcc_mvp
+cp pyproject-jetson-orin.toml pyproject.toml
+poetry env use python3
+poetry install
+poetry run ar-api
+```
 
-pip install -r requirements-jetson.txt
+**If Poetry is not installed**
 
-python3 -m uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+```bash
+curl -sSL https://install.python-poetry.org | python3 -
+export PATH="$HOME/.local/bin:$PATH"
+poetry --version
+```
+
+**Persist path if needed:**
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 ---
 
-## 🐳 Setup Docker
+## Configuration (YAML)
 
-### Build
+**Typical configuration for Qwen on Orin:**
 
-```bash
-cd ~/backend_tcc_mvp
+```yaml
+models:
+  default: qwen
+  device: cuda
+  use_4bit: false
+  greedy_decoding: false
+  prompt_max_length: 512
+  warmup_on_startup: true
 
-# Dockerfile genérico funciona para Orin (base L4T R35)
-docker build -f docker/Dockerfile.jetson \
-  -t ar-diagnostic-mvp:jetson-orin .
+  qwen:
+    name: Qwen/Qwen2.5-0.5B-Instruct
+    max_tokens: 100
+    summary_tokens: 150
+    temperature: 0.3
+    top_p: 0.85
+
+  phi:
+    name: microsoft/Phi-3-mini-4k-instruct
+    max_tokens: 120
+    summary_tokens: 200
+    temperature: 0.3
+    top_p: 0.85
 ```
 
-### Run
+**Suggested usage**
 
-```bash
-docker run --rm \
-  --runtime=nvidia \
-  -e NVIDIA_VISIBLE_DEVICES=all \
-  -e NVIDIA_DRIVER_CAPABILITIES=compute,utility \
-  -p 8000:8000 \
-  -v $(pwd)/data:/app/data \
-  -v $(pwd)/logs:/app/logs \
-  ar-diagnostic-mvp:jetson-orin
-```
-
-### Com Docker Compose
-
-```bash
-# Usar compose genérico ou criar jetson-orin específico
-docker-compose up -d
-
-# Logs
-docker-compose logs -f
-
-# Parar
-docker-compose down
-```
+- Qwen → recommended for production and benchmarks
+- Phi-3-mini → recommended when explanation quality is prioritized over latency
 
 ---
 
-## ⚙️ Configuração (YAML)
+## Validation
 
-### Recomendação: Qwen2.5-0.5B
-
-```yaml
-models:
-  default: qwen              # Qualidade excelente + performance boa
-  device: cuda
-  precision: fp16
-  use_4bit: false            # Orin suporta, mas não necessário
-
-qwen_config:
-  model_path: "/home/user/models/Qwen2.5-0.5B-Instruct"
-  prompt_max_length: 128
-  max_tokens: 20
-  summary_max_tokens: 32
-  temperature: 0.2
-  top_p: 0.9
-  greedy_decoding: true
-```
-
-### Alternativa: Phi-3-mini (mais lento)
-
-```yaml
-models:
-  default: phi               # Qualidade superior, ~800 ms latência
-  device: cuda
-  precision: fp16
-  use_4bit: true             # ✅ Orin compute 8.7 suporta
-
-phi_config:
-  model_name: "microsoft/Phi-3-mini-4k-instruct"
-  prompt_max_length: 256
-  max_tokens: 32
-  summary_max_tokens: 64
-  temperature: 0.7
-  top_p: 0.95
-```
-
-### DialoGPT (mais rápido)
-
-```yaml
-models:
-  default: dialogpt          # Ultra-rápido ~150 ms, qualidade aceitável
-  device: cuda
-  precision: fp16
-```
-
----
-
-## 🧪 Validação
-
-### 1. CUDA Status
+**CUDA status**
 
 ```bash
 python3 -c "
 import torch
-print(f'CUDA: {torch.cuda.is_available()}')
-print(f'Version: {torch.version.cuda}')
-print(f'Device: {torch.cuda.get_device_name(0)}')
-print(f'Compute Capability: {torch.cuda.get_device_capability(0)}')
-"
-# Esperado: CUDA: True | Version: 11.4 | Compute: (8, 7)
-```
-
-### 2. Carregar Qwen
-
-```bash
-python3 -c "
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
-
-model_path = '/home/user/models/Qwen2.5-0.5B-Instruct'
-tokenizer = AutoTokenizer.from_pretrained(model_path)
-model = AutoModelForCausalLM.from_pretrained(model_path).cuda()
-
-print('✅ Qwen loaded successfully')
-print(f'Model params: {model.num_parameters() / 1e6:.1f}M')
+print(f'CUDA available: {torch.cuda.is_available()}')
+if torch.cuda.is_available():
+    print(f'Device: {torch.cuda.get_device_name(0)}')
+    print(f'Capability: {torch.cuda.get_device_capability(0)}')
 "
 ```
 
-### 3. Teste da API
+**API health**
 
 ```bash
 curl http://localhost:8000/health
+```
 
-# Diagnosticar imagem
+**Test request**
+
+```bash
 curl -X POST http://localhost:8000/diagnose \
-  -F "file=@data/illumination/normal/sample.jpg" \
+  -F "file=@image.jpg" \
   -F "frame_index=0"
 ```
 
 ---
 
-## 📊 Performance Esperada
+## Performance Expectations
 
-### Jetson Orin Nano (8GB)
+**Performance depends on:**
 
-| Modelo | Latência | VRAM | Status |
-|---|---|---|---|
-| DialoGPT | ~150 ms/frame | 500 MB | ✅ Rápido |
-| Qwen 0.5B | ~300 ms/frame | 1.5 GB | ✅ Recomendado |
-| Phi-3-mini | ~800 ms/frame | 8 GB | ⚠️ Lento |
+- selected model
+- batch size
+- prompt length
+- warmup state
+- software stack tuning
 
-**Tempo total (batch 10 frames):**
-- DialoGPT: ~2.5s ✅
-- Qwen: ~3.5s ✅
-- Phi-3: ~8-10s (acima do target)
+**Observed behavior in the project**
 
-### Jetson AGX Orin (32GB)
+| Model | Profile | Notes |
+|---|---|---|
+| DialoGPT-small | Fastest | Lowest quality, useful as lightweight baseline |
+| Qwen2.5-0.5B | Best trade-off | Recommended option |
+| Phi-3-mini | Highest quality | Slower than Qwen |
 
-| Modelo | Latência | VRAM | Status |
-|---|---|---|---|
-| DialoGPT | ~100 ms/frame | 500 MB | ✅ Ultrarrápido |
-| Qwen 0.5B | ~250 ms/frame | 1.5 GB | ✅ Excelente |
-| Phi-3-mini | ~500 ms/frame | 8 GB | ✅ Bom |
+**Typical batch behavior**
 
-**Tempo total (batch 10 frames):**
-- DialoGPT: ~2s ✅
-- Qwen: ~3s ✅
-- Phi-3: ~5s ✅
+For batch processing with 10 frames:
 
----
+- Qwen: suitable for practical deployment on Orin
+- Phi-3-mini: feasible, but with higher latency
+- DialoGPT-small: fastest baseline, lower explanation quality
 
-## 🛠️ Troubleshooting
-
-### Erro: `nvidia-smi` não encontrado
-
-Verifique JetPack:
-```bash
-cat /etc/nv_tegra_release | grep "CUDA"
-# Deve mostrar CUDA 11.4
-```
-
-Se não tiver:
-```bash
-sudo apt-get install -y nvidia-jetpack
-sudo reboot
-```
-
-### Erro: CUDA version mismatch
-
-```bash
-# Verificar PyTorch vs CUDA
-python3 -c "import torch; print(torch.version.cuda)"
-
-# Se falhar, reinstalar PyTorch para CUDA 11.4
-pip install torch torchvision torchaudio \
-  -f https://download.pytorch.org/whl/torch_stable.html
-```
-
-### Erro: Modelo não carrega (OOM)
-
-Se Phi-3 falhar com out-of-memory:
-
-```yaml
-# Usar quantização 4-bit
-models:
-  use_4bit: true
-
-# Ou reduzir batch size no YAML
-inference:
-  batch_size: 5  # em vez de 10
-```
-
-### Erro: `bitsandbytes` não funciona
-
-Orin tem compute 8.7, que suporta `bitsandbytes`. Se falhar:
-
-```bash
-# Reinstalar com suporte a compute 8.7
-pip install bitsandbytes --upgrade --force-reinstall
-```
-
-### Temperatura alta (>80°C)
-
-```bash
-# Monitorar
-sudo tegrastats
-
-# Reduzir frequência CPU/GPU (se necessário)
-sudo jetson_clocks --show
-sudo jetson_clocks --restore  # volta ao normal
-```
+**Exact latency should be reported from the benchmark outputs generated in this repository.**
 
 ---
 
-## 🔄 Atualizações
+## Troubleshooting
+
+**CUDA not available**
 
 ```bash
-cd ~/backend_tcc_mvp
-
-# Atualizar código
-git pull origin main
-
-# Reinstalar deps
-poetry install
-
-# Rebuild Docker
-docker-compose build --no-cache
-docker-compose up -d
+python3 -c "import torch; print(torch.cuda.is_available())"
 ```
 
----
+If False:
 
-## 📈 Monitoramento
+- verify JetPack / L4T installation
+- verify CUDA-enabled PyTorch
+- verify environment setup
 
-### Tegrastats (CPU, GPU, memory, temp)
+**CPU-only PyTorch installed**
+
+```bash
+python3 -c "import torch; print(torch.__version__)"
+```
+
+If the version indicates CPU-only build, reinstall the CUDA-enabled package used in the validated setup.
+
+**Model loading fails**
+
+Check:
+
+- model path
+- transformers version
+- available memory
+- YAML configuration
+
+**High temperature**
 
 ```bash
 sudo tegrastats
-# Atualiza a cada 1 segundo
 ```
 
-### Logs container
+If temperature becomes too high:
 
-```bash
-docker logs -f ar-diagnostic-mvp
-```
-
-### GPU em tempo real
-
-```bash
-watch -n 0.5 nvidia-smi
-```
+- improve ventilation
+- reduce concurrent processes
+- avoid long runs under poor airflow
 
 ---
 
-## 🔒 Segurança
+## Monitoring
 
-### Firewall
-
-```bash
-sudo ufw allow from 192.168.0.0/16 to any port 8000
-sudo ufw enable
-```
-
-### HTTPS via nginx
+**Use:**
 
 ```bash
-sudo apt-get install nginx
-sudo certbot certonly --standalone -d your-domain.com
-# Configurar proxy nginx...
+sudo tegrastats
 ```
+
+This is the recommended monitoring tool on Jetson devices. It provides:
+
+- CPU usage
+- GPU usage
+- RAM usage
+- temperature
+- power information
+
+## Docker Status
+
+⚠️ **Docker is not the recommended path for the Orin setup in this project.**
+
+The validated workflow is the local Poetry-based environment.
+
+Docker may still be used experimentally, but it is not the primary deployment path documented here.
+
+## Known Trade-offs
+
+**Qwen vs Phi**
+
+| Model | Advantage | Drawback |
+|---|---|---|
+| Qwen2.5-0.5B | Better latency | Slightly lower explanation quality |
+| Phi-3-mini | Better explanation quality | Higher latency |
+
+**Orin vs Desktop**
+
+Although the Orin is a powerful embedded platform, it may still be slower than a well-optimized desktop GPU environment depending on:
+
+- model
+- runtime stack
+- CUDA/PyTorch tuning
+- ARM vs x86 software maturity
 
 ---
 
-## 📚 Referências
+## FAQ
 
-- [Jetson Orin Docs](https://docs.nvidia.com/jetson/jetson-orin/index.html)
-- [JetPack 5.x Release Notes](https://docs.nvidia.com/jetson/jetpack/release-notes/index.html)
-- [Qwen2.5 - Hugging Face](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct)
-- [Phi-3 - Hugging Face](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct)
-- [PyTorch Jetson Support](https://pytorch.org/get-started/locally/)
+**Which model should I use on Jetson AGX Orin?**
 
----
+Use Qwen2.5-0.5B as the default choice. It offers the best balance between throughput and explanation quality.
 
-## ❓ FAQ
+**Can I use Phi-3-mini on Orin?**
 
-**P: Qual modelo escolher para Jetson Orin?**  
-A: **Qwen 0.5B** (recomendado). Excelente qualidade + latência ~300 ms. Phi-3 é melhor mas ~800 ms.
+Yes. It is feasible on Orin and is useful when explanation quality is more important than latency.
 
-**P: Posso rodar Qwen + Phi simultaneamente?**  
-A: Não. Ambos.cuda() ocupariam ~9 GB. Escolha um ou redimensione com quantização.
+**Is 4-bit quantization required?**
 
-**P: É necessário 4-bit quantization?**  
-A: Não. Orin tem VRAM suficiente (8-32 GB). Use se quiser mais espaço para outros processos.
+No. The Orin can run the validated models without requiring 4-bit quantization. FP16 is often the safer default.
 
-**P: Qual é a diferença de performance vs Legion RTX?**  
-A: Qwen: Orin ~300ms vs RTX ~100ms (3x mais rápido). Mas Orin é portátil.
+**Is Orin always faster than desktop?**
 
-**P: Posso colocar Orin em uma suitcase e viajar?**  
-A: Sim! Orin é mobile, não precisa de desktop. Levar fonte, ventilação, e você está pronto.
+No. In practice, desktop GPUs may still outperform Orin depending on software stack and optimization level.
+
+**Should I use Docker on Orin?**
+
+Not as the main workflow for this project. Prefer the local Poetry-based setup.
+
+## References
+
+- [NVIDIA Jetson Orin Documentation](https://docs.nvidia.com/jetson/jetson-orin/index.html)
+- [JetPack Release Notes](https://docs.nvidia.com/jetson/jetpack/release-notes/index.html)
+- [Qwen2.5-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct)
+- [Phi-3-mini-4k-instruct](https://huggingface.co/microsoft/Phi-3-mini-4k-instruct)
+- [PyTorch](https://pytorch.org/)
