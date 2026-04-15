@@ -1,7 +1,7 @@
 # AR Diagnostic MVP - Configuration (Environment-independent)
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 models:
-  default: qwen             # Editar: dialogpt-small (Jetson Nano obrigatório), qwen/phi (Jetson Orin/Desktop — ambos funcionam, depende do trade-off qualidade vs velocidade)
+  default: dialogpt-small             # Editar: dialogpt-small (Jetson Nano obrigatório), qwen/phi (Jetson Orin/Desktop — ambos funcionam, depende do trade-off qualidade vs velocidade)
   device: cuda                        # cuda, cpu, ou auto
   use_4bit: true                     # false (Jetson Nano), true (Jetson Orin/Desktop com bitsandbytes)
   greedy_decoding: true               # true (Nano - velocidade), false (Orin/Desktop - qualidade)
