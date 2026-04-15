@@ -1,6 +1,6 @@
 # Script de configuracao automatica para Desktop Legion (Windows - x86_64 com RTX)
 # Usa pyproject-legion.toml que inclui torch com CUDA 12.1+
-# 
+#
 # COMO EXECUTAR (da raiz do projeto):
 #   .\setup_legion.ps1
 #
@@ -12,12 +12,21 @@
 # Parar em qualquer erro
 $ErrorActionPreference = "Stop"
 
-# Navegar para raiz do projeto (quando executado da raiz, $PSScriptRoot ja eh a raiz)
-$projectRoot = Split-Path -Parent $PSScriptRoot
-if ($projectRoot -eq "") {
-    $projectRoot = Get-Location
+# Navegar para a raiz do projeto
+# Como este script fica na raiz, usamos diretamente o diretorio onde ele esta
+$projectRoot = $PSScriptRoot
+
+if (-not $projectRoot -or $projectRoot -eq "") {
+    $projectRoot = (Get-Location).Path
 }
+
 Set-Location $projectRoot
+
+# Caminhos absolutos para evitar problemas de diretorio
+$legionToml = Join-Path $projectRoot "pyproject-legion.toml"
+$pyprojectToml = Join-Path $projectRoot "pyproject.toml"
+$poetryLock = Join-Path $projectRoot "poetry.lock"
+$readmePath = Join-Path $projectRoot "setup\legion-windows\README.md"
 
 Write-Host "=====================================" -ForegroundColor Cyan
 Write-Host "Configuracao Desktop Legion (Windows)" -ForegroundColor Cyan
@@ -48,7 +57,7 @@ catch {
 }
 
 try {
-    $nvidiaCheck = nvidia-smi 2>&1
+    $null = nvidia-smi 2>&1
     Write-Host "  OK NVIDIA Driver: disponivel"
 }
 catch {
@@ -59,20 +68,22 @@ catch {
 Write-Host ""
 Write-Host "1 - Copiando configuracao Legion..." -ForegroundColor Yellow
 
-if (-not (Test-Path "pyproject-legion.toml")) {
-    Write-Host "  ERRO pyproject-legion.toml nao encontrado!" -ForegroundColor Red
+if (-not (Test-Path $legionToml)) {
+    Write-Host "  ERRO pyproject-legion.toml nao encontrado em:" -ForegroundColor Red
+    Write-Host "  $legionToml" -ForegroundColor Red
     exit 1
 }
 
-Copy-Item "pyproject-legion.toml" "pyproject.toml" -Force | Out-Null
+Copy-Item $legionToml $pyprojectToml -Force | Out-Null
 Write-Host "  OK Copiado pyproject-legion.toml para pyproject.toml"
 Write-Host "  INFO Arquivo original preservado (sem renomeacao)"
 
 # Etapa 2: Reconstruir arquivo lock
 Write-Host ""
 Write-Host "2 - Reconstruindo poetry.lock para Legion..." -ForegroundColor Yellow
-if (Test-Path "poetry.lock") {
-    Remove-Item "poetry.lock" -Force
+
+if (Test-Path $poetryLock) {
+    Remove-Item $poetryLock -Force
     Write-Host "  OK Removido poetry.lock anterior"
 }
 
@@ -99,7 +110,9 @@ Write-Host "  OK Dependencias instaladas"
 Write-Host ""
 Write-Host "4 - Verificando instalacao..." -ForegroundColor Yellow
 
-$pythonCode = 'import torch
+$pythonCode = @'
+import sys
+import torch
 import transformers
 import accelerate
 
@@ -111,7 +124,8 @@ if torch.cuda.is_available():
     print(f"OK Dispositivo:   {torch.cuda.get_device_name(0)}")
 else:
     print("AVISO CUDA nao esta disponivel!")
-    exit(1)'
+    sys.exit(1)
+'@
 
 poetry run python -c $pythonCode
 if ($LASTEXITCODE -ne 0) {
@@ -123,7 +137,9 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "    3. Reinstale PyTorch com CUDA explicitamente:"
     Write-Host "       poetry run pip install --force-reinstall torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121"
     Write-Host ""
-    Write-Host "    Consulte setup/legion-windows/README.md para mais detalhes"
+    if (Test-Path $readmePath) {
+        Write-Host "    Consulte $readmePath para mais detalhes"
+    }
     exit 1
 }
 
@@ -143,6 +159,8 @@ Write-Host ""
 Write-Host "  Para rodar testes unitarios:"
 Write-Host "    poetry run pytest tests/"
 Write-Host ""
-Write-Host "  Documentacao disponivel em: setup/legion-windows/README.md"
+if (Test-Path $readmePath) {
+    Write-Host "  Documentacao disponivel em: $readmePath"
+}
 Write-Host ""
 Write-Host "=====================================" -ForegroundColor Green
