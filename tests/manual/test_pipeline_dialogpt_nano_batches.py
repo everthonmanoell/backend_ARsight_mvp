@@ -4,10 +4,14 @@ Manual benchmark runner for Jetson Nano using local DialoGPT.
 Runs 6 predefined batches, 5 executions per batch, and saves
 pipeline_test_*.json in the same style used by manual pipeline tests.
 
+**Nota:** O script aquece o modelo antes de começar (removes first-run overhead).
+
 Usage:
     poetry run python tests/manual/test_pipeline_dialogpt_nano_batches.py
     poetry run python tests/manual/test_pipeline_dialogpt_nano_batches.py --runs 5
     poetry run python tests/manual/test_pipeline_dialogpt_nano_batches.py --device cuda
+    poetry run python tests/manual/test_pipeline_dialogpt_nano_batches.py --runs 5 --device cuda
+    poetry run python tests/manual/test_pipeline_dialogpt_nano_batches.py --runs 5 --skip-warmup
     
     ou sem poetry (se env já está ativado):
     python tests/manual/test_pipeline_dialogpt_nano_batches.py --runs 5 --device cuda
@@ -304,12 +308,54 @@ def run_single_pipeline(batch_name: str, batch_images: list, run_index: int, out
     }
 
 
+def warmup_model(device: str) -> None:
+    """Aquece o modelo na GPU: carrega e roda uma mini-inferência."""
+    print("\n[WARMUP] Aquecendo modelo na GPU...")
+    
+    config = Config()
+    model_type = config.get("models.default", "dialogpt-small")
+    use_4bit = config.get("models.use_4bit", False)
+    
+    t_warmup = time.perf_counter()
+    
+    try:
+        # Carrega modelo
+        pipeline = IlluminationPipeline(model_type=model_type, use_4bit=use_4bit, device=device)
+        pipeline._load_model()
+        
+        # Mini-teste com uma imagem dummy para compilar kernels CUDA
+        dummy_image = Image.new("RGB", (640, 480), color="gray")
+        
+        # PDI warmup
+        _ = pipeline.extract_metrics_batch([dummy_image])
+        
+        # SLM warmup (run com métrica dummy)
+        dummy_metrics = {
+            "illumination": 0.7,
+            "illumination_label": "adequate",
+            "mean_luma": 128.0,
+            "std_luma": 20.0,
+            "uniformity": 0.8,
+            "pct_clipped_dark": 0.01,
+            "pct_clipped_bright": 0.01,
+        }
+        _ = pipeline.diagnose_from_metrics_batch_with_summary([dummy_metrics])
+        
+        warmup_elapsed = time.perf_counter() - t_warmup
+        print(f"[WARMUP] ✅ Modelo aquecido em {warmup_elapsed:.1f}s")
+        
+    except Exception as e:
+        print(f"[WARMUP] ⚠️  Erro durante warmup: {e}")
+        print("[WARMUP] Continuando sem warmup...")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run Jetson Nano benchmark with local DialoGPT")
     parser.add_argument("--runs", type=int, default=5, help="Executions per batch")
     parser.add_argument("--device", default="cuda", choices=["cuda", "cpu", "auto"], help="Inference device")
     parser.add_argument("--model-path", default=DIALOGPT_LOCAL_PATH, help="Local DialoGPT model path")
     parser.add_argument("--output-base", default="outputs/jetson-nano", help="Base output dir")
+    parser.add_argument("--skip-warmup", action="store_true", help="Pula o aquecimento inicial (não recomendado)")
     return parser.parse_args()
 
 
@@ -338,6 +384,10 @@ def main() -> None:
     output_base = Path(args.output_base)
     all_results = []
 
+    # ✅ Aquecimento do modelo (remove overhead de primeira inferência nos testes reais)
+    if not args.skip_warmup:
+        warmup_model(args.device)
+    
     try:
         for batch_name, batch_images in BATCHES.items():
             sep()
