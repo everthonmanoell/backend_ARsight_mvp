@@ -10,7 +10,8 @@ models:
   
   qwen:
     # Qwen 2.5 - 0.5B: Rápido, qualidade média
-    name: Qwen/Qwen2.5-0.5B-Instruct
+    #name: Qwen/Qwen2.5-0.5B-Instruct
+    name: /home/das9/models/Qwen2.5-0.5B-Instruct  # caminho absoluto local na Jetson Nano
     max_tokens: 100
     summary_tokens: 150
     temperature: 0.3
