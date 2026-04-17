@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "ar-diagnostic-mvp"
+version = "0.1.0"
+description = "AR Scene Illumination Diagnostic MVP - Jetson Optimized"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.115.0"
+uvicorn = { extras = ["standard"], version = "^0.32.0" }
+python-multipart = "^0.0.17"
+pyyaml = "^6.0.2"
+pillow = "^11.0.0"
+numpy = ">=1.26.0,<2.0"
+opencv-python-headless = "4.10.0.84"
+transformers = "^4.30.0"
+scipy = "^1.14.1"
+requests = "^2.32.5"
+# NOTE: torch, accelerate, transformers extras are installed separately per platform (see setup_jetson.sh)
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-asyncio = "^0.24.0"
+httpx = "^0.28.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+ar-api = "app.api.main:run"
