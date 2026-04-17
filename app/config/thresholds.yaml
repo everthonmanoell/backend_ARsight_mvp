@@ -1,7 +1,7 @@
 # AR Diagnostic MVP - Configuration (Environment-independent)
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 models:
-  default: phi             # Editar: dialogpt-small (Jetson Nano obrigatório), qwen/phi (Jetson Orin/Desktop — ambos funcionam, depende do trade-off qualidade vs velocidade)
+  default: dialogpt-small             # Editar: dialogpt-small (Jetson Nano obrigatório), qwen/phi (Jetson Orin/Desktop — ambos funcionam, depende do trade-off qualidade vs velocidade)
   device: cuda                        # cuda, cpu, ou auto
   use_4bit: false                     # false (Jetson Nano e Jetson Orin - aarch64), true (Desktop com bitsandbytes - x86 + CUDA)
   greedy_decoding: true               # true (Nano - velocidade), false (Orin/Desktop - qualidade)
@@ -29,8 +29,8 @@ models:
     # Microsoft DialoGPT-small: Ultra-leve, 117M params
     # Compatível: PyTorch 1.10, transformers 4.8.2
     # VRAM estimada: ~250MB em FP16
-    # name: /home/das9/models/DialoGPT-small     # Local (evita download automático, necessário para Jetson Nano)
-    name: microsoft/DialoGPT-small             # HuggingFace Hub (auto-downloads)
+    name: /home/das9/models/DialoGPT-small     # Local (evita download automático, necessário para Jetson Nano)
+    #name: microsoft/DialoGPT-small             # HuggingFace Hub (auto-downloads)
     max_tokens: 40
     summary_tokens: 60
     temperature: 0.3
