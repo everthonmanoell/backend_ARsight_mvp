@@ -1,0 +1,187 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmark Report - Thesis</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1, h2 {
+            color: #333;
+            border-bottom: 3px solid #007acc;
+            padding-bottom: 10px;
+        }
+        .summary {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-box h3 {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+            border: none;
+            padding: 0;
+        }
+        .stat-box .value {
+            font-size: 28px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .plot-container {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .plot-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        .plot-container h3 {
+            margin-top: 0;
+            color: #333;
+            border: none;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📊 Benchmark Report - AR Diagnostic MVP (Thesis)</h1>
+    
+    <div class="summary">
+        <h2>📈 Executive Summary</h2>
+        <div class="stat-grid">
+            <div class="stat-box">
+                <h3>Total Runs</h3>
+                <div class="value">297</div>
+            </div>
+            <div class="stat-box">
+                <h3>Environments</h3>
+                <div class="value">3</div>
+            </div>
+            <div class="stat-box">
+                <h3>Models Tested</h3>
+                <div class="value">3</div>
+            </div>
+            <div class="stat-box">
+                <h3>Batches</h3>
+                <div class="value">6</div>
+            </div>
+            <div class="stat-box">
+                <h3>Average SLM Latency</h3>
+                <div class="value">4.184s</div>
+            </div>
+            <div class="stat-box">
+                <h3>Average Accuracy</h3>
+                <div class="value">100.0%</div>
+            </div>
+            <div class="stat-box">
+                <h3>Target Met Rate</h3>
+                <div class="value">73.4%</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="summary">
+        <h2>ℹ️ General Information</h2>
+        <ul>
+            <li><strong>Environments:</strong> desktop-legion, jetson-nano, jetson-orin</li>
+            <li><strong>Models:</strong> dialogpt, phi, qwen</li>
+            <li><strong>Batches:</strong> batch1, batch2, batch3, batch4, batch5, batch6</li>
+        </ul>
+    </div>
+    
+    <h2>📊 Analysis Charts</h2>
+
+    <div class="plot-container">
+        <h3>📈 Env Performance</h3>
+        <p>Performance by Environment - Comparison of SLM latency and throughput between Nano, Orin and Legion</p>
+        <img src="01_env_performance.png" alt="01_env_performance.png">
+    </div>
+
+    <div class="plot-container">
+        <h3>📈 Model Comparison</h3>
+        <p>Model Comparison - Evaluation of DialoGPT, Qwen and Phi in different environments</p>
+        <img src="02_model_comparison.png" alt="02_model_comparison.png">
+    </div>
+
+    <div class="plot-container">
+        <h3>📈 Accuracy By Batch</h3>
+        <p>Accuracy by Batch - Verification of consistency across 6 test batches</p>
+        <img src="03_accuracy_by_batch.png" alt="03_accuracy_by_batch.png">
+    </div>
+
+    <div class="plot-container">
+        <h3>📈 Latency Distribution</h3>
+        <p>Latency Distribution - Boxplot showing variability and outliers</p>
+        <img src="04_latency_distribution.png" alt="04_latency_distribution.png">
+    </div>
+
+    <div class="plot-container">
+        <h3>📈 Cross Env Speedup</h3>
+        <p>Cross-Environment Speedup - Comparison of relative performance vs Desktop Legion</p>
+        <img src="05_cross_env_speedup.png" alt="05_cross_env_speedup.png">
+    </div>
+
+    <div class="plot-container">
+        <h3>📈 Pdi Vs Slm</h3>
+        <p>PDI vs SLM - Analysis of which component is the bottleneck (vision vs language)</p>
+        <img src="06_pdi_vs_slm.png" alt="06_pdi_vs_slm.png">
+    </div>
+
+    <div class="plot-container">
+        <h3>📈 Jetson Nano Performance</h3>
+        <p>Jetson Nano Performance - SLM latency, throughput and target success rate for each model</p>
+        <img src="07_jetson_nano_performance.png" alt="07_jetson_nano_performance.png">
+    </div>
+
+    <div class="plot-container">
+        <h3>📈 Jetson Orin Performance</h3>
+        <p>Jetson Orin Performance - SLM latency, throughput and target success rate for each model</p>
+        <img src="08_jetson_orin_performance.png" alt="08_jetson_orin_performance.png">
+    </div>
+
+    <div class="plot-container">
+        <h3>📈 Desktop Legion Performance</h3>
+        <p>Desktop Legion Performance - SLM latency, throughput and target success rate for each model</p>
+        <img src="09_desktop_legion_performance.png" alt="09_desktop_legion_performance.png">
+    </div>
+
+    <footer>
+        <p>Automatically generated by benchmark analysis script</p>
+        <p>High resolution charts (300 DPI) ready for inclusion in documents and presentations</p>
+    </footer>
+</body>
+</html>

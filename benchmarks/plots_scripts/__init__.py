@@ -1,0 +1,3 @@
+"""
+Benchmark plots generation scripts
+"""
