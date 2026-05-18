@@ -5,7 +5,7 @@
 ```
 backend_tcc_mvp/
 │
-├── app/                         # 🎯 CÓDIGO PRINCIPAL (Arquitetura Modular)
+├── app/                        # CÓDIGO PRINCIPAL (Arquitetura Modular)
 │   ├── __init__.py             # Inicialização do pacote
 │   │
 │   ├── api/                    # API REST
@@ -43,11 +43,11 @@ backend_tcc_mvp/
 │       ├── __init__.py
 │       └── templates.py        # Templates de respostas
 │
-├── benchmarks/                 # 📊 BENCHMARKS E TESTES DE PERFORMANCE
-│   ├── README.md              # Documentação de benchmarks
-│   ├── START_HERE.md          # Guia rápido para executar benchmarks
+├── benchmarks/                       # BENCHMARKS E TESTES DE PERFORMANCE
+│   ├── README.md                     # Documentação de benchmarks
+│   ├── START_HERE.md                 # Guia rápido para executar benchmarks
 │   ├── BENCHMARK_QUICK_REFERENCE.sh  # Script quick reference
-│   ├── BENCHMARKING_GUIDE.md  # Guia completo de benchmarking
+│   ├── BENCHMARKING_GUIDE.md         # Guia completo de benchmarking
 │   │
 │   ├── scripts/               # Scripts de benchmark
 │   │   ├── analyze_perf.py           # Análise de performance
@@ -76,7 +76,7 @@ backend_tcc_mvp/
 │   │
 │   └── INDEX.txt              # Índice de arquivos
 │
-├── data/                       # 📂 DADOS DO PROJETO
+├── data/                       # DADOS DO PROJETO
 │   ├── illumination/          # Imagens de teste classificadas
 │   │   ├── bright_overexposed/    # Imagens super exposed
 │   │   ├── dark_underexposed/     # Imagens sub exposed
@@ -87,12 +87,12 @@ backend_tcc_mvp/
 │       ├── batch_20260331_175013_603452/
 │       └── ...
 │
-├── outputs/                    # 📈 RESULTADOS DE EXECUÇÕES
+├── outputs/                    # RESULTADOS DE EXECUÇÕES
 │   ├── desktop-legion/        # Resultados (Desktop Legion)
 │   ├── jetson-nano/           # Resultados (Jetson Nano)
 │   └── jetson-orin/           # Resultados (Jetson Orin)
 │
-├── tests/                      # ✅ TESTES
+├── tests/                      # TESTES
 │   ├── __init__.py
 │   ├── test_api.py            # Testes da API REST
 │   ├── test_api_quick.py      # Testes rápidos da API
@@ -101,10 +101,10 @@ backend_tcc_mvp/
 │   │
 │   └── manual/                # Testes manuais
 │
-├── docker/                     # 🐳 CONTAINERIZAÇÃO
+├── docker/                     # CONTAINERIZAÇÃO
 │   └── Dockerfile.jetson-nano # Dockerfile para Jetson Nano
 │
-├── docs/                       # 📚 DOCUMENTAÇÃO
+├── docs/                       # DOCUMENTAÇÃO
 │   ├── STRUCTURE.md           # Este arquivo - Arquitetura do projeto
 │   ├── API_GUIDE.md           # Guia da API REST
 │   ├── MODEL_SELECTION.md     # Guia de seleção de modelos
@@ -114,10 +114,10 @@ backend_tcc_mvp/
 │   ├── BATCH_PERFORMANCE_ANALYSIS.md  # Análise de performance batch
 │   └── CHANGELOG.md           # Histórico de mudanças
 │
-├── logs/                       # 📋 LOGS (em tempo de execução)
+├── logs/                       # LOGS (em tempo de execução)
 │
 ├── .gitignore
-├── README.md                   # 📖 Documentação principal
+├── README.md                   # Documentação principal
 ├── requirements.txt            # Dependências Python (padrão)
 ├── requirements-jetson.txt     # Dependências (Jetson)
 ├── pyproject.toml             # Project metadata (padrão)
@@ -129,7 +129,7 @@ backend_tcc_mvp/
 ├── setup_jetson_orin.sh       # Setup para Linux (Jetson Orin)
 ├── setup_poetry_nano.sh       # Setup para Linux (Jetson Nano)
 │
-└── notebooks/                 # 🔬 NOTEBOOKS JUPYTER (análise)
+└── notebooks/                 # NOTEBOOKS JUPYTER (análise)
 ```
 
 ## 🏗️ Arquitetura Modular

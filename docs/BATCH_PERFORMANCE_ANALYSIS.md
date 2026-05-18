@@ -4,8 +4,8 @@
 >
 > **Compatibilidade de modelos por ambiente:**
 > - **Jetson Nano:** DialoGPT-small (117M, ultra-light, obrigatório para Python 3.6)  
-> - **Jetson Orin:** Phi-3-mini (3.8B) OU Qwen2.5-0.5B (0.5B) — ambos funcionam igualmente bem
-> - **Desktop RTX (Legion):** Phi-3-mini OU Qwen2.5-0.5B — escolha depende do trade-off qualidade vs velocidade
+> - **Jetson Orin:** Phi-3-mini (3.8B) OU Qwen2.5-0.5B (0.5B), ambos funcionam igualmente bem
+> - **Desktop RTX (Legion):** Phi-3-mini OU Qwen2.5-0.5B, escolha depende do trade-off qualidade vs velocidade
 
 ---
 
@@ -14,7 +14,7 @@
 Modelos de linguagem do tipo *decoder-only* (GPT, Qwen, Phi, LLaMA…) geram texto de
 forma **autoregressiva**: cada token é produzido em função de todos os tokens anteriores.
 Isso significa que a geração de uma resposta de $T$ tokens exige **$T$ passagens sequenciais
-pela rede** — não é possível paralelizar os passos de geração *dentro de um único prompt*.
+pela rede**, não é possível paralelizar os passos de geração *dentro de um único prompt*.
 
 ```
 Passo 1: prompt → token₁
@@ -25,7 +25,7 @@ Passo T: ... → tokenT   ← único resultado
 ```
 
 Para o Qwen 0.5B gerando ~60 tokens de diagnóstico, esse processo consome um tempo
-fixo de aproximadamente **3,5 s** na RTX 3060 com quantização 4-bit — independentemente
+fixo de aproximadamente **3,5 s** na RTX 3060 com quantização 4-bit, independentemente
 de o request chegar via `/diagnose` ou `/diagnose/batch` com N=1.
 
 ---
@@ -163,10 +163,10 @@ Modelos decoder-only geram tokens a partir da **direita** do contexto, não da e
 Ao fazer padding em batch, os tokens de preenchimento devem estar à **esquerda** para que todos os prompts terminem alinhados na mesma posição de geração:
 
 ```python
-# ✅ CORRETO para decoder-only em batch
+#  CORRETO para decoder-only em batch
 tokenizer = AutoTokenizer.from_pretrained(MODEL, padding_side='left')
 
-# ❌ ERRADO (padding_side='right' gera tokens a partir do padding)
+#  ERRADO (padding_side='right' gera tokens a partir do padding)
 ```
 
 Sem isso, o modelo gera tokens degradados para prompts no batch que foram padded à direita.
@@ -233,8 +233,8 @@ Cliente recebe resposta em ~0.3-1 s per diagnosis (todos os ambientes atingem ta
 ## 7. O desafio: Jetson Nano + estratégia de batch
 
 **Jetson Nano** (4GB VRAM, Python 3.6, PyTorch 1.10) é severamente constrangido:
-- ❌ Qwen e Phi **não funcionam** (exigem transformers >= 4.35, incompatível com Python 3.6)
-- ✅ **DialoGPT-small** (117M, compatível)
+- Qwen e Phi **não funcionam** (exigem transformers >= 4.35, incompatível com Python 3.6)
+- **DialoGPT-small** (117M, compatível)
 
 O benefício de batch inference **só se materializa quando múltiplos prompts processados juntos**, em qualquer modelo:
 

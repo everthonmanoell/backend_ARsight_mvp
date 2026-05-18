@@ -4,7 +4,7 @@
 
 Este repositório implementa um produto viável mínimo (MVP) pronto para produção para diagnóstico de qualidade de iluminação em tempo real em cenas de realidade aumentada (AR) em plataformas embarcadas com recursos limitados. O sistema combina extração de características baseada em regras com modelos de linguagem pequenos (SLMs) para fornecer tanto avaliação estatística rápida quanto explicações semanticamente significativas das condições de iluminação em ambientes descentralizados de hardware.
 
-O projeto aborda o desafio fundamental de implantar sistemas de diagnóstico específicos de domínio em plataformas de hardware heterogêneas—desde dispositivos de borda (Jetson Nano, 4GB VRAM) até sistemas GPU embarcados (Jetson AGX Orin) até estações de trabalho de desktop (GPUs NVIDIA RTX)—mantendo contratos de API consistentes e garantias de desempenho mensuráveis. Todas as recomendações e medidas refletem validação empírica realizada durante março de 2026.
+O projeto aborda o desafio fundamental de implantar sistemas de diagnóstico específicos de domínio em plataformas de hardware heterogêneas, desde dispositivos de borda (Jetson Nano, 4GB VRAM) até sistemas GPU embarcados (Jetson AGX Orin) até estações de trabalho de desktop (GPUs NVIDIA RTX), mantendo contratos de API consistentes e garantias de desempenho mensuráveis. 
 
 ## Escopo do Projeto e Objetivos de Pesquisa
 
@@ -13,17 +13,11 @@ O projeto aborda o desafio fundamental de implantar sistemas de diagnóstico esp
 Desenvolver e validar um pipeline de diagnóstico de iluminação portátil e eficiente que:
 
 1. Processe lotes de imagens capturadas de cenas de realidade aumentada
-2. Classifique condições de iluminação em categorias de risco discretas (subexposição, adequada, superexposição)
+2. Classifique condições de iluminação em categorias de risco 
 3. Gere métricas de características quantitativas e explicações em linguagem natural
 4. Funcione dentro de restrições rigorosas de latência em hardware embarcado (objetivo: 3,5 segundos para lotes de 10 quadros)
 5. Forneça resultados determinísticos e reproduzíveis em ambientes de implantação
 
-### Exclusões (Fora do Escopo)
-
-- Detecção de pessoa, reconhecimento facial ou estimativa de pose
-- Extração de região de interesse (ROI) ou segmentação
-- Análise de oclusão ou reflexão especular
-- Inferência em tempo real de streaming (apenas processamento orientado a lotes)
 
 ### Ambientes Alvo
 
@@ -58,7 +52,7 @@ O pipeline de diagnóstico funciona em duas fases distintas:
                     |                     |
                     +----------+----------+
                                |
-                    Fase 2: Explicação com LLM
+                    Fase 2: Explicação com SLM
                                |
                   [Seleção SLM: Qwen/Phi/DialoGPT]
                                |
@@ -92,7 +86,7 @@ O motor de regras em `app/core/rule_engine.py` aplica limites configurados em `a
 
 ### Fase 2: Explicação Baseada em Modelo de Linguagem
 
-Após classificação baseada em regras, o sistema opcionalmente aumenta o diagnóstico com explicação semântica através de um dos três modelos de linguagem pequenos (SLMs) suportados. A seleção do modelo representa um trade-off fundamental entre latência de inferência, qualidade de explicação e requisitos de hardware.
+Após classificação baseada em regras, o sistema aumenta o diagnóstico com explicação semântica através de um dos três modelos de linguagem pequenos (SLMs) suportados. A seleção do modelo representa um trade-off fundamental entre latência de inferência, qualidade de explicação e requisitos de hardware.
 
 **Opções de Modelo:**
 
@@ -120,7 +114,7 @@ O módulo `app/pipeline/illumination_pipeline.py` coordena operações das Fases
 
 O projeto reflete restrições fundamentais impostas por plataformas embarcadas. Jetson Nano, com 4GB de memória unificada compartilhada entre CPU e GPU, necessita otimização agressiva:
 
-1. **Seleção de Modelo:** DialoGPT-small (~250MB em FP16) representa o maior modelo pré-treinado viável, deixando ~2GB para cálculo de PDI e overhead de framework.
+1. **Seleção de Modelo:** DialoGPT-small (~117MB em FP16) representa o maior modelo pré-treinado viável, deixando ~2GB para cálculo de PDI e overhead de framework.
 
 2. **Formato de Precisão:** FP16 (meia precisão) é usado por padrão em todas as plataformas, reduzindo pressão de memória 50% comparado a FP32 com degradação de precisão negligenciável para este domínio de tarefa.
 
@@ -138,11 +132,8 @@ Restrição de latência alvo: 3,5 segundos para lote de diagnóstico de 10 quad
 
 3. **Decodificação Gulosa:** Para DialoGPT, seleção de token gulosa (vs. amostragem) é imposta para inferência determinística e mais rápida (embora com custo de qualidade leve).
 
-4. **Controle de Comprimento de Prompt:** Modelos de prompt são deliberadamente restritos (`prompt_max_length: 256` para Nano) para reduzir tanto computação de janela de contexto quanto comprimento de saída de modelo.
+4. **Controle de Comprimento de Prompt:** Modelos de prompt são deliberadamente restritos (`prompt_max_length) para reduzir tanto computação de janela de contexto quanto comprimento de saída de modelo.
 
-### Caminhos de Código Específicos de Hardware
-
-A implementação não exibe caminhos de código específicos de hardware. Em vez disso, configuração declarativa através de `app/config/thresholds.yaml` permite que o mesmo código seja executado em Nano, Orin e Legion. A abstração de dispositivo do PyTorch (`device: cuda` vs `device: cpu`) e diferenças de configuração de ambiente (versão JetPack, versão CUDA) são isoladas a fases de instalação e configuração, não código de tempo de execução.
 
 ## Ambientes de Execução Suportados
 
@@ -190,17 +181,6 @@ A implementação não exibe caminhos de código específicos de hardware. Em ve
 
 **Desempenho de Lote:** Plataforma de referência, típicamente 20-30% mais rápida que Orin para modelos equivalentes devido a suporte superior de conjunto de instruções x86 e pilhas de software maduras. Phi-3-mini é confortavelmente viável para cargas de trabalho de qualidade prioritária.
 
-### Resumo de Desempenho
-
-Latências de lote medidas (diagnósticos de 10 quadros) entre plataformas e modelos:
-
-| Plataforma | DialoGPT-small | Qwen2.5-0.5B | Phi-3-mini | Alvo |
-|----------|-----------------|---------------|------------|--------|
-| Jetson Nano | ~3.4s | N/D (incompatível) | N/D | 3.5s |
-| Jetson Orin | N/D | ~3.5s | ~8-10s | 3.5s |
-| Desktop Legion | ~1.0s | ~2.0s | ~3-4s | 3.5s |
-
-Medidas exatas para seu hardware específ ico estão disponíveis em `outputs/jetson-nano/`, `outputs/jetson-orin/` e `outputs/desktop-legion/` diretórios. Consulte [docs/BENCHMARK_SUMMARY.md](docs/BENCHMARK_COMPARISON_ANALYSIS.md) para análise comparativa detalhada.
 
 ## Especificação de API
 
@@ -287,7 +267,7 @@ JSON (parâmetros opcionais):
 
 **Detalhes:**
 - Operação bloqueante (síncrona) retornando diagnóstico completo
-- Processamento inclui Fase 1 de PDI e (opcionalmente) Fase 2 de LLM
+- Processamento inclui Fase 1 de PDI e (opcionalmente) Fase 2 de SLM
 - Métricas abrangentes por quadro agregadas em resumo de lote
 - Geração de explicação requer um SLM configurado; pode ser contornada com `skip_llm: true`
 
@@ -410,41 +390,9 @@ Este repositório contém documentação técnica extensa organizada por tópico
 
 ### Recursos Adicionais
 
-- [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md): Pás-a-passo de configuração com padrões comuns de troubleshooting.
+- [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md): Passo a passo de configuração com padrões comuns de troubleshooting.
 - [setup/TROUBLESHOOTING.md](setup/TROUBLESHOOTING.md): Guia abrangente de troubleshooting para problemas comuns de configuração e tempo de execução.
 
-## Testes e Validação
-
-### Verificação Rápida
-
-```bash
-python test_api_quick.py
-```
-
-Testa a API com imagens de teste locais de `data/illumination/`.
-
-### Suite Completa de Testes
-
-```bash
-poetry run pytest tests/
-```
-
-Executa todos os testes de unidade e integração em `tests/`.
-
-### Teste Manual de API
-
-```bash
-# Verificação de saúde
-curl http://localhost:8000/health
-
-# Upload em lote
-curl -X POST http://localhost:8000/upload/batch \
-  -F "files=@data/illumination/normal/image1.jpg" \
-  -F "files=@data/illumination/overexposed/image2.jpg"
-
-# Diagnosticar (usando batch_id retornado)
-curl -X POST http://localhost:8000/diagnose/batch/{batch_id}
-```
 
 ## Estrutura do Projeto
 
@@ -557,7 +505,7 @@ Métricas-chave reportadas:
 1. **Aquecimento no Início:** Elimina latência de início frio de solicitações
 2. **Decodificação Gulosa:** Geração mais rápida de token vs. amostragem
 3. **Ajuste de Prompt:** Janelas de contexto mínimas reduzem computação
-4. **Design Orientado a Características:** Caminho rápido baseado em regras antes da fase LLM opcional
+4. **Design Orientado a Características:** Caminho rápido baseado em regras antes da fase SLM opcional
 
 ### Considerações Específicas de Hardware
 
@@ -615,10 +563,4 @@ outputs/
     ├── batch_10_phi_*_result.json
     └── summary.json
 ```
-
-## Referências e Citações
-
-
-## Licença
-
-MIT
+l

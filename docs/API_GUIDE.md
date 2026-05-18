@@ -1,6 +1,6 @@
 # API Guide - AR Diagnostic MVP
 
-Guia completo da API para análise de iluminação em imagens com modelos LLM.
+Guia completo da API para análise de iluminação em imagens com modelos SLM.
 
 ## 📋 Índice
 
@@ -1000,12 +1000,3 @@ python3 -c "from app.models.dialogpt_model import DialoGPTModel; print('Validati
 # Health check
 curl http://localhost:8000/health
 ```
-
----
-
-## Referências
-
-- [FastAPI Docs](https://fastapi.tiangolo.com/)
-- [PyTorch CUDA](https://pytorch.org/docs/stable/cuda.html)
-- [Transformers Library](https://huggingface.co/docs/transformers/)
-- [NVIDIA JetPack](https://docs.nvidia.com/jetson/jetpack/release-notes/)
