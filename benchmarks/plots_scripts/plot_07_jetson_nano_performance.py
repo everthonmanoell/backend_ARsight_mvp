@@ -1,10 +1,13 @@
 """
-Plot 7: Jetson Nano Performance by Model
-Professional design with custom colors and dual-axis metrics
+Plot 7: Jetson Nano Performance by Model - SEPARATED INTO THREE PLOT FILES
+- Latency (07_jetson_nano_latency.png)
+- Throughput (07_jetson_nano_throughput.png)
+- Target Success Rate (07_jetson_nano_success.png)
+
+Includes Qwen CPU variant when available
 """
 
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
 import numpy as np
 from pathlib import Path
 from data_loader import BenchmarkLoader
@@ -12,14 +15,16 @@ from data_loader import BenchmarkLoader
 
 # Color palette by model
 PALETTE = {
-    "dialogpt": {"face": "#B5D4F4", "edge": "#185FA5", "label": "DialoGPT"},
-    "phi":      {"face": "#9FE1CB", "edge": "#0F6E56", "label": "Phi"},
-    "qwen":     {"face": "#FAC775", "edge": "#854F0B", "label": "Qwen"},
+    "dialogpt": {"face": "#D7F8D7", "edge": "#000000", "label": "DialoGPT"},
+    "phi":      {"face": "#9FE1CB", "edge": "#000000", "label": "Phi"},
+    "qwen":     {"face": "#518A58", "edge": "#000000", "label": "Qwen GPU"},
+    "qwen-gpu": {"face": "#0C4D0C", "edge": "#000000", "label": "Qwen GPU"},
+    "qwen-cpu": {"face": "#3CFD35", "edge": "#000000", "label": "Qwen CPU"},
 }
 
 
-def plot_jetson_nano(loader: BenchmarkLoader, output_dir: Path) -> None:
-    """Creates professional performance chart for Jetson Nano by model"""
+def plot_jetson_nano_latency(loader: BenchmarkLoader, output_dir: Path) -> None:
+    """Latency chart for Jetson Nano by model"""
     
     output_dir.mkdir(parents=True, exist_ok=True)
     
@@ -36,6 +41,108 @@ def plot_jetson_nano(loader: BenchmarkLoader, output_dir: Path) -> None:
         print("  ⚠️  No Jetson Nano data found")
         return
     
+    # Exclude CPU-only for this main comparison (unless only CPU available)
+    display_models = [m for m in sorted(nano_data.keys()) if not m.endswith("-cpu") or len(nano_data) == 1]
+    if not display_models:
+        display_models = sorted(nano_data.keys())
+    
+    model_labels = [PALETTE.get(m, {}).get("label", m) for m in display_models]
+    x = np.arange(len(display_models))
+    
+    face_colors = [PALETTE.get(m, {}).get("face", "#999") for m in display_models]
+    edge_colors = [PALETTE.get(m, {}).get("edge", "#333") for m in display_models]
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Latency
+    latencies = [nano_data[model]["slm_per_diag_mean"] for model in display_models]
+    errors = [nano_data[model]["slm_per_diag_std"] for model in display_models]
+    
+    bars = ax.bar(x, latencies, color=face_colors, edgecolor=edge_colors, linewidth=1.5, width=0.6, alpha=0.8)
+    
+    # Error bars
+    for i, (bar, lat, err, ec) in enumerate(zip(bars, latencies, errors, edge_colors)):
+        ax.errorbar(i, lat, yerr=err, fmt='none', ecolor=ec, elinewidth=1.5, capsize=5, capthick=1.5, zorder=3)
+    
+    ax.axhline(y=1.0, color="#E24B4A", linestyle="--", linewidth=2, label="Target (1.0s)", zorder=4)
+    ax.set_xticks(x)
+    ax.set_xticklabels(model_labels, fontsize=11)
+    ax.set_ylim(0, max(latencies) * 1.3)
+    ax.set_ylabel("Latency (s)", fontsize=12, fontweight="bold")
+    ax.set_title("Jetson Nano: SLM Latency by Model\n(lower = better)", fontsize=13, fontweight="bold", pad=15)
+    ax.grid(axis="y", alpha=0.3)
+    ax.legend(fontsize=11, frameon=False)
+    
+    for i, (bar, val, err) in enumerate(zip(bars, latencies, errors)):
+        ax.text(bar.get_x() + bar.get_width() / 2, val + err + 0.1,
+                f"{val:.3f}s", ha="center", va="bottom", fontsize=11, fontweight="bold")
+    
+    plt.tight_layout()
+    output_file = output_dir / "07_jetson_nano_latency.png"
+    plt.savefig(output_file, dpi=300, bbox_inches="tight")
+    print(f"✅ Saved: {output_file}")
+    plt.close()
+
+
+def plot_jetson_nano_throughput(loader: BenchmarkLoader, output_dir: Path) -> None:
+    """Throughput chart for Jetson Nano by model"""
+    
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    summary = loader.summary_by_env_model()
+    
+    # Filter only Jetson Nano data
+    nano_data = {}
+    for row in summary:
+        if row["environment"] == "jetson-nano":
+            model = row["model"].lower()
+            nano_data[model] = row
+    
+    if not nano_data:
+        return
+    
+    display_models = [m for m in sorted(nano_data.keys()) if not m.endswith("-cpu") or len(nano_data) == 1]
+    if not display_models:
+        display_models = sorted(nano_data.keys())
+    
+    model_labels = [PALETTE.get(m, {}).get("label", m) for m in display_models]
+    x = np.arange(len(display_models))
+    
+    face_colors = [PALETTE.get(m, {}).get("face", "#999") for m in display_models]
+    edge_colors = [PALETTE.get(m, {}).get("edge", "#333") for m in display_models]
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Throughput
+    throughputs = [1.0 / nano_data[model]["slm_per_diag_mean"] for model in display_models]
+    
+    bars = ax.bar(x, throughputs, color=face_colors, edgecolor=edge_colors, linewidth=1.5, width=0.6, alpha=0.8)
+    
+    ax.axhline(y=1.0, color="#22C55E", linestyle="--", linewidth=2, label="Target (1.0 diag/s)", zorder=4)
+    ax.set_xticks(x)
+    ax.set_xticklabels(model_labels, fontsize=11)
+    ax.set_ylim(0, max(throughputs) * 1.3)
+    ax.set_ylabel("Throughput (diagnoses/s)", fontsize=12, fontweight="bold")
+    ax.set_title("Jetson Nano: Throughput by Model\n(higher = better)", fontsize=13, fontweight="bold", pad=15)
+    ax.grid(axis="y", alpha=0.3)
+    ax.legend(fontsize=11, frameon=False)
+    
+    for bar, val in zip(bars, throughputs):
+        ax.text(bar.get_x() + bar.get_width() / 2, val + 0.05,
+                f"{val:.2f}", ha="center", va="bottom", fontsize=11, fontweight="bold")
+    
+    plt.tight_layout()
+    output_file = output_dir / "07_jetson_nano_throughput.png"
+    plt.savefig(output_file, dpi=300, bbox_inches="tight")
+    print(f"✅ Saved: {output_file}")
+    plt.close()
+
+
+def plot_jetson_nano_success(loader: BenchmarkLoader, output_dir: Path) -> None:
+    """Target success rate chart for Jetson Nano by model"""
+    
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
     # Calculate target success rate for each model
     target_rates = {}
     for record in loader.data:
@@ -47,81 +154,55 @@ def plot_jetson_nano(loader: BenchmarkLoader, output_dir: Path) -> None:
             if record["slm_per_diagnosis_s"] <= 1.0:
                 target_rates[model]["success"] += 1
     
-    models = sorted(nano_data.keys())
-    model_labels = [PALETTE[m]["label"] for m in models]
-    x = np.arange(len(models))
+    if not target_rates:
+        return
     
-    face_colors = [PALETTE[m]["face"] for m in models]
-    edge_colors = [PALETTE[m]["edge"] for m in models]
+    display_models = [m for m in sorted(target_rates.keys()) if not m.endswith("-cpu") or len(target_rates) == 1]
+    if not display_models:
+        display_models = sorted(target_rates.keys())
     
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6.5), gridspec_kw={"wspace": 0.35})
+    model_labels = [PALETTE.get(m, {}).get("label", m) for m in display_models]
+    x = np.arange(len(display_models))
     
-    # --- Panel 1: Latency ---
-    latencies = [nano_data[model]["slm_per_diag_mean"] for model in models]
-    errors = [nano_data[model]["slm_per_diag_std"] for model in models]
+    face_colors = [PALETTE.get(m, {}).get("face", "#999") for m in display_models]
+    edge_colors = [PALETTE.get(m, {}).get("edge", "#333") for m in display_models]
     
-    bars1 = ax1.bar(x, latencies, color=face_colors, edgecolor=edge_colors, linewidth=1.5, width=0.5)
+    fig, ax = plt.subplots(figsize=(10, 6))
     
-    # Draw error bars with per-model colors
-    for i, (bar, lat, err, ec) in enumerate(zip(bars1, latencies, errors, edge_colors)):
-        ax1.errorbar(i, lat, yerr=err, fmt='none', ecolor=ec, elinewidth=1.5, capsize=5, capthick=1.5, zorder=3)
+    success_rates = []
+    for model in display_models:
+        rate = target_rates[model]["success"] / max(1, target_rates[model]["total"]) * 100
+        success_rates.append(rate)
     
-    ax1.axhline(y=1.0, color="#E24B4A", linestyle="--", linewidth=1.8, label="Target (1.0s)", zorder=4)
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(model_labels, fontsize=11)
-    ax1.set_ylim(0, max(latencies) * 1.25)
-    ax1.set_ylabel("Latency (s)", fontsize=12, fontweight="bold")
-    ax1.set_title("Jetson Nano: SLM Latency\n(lower = better)", fontsize=12, fontweight="bold", pad=10)
-    ax1.grid(axis="y", alpha=0.3)
-    ax1.legend(fontsize=10, frameon=False)
+    bars = ax.bar(x, success_rates, color=face_colors, edgecolor=edge_colors, linewidth=1.5, width=0.6, alpha=0.8)
     
-    for i, (bar, val, err) in enumerate(zip(bars1, latencies, errors)):
-        ax1.text(bar.get_x() + bar.get_width() / 2, val + err + 0.05,
-                f"{val:.3f}s", ha="center", va="bottom", fontsize=10, fontweight="bold", color="#333")
+    ax.axhline(y=100.0, color="#22C55E", linestyle="--", linewidth=2, label="Target (100%)", zorder=4)
+    ax.set_xticks(x)
+    ax.set_xticklabels(model_labels, fontsize=11)
+    ax.set_ylim(0, 110)
+    ax.set_ylabel("Target Success Rate (%)", fontsize=12, fontweight="bold")
+    ax.set_title("Jetson Nano: Target Met Rate by Model\n(higher = better)", fontsize=13, fontweight="bold", pad=15)
+    ax.grid(axis="y", alpha=0.3)
+    ax.legend(fontsize=11, frameon=False)
     
-    # --- Panel 2: Throughput + Success Rate ---
-    throughputs = [1.0 / nano_data[model]["slm_per_diag_mean"] for model in models]
-    success_rates = [target_rates.get(model, {"success": 0, "total": 1})["success"] / 
-                    max(1, target_rates.get(model, {"success": 0, "total": 1})["total"]) * 100 
-                    for model in models]
+    for i, (bar, rate, model) in enumerate(zip(bars, success_rates, display_models)):
+        count = target_rates[model]["success"]
+        total = target_rates[model]["total"]
+        ax.text(bar.get_x() + bar.get_width() / 2, rate + 2,
+                f"{rate:.1f}%\n({count}/{total})", ha="center", va="bottom", fontsize=10, fontweight="bold")
     
-    bars2 = ax2.bar(x, throughputs, color=face_colors, edgecolor=edge_colors, linewidth=1.5, width=0.5)
-    
-    ax2.set_xticks(x)
-    ax2.set_xticklabels(model_labels, fontsize=11)
-    ax2.set_ylabel("Throughput (diag/s)", fontsize=12, fontweight="bold")
-    ax2.set_title("Jetson Nano: Throughput & Target Success", fontsize=12, fontweight="bold", pad=10)
-    ax2.set_ylim(0, max(throughputs) * 1.25)
-    ax2.grid(axis="y", alpha=0.3)
-    
-    # Secondary axis for success rate
-    ax2b = ax2.twinx()
-    line = ax2b.plot(x, success_rates, color="#E24B4A", marker="o", markersize=7,
-                     linewidth=2, linestyle="-", zorder=5, label="Target Success Rate (%)")
-    ax2b.set_ylim(0, 130)
-    ax2b.set_ylabel("Target Success Rate (%)", fontsize=12, fontweight="bold", color="#E24B4A")
-    ax2b.tick_params(axis="y", colors="#E24B4A", labelsize=10)
-    ax2b.yaxis.set_major_formatter(mticker.FormatStrFormatter("%g%%"))
-    
-    # Add value labels on bars
-    for bar, val in zip(bars2, throughputs):
-        ax2.text(bar.get_x() + bar.get_width() / 2, val + 0.1,
-                f"{val:.2f}", ha="center", va="bottom", fontsize=10, fontweight="bold", color="#333")
-    
-    # Add success rate labels
-    for xi, sr in zip(x, success_rates):
-        ax2b.text(xi, sr + 4, f"{sr:.0f}%", ha="center", va="bottom", fontsize=9, fontweight="bold", color="#E24B4A")
-    
-    # Legend
-    lines1, labels1 = ax2.get_legend_handles_labels()
-    lines2, labels2 = ax2b.get_legend_handles_labels()
-    ax2.legend(lines1 + lines2, ["Throughput (diag/s)"] + labels2, fontsize=10, frameon=False, loc="upper left")
-    
-    plt.subplots_adjust(wspace=0.35)
-    output_file = output_dir / "07_jetson_nano_performance.png"
+    plt.tight_layout()
+    output_file = output_dir / "07_jetson_nano_success.png"
     plt.savefig(output_file, dpi=300, bbox_inches="tight")
     print(f"✅ Saved: {output_file}")
     plt.close()
+
+
+def plot_jetson_nano(loader: BenchmarkLoader, output_dir: Path) -> None:
+    """Wrapper function that calls all three separated plots"""
+    plot_jetson_nano_latency(loader, output_dir)
+    plot_jetson_nano_throughput(loader, output_dir)
+    plot_jetson_nano_success(loader, output_dir)
 
 
 if __name__ == "__main__":

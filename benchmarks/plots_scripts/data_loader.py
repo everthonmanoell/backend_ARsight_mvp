@@ -38,7 +38,7 @@ class BenchmarkLoader:
             for batch_dir in sorted(env_dir.glob("batch*")):
                 batch_name = batch_dir.name
                 
-                # Modelos (dialogpt, qwen, phi)
+                # Modelos (dialogpt, qwen, qwen-cpu, phi)
                 model_dirs = list(batch_dir.glob("*"))
                 
                 if not model_dirs or batch_dir.is_file():
@@ -48,12 +48,13 @@ class BenchmarkLoader:
                         if record:
                             self.data.append(record)
                 else:
-                    # JSONs dentro de pastas de modelos
+                    # JSONs dentro de pastas de modelos (incluindo qwen-cpu)
                     for model_dir in model_dirs:
                         if not model_dir.is_dir():
                             continue
                         
                         model = model_dir.name
+                        # Reconhece qwen, qwen-cpu, qwen-gpu, dialogpt, phi, etc.
                         
                         for json_file in model_dir.glob("pipeline_test_*.json"):
                             record = self._load_json(json_file, env, batch_name, model)

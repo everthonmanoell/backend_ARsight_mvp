@@ -1,5 +1,7 @@
 """
-Plot 1: Performance by Environment - SLM Latency and Throughput
+Plot 1 (Figura 6): SLM Latency e Throughput por plataforma
+- 01_env_latency.png
+- 01_env_throughput.png
 """
 
 import matplotlib.pyplot as plt
@@ -9,73 +11,112 @@ from data_loader import BenchmarkLoader
 from statistics import mean
 
 
-def plot_env_performance(loader: BenchmarkLoader, output_dir: Path) -> None:
-    """Creates chart of SLM latency and throughput by environment"""
-    
+PLATFORM_COLORS = {
+    "desktop-legion": "#2196F3",
+    "jetson-nano":    "#FF9800",
+    "jetson-orin":    "#4CAF50",
+}
+
+PLATFORM_LABELS = {
+    "desktop-legion": "Desktop Legion",
+    "jetson-nano":    "Jetson Nano",
+    "jetson-orin":    "Jetson AGX Orin",
+}
+
+
+def _aggregate_by_env(loader: BenchmarkLoader) -> dict[str, list[float]]:
+    """Retorna latências médias agrupadas por environment."""
+    env_data: dict[str, list] = {}
+    for row in loader.summary_by_env_model():
+        env_data.setdefault(row["environment"], []).append(row["slm_per_diag_mean"])
+    return env_data
+
+
+def plot_env_latency(loader: BenchmarkLoader, output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
-    
-    summary = loader.summary_by_env_model()
-    
-    # Agrupa por environment
-    env_data = {}
-    for row in summary:
-        env = row["environment"]
-        if env not in env_data:
-            env_data[env] = []
-        env_data[env].append(row)
-    
-    # Figura com 2 subplots
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-    
-    # Plot 1: SLM Latency by environment
-    envs = sorted(env_data.keys())
-    latencies = []
-    error_bars = []
-    
-    for env in envs:
-        slm_vals = [r["slm_per_diag_mean"] for r in env_data[env]]
-        latencies.append(mean(slm_vals))
-        error_bars.append([r["slm_per_diag_std"] for r in env_data[env]])
-    
-    colors = {
-        "jetson-nano": "#1F1F1F",      # Dark gray
-        "jetson-orin": "#737373",      # Medium gray
-        "desktop-legion": "#D3D3D3"    # Light gray
-    }
-    bar_colors = [colors.get(env, "#999") for env in envs]
-    
-    ax1.bar(envs, latencies, color=bar_colors, alpha=0.7, edgecolor="black", linewidth=1.5)
-    ax1.axhline(y=1.0, color="red", linestyle="--", linewidth=2, label="Target (1.0s)")
-    ax1.set_ylabel("Latency (s)", fontsize=12, fontweight="bold")
-    ax1.set_title("SLM Latency by Environment\n(lower = better)", fontsize=13, fontweight="bold")
-    ax1.legend()
-    ax1.grid(axis="y", alpha=0.3)
-    
-    for i, (env, lat) in enumerate(zip(envs, latencies)):
-        ax1.text(i, lat + 0.1, f"{lat:.3f}s", ha="center", fontweight="bold")
-    
-    # Plot 2: Throughput (diag/sec) by environment
-    throughputs = []
-    for env in envs:
-        slm_vals = [r["slm_per_diag_mean"] for r in env_data[env]]
-        throughput = 1.0 / mean(slm_vals)  # diag/sec
-        throughputs.append(throughput)
-    
-    ax2.bar(envs, throughputs, color=bar_colors, alpha=0.7, edgecolor="black", linewidth=1.5)
-    ax2.axhline(y=1.0, color="green", linestyle="--", linewidth=2, label="Target (1.0 diag/s)")
-    ax2.set_ylabel("Throughput (diagnoses/s)", fontsize=12, fontweight="bold")
-    ax2.set_title("Throughput by Environment\n(higher = better)", fontsize=13, fontweight="bold")
-    ax2.legend()
-    ax2.grid(axis="y", alpha=0.3)
-    
-    for i, (env, tp) in enumerate(zip(envs, throughputs)):
-        ax2.text(i, tp + 0.05, f"{tp:.2f}", ha="center", fontweight="bold")
-    
+
+    env_data = _aggregate_by_env(loader)
+    envs     = sorted(env_data.keys())
+    latencies = [mean(env_data[e]) for e in envs]
+    labels    = [PLATFORM_LABELS.get(e, e) for e in envs]
+    colors    = [PLATFORM_COLORS.get(e, "#999999") for e in envs]
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    bars = ax.bar(labels, latencies, color=colors, alpha=0.85,
+                  edgecolor="white", linewidth=1.2, width=0.5)
+
+    ax.axhline(1.0, color="#E53935", linestyle="--", linewidth=1.6,
+               label="Target (1.0s)")
+
+    # Rótulos de valor
+    for bar, lat in zip(bars, latencies):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.08,
+            f"{lat:.3f}s",
+            ha="center", va="bottom", fontsize=11, fontweight="bold"
+        )
+
+    ax.set_ylabel("Latency (s)", fontsize=12, fontweight="bold")
+    ax.set_title("SLM Latency by Environment\n(lower = better)",
+                 fontsize=13, fontweight="bold")
+    ax.set_ylim(bottom=0)
+    ax.legend(fontsize=11)
+    ax.grid(axis="y", alpha=0.25)
+    ax.spines[["top", "right"]].set_visible(False)
+
     plt.tight_layout()
-    output_file = output_dir / "01_env_performance.png"
-    plt.savefig(output_file, dpi=300, bbox_inches="tight")
-    print(f"✅ Saved: {output_file}")
+    out = output_dir / "01_env_latency.png"
+    plt.savefig(out, dpi=300, bbox_inches="tight")
+    print(f"✅ Saved: {out}")
     plt.close()
+
+
+def plot_env_throughput(loader: BenchmarkLoader, output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    env_data    = _aggregate_by_env(loader)
+    envs        = sorted(env_data.keys())
+    throughputs = [1.0 / mean(env_data[e]) for e in envs]
+    labels      = [PLATFORM_LABELS.get(e, e) for e in envs]
+    colors      = [PLATFORM_COLORS.get(e, "#999999") for e in envs]
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    bars = ax.bar(labels, throughputs, color=colors, alpha=0.85,
+                  edgecolor="white", linewidth=1.2, width=0.5)
+
+    ax.axhline(1.0, color="#E53935", linestyle="--", linewidth=1.6,
+               label="Target (1.0 diag/s)")
+
+    # Rótulos de valor
+    for bar, tp in zip(bars, throughputs):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.04,
+            f"{tp:.2f}",
+            ha="center", va="bottom", fontsize=11, fontweight="bold"
+        )
+
+    ax.set_ylabel("Throughput (diagnoses/s)", fontsize=12, fontweight="bold")
+    ax.set_title("Throughput by Environment\n(higher = better)",
+                 fontsize=13, fontweight="bold")
+    ax.set_ylim(bottom=0)
+    ax.legend(fontsize=11)
+    ax.grid(axis="y", alpha=0.25)
+    ax.spines[["top", "right"]].set_visible(False)
+
+    plt.tight_layout()
+    out = output_dir / "01_env_throughput.png"
+    plt.savefig(out, dpi=300, bbox_inches="tight")
+    print(f"✅ Saved: {out}")
+    plt.close()
+
+
+def plot_env_performance(loader: BenchmarkLoader, output_dir: Path) -> None:
+    plot_env_latency(loader, output_dir)
+    plot_env_throughput(loader, output_dir)
 
 
 if __name__ == "__main__":

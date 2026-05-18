@@ -18,6 +18,12 @@
             border-bottom: 3px solid #007acc;
             padding-bottom: 10px;
         }
+        h3 {
+            color: #444;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+            margin-top: 25px;
+        }
         .summary {
             background: white;
             padding: 20px;
@@ -50,10 +56,22 @@
             font-weight: bold;
             margin-top: 10px;
         }
-        .plot-container {
+        .section {
             background: white;
             padding: 20px;
             margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            margin-top: 0;
+            border-bottom: 3px solid #007acc;
+            padding-bottom: 10px;
+        }
+        .plot-container {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
@@ -62,10 +80,12 @@
             height: auto;
             border-radius: 4px;
         }
-        .plot-container h3 {
+        .plot-container h4 {
             margin-top: 0;
             color: #333;
             border: none;
+            font-size: 13px;
+            color: #666;
         }
         footer {
             text-align: center;
@@ -85,7 +105,7 @@
         <div class="stat-grid">
             <div class="stat-box">
                 <h3>Total Runs</h3>
-                <div class="value">297</div>
+                <div class="value">327</div>
             </div>
             <div class="stat-box">
                 <h3>Environments</h3>
@@ -93,7 +113,7 @@
             </div>
             <div class="stat-box">
                 <h3>Models Tested</h3>
-                <div class="value">3</div>
+                <div class="value">4</div>
             </div>
             <div class="stat-box">
                 <h3>Batches</h3>
@@ -101,7 +121,7 @@
             </div>
             <div class="stat-box">
                 <h3>Average SLM Latency</h3>
-                <div class="value">4.184s</div>
+                <div class="value">4.067s</div>
             </div>
             <div class="stat-box">
                 <h3>Average Accuracy</h3>
@@ -109,7 +129,7 @@
             </div>
             <div class="stat-box">
                 <h3>Target Met Rate</h3>
-                <div class="value">73.4%</div>
+                <div class="value">66.7%</div>
             </div>
         </div>
     </div>
@@ -118,70 +138,151 @@
         <h2>ℹ️ General Information</h2>
         <ul>
             <li><strong>Environments:</strong> desktop-legion, jetson-nano, jetson-orin</li>
-            <li><strong>Models:</strong> dialogpt, phi, qwen</li>
+            <li><strong>Models:</strong> dialogpt, phi, qwen, qwen-cpu</li>
             <li><strong>Batches:</strong> batch1, batch2, batch3, batch4, batch5, batch6</li>
         </ul>
     </div>
     
-    <h2>📊 Analysis Charts</h2>
+    <div class="section">
+        <h2>🌍 Environment Performance</h2>
 
     <div class="plot-container">
-        <h3>📈 Env Performance</h3>
-        <p>Performance by Environment - Comparison of SLM latency and throughput between Nano, Orin and Legion</p>
-        <img src="01_env_performance.png" alt="01_env_performance.png">
+        <h4>Environment Performance - SLM Latency across Nano, Orin and Legion</h4>
+        <img src="01_env_latency.png" alt="01_env_latency.png">
     </div>
 
     <div class="plot-container">
-        <h3>📈 Model Comparison</h3>
-        <p>Model Comparison - Evaluation of DialoGPT, Qwen and Phi in different environments</p>
-        <img src="02_model_comparison.png" alt="02_model_comparison.png">
+        <h4>Environment Performance - Throughput (diagnoses/sec) across environments</h4>
+        <img src="01_env_throughput.png" alt="01_env_throughput.png">
+    </div>
+
+    </div>
+    
+    <div class="section">
+        <h2>🤖 Model Comparison</h2>
+
+    <div class="plot-container">
+        <h4>Model Comparison - SLM Latency for DialoGPT, Qwen and Phi by environment</h4>
+        <img src="02_model_latency.png" alt="02_model_latency.png">
     </div>
 
     <div class="plot-container">
-        <h3>📈 Accuracy By Batch</h3>
-        <p>Accuracy by Batch - Verification of consistency across 6 test batches</p>
+        <h4>Model Comparison - Accuracy for each model across environments</h4>
+        <img src="02_model_accuracy.png" alt="02_model_accuracy.png">
+    </div>
+
+    </div>
+    
+    <div class="section">
+        <h2>📊 Consistency & Distribution</h2>
+
+    <div class="plot-container">
+        <h4>Accuracy by Batch - Verification of model consistency across test batches</h4>
         <img src="03_accuracy_by_batch.png" alt="03_accuracy_by_batch.png">
     </div>
 
     <div class="plot-container">
-        <h3>📈 Latency Distribution</h3>
-        <p>Latency Distribution - Boxplot showing variability and outliers</p>
+        <h4>Latency Distribution - Boxplot showing variability and outliers across models</h4>
         <img src="04_latency_distribution.png" alt="04_latency_distribution.png">
     </div>
 
+    </div>
+    
+    <div class="section">
+        <h2>⚡ Cross-Environment & Component Analysis</h2>
+
     <div class="plot-container">
-        <h3>📈 Cross Env Speedup</h3>
-        <p>Cross-Environment Speedup - Comparison of relative performance vs Desktop Legion</p>
+        <h4>Cross-Environment Speedup - Relative performance comparison vs Desktop Legion baseline</h4>
         <img src="05_cross_env_speedup.png" alt="05_cross_env_speedup.png">
     </div>
 
     <div class="plot-container">
-        <h3>📈 Pdi Vs Slm</h3>
-        <p>PDI vs SLM - Analysis of which component is the bottleneck (vision vs language)</p>
+        <h4>PDI vs SLM Analysis - Identifying bottleneck components (vision vs language)</h4>
         <img src="06_pdi_vs_slm.png" alt="06_pdi_vs_slm.png">
     </div>
 
+    </div>
+    
+    <div class="section">
+        <h2>🖥️ Per-Environment Performance Analysis</h2>
+        
+        <h3>Jetson Nano</h3>
+
     <div class="plot-container">
-        <h3>📈 Jetson Nano Performance</h3>
-        <p>Jetson Nano Performance - SLM latency, throughput and target success rate for each model</p>
-        <img src="07_jetson_nano_performance.png" alt="07_jetson_nano_performance.png">
+        <h4>Jetson Nano - SLM Latency by Model</h4>
+        <img src="07_jetson_nano_latency.png" alt="07_jetson_nano_latency.png">
     </div>
 
     <div class="plot-container">
-        <h3>📈 Jetson Orin Performance</h3>
-        <p>Jetson Orin Performance - SLM latency, throughput and target success rate for each model</p>
-        <img src="08_jetson_orin_performance.png" alt="08_jetson_orin_performance.png">
+        <h4>Jetson Nano - Throughput by Model</h4>
+        <img src="07_jetson_nano_throughput.png" alt="07_jetson_nano_throughput.png">
     </div>
 
     <div class="plot-container">
-        <h3>📈 Desktop Legion Performance</h3>
-        <p>Desktop Legion Performance - SLM latency, throughput and target success rate for each model</p>
-        <img src="09_desktop_legion_performance.png" alt="09_desktop_legion_performance.png">
+        <h4>Jetson Nano - Target Success Rate by Model</h4>
+        <img src="07_jetson_nano_success.png" alt="07_jetson_nano_success.png">
     </div>
 
+        <h3>Jetson Orin</h3>
+
+    <div class="plot-container">
+        <h4>Jetson Orin - SLM Latency by Model</h4>
+        <img src="08_jetson_orin_latency.png" alt="08_jetson_orin_latency.png">
+    </div>
+
+    <div class="plot-container">
+        <h4>Jetson Orin - Throughput by Model</h4>
+        <img src="08_jetson_orin_throughput.png" alt="08_jetson_orin_throughput.png">
+    </div>
+
+    <div class="plot-container">
+        <h4>Jetson Orin - Target Success Rate by Model</h4>
+        <img src="08_jetson_orin_success.png" alt="08_jetson_orin_success.png">
+    </div>
+
+        <h3>Desktop Legion</h3>
+
+    <div class="plot-container">
+        <h4>Desktop Legion - SLM Latency by Model</h4>
+        <img src="09_desktop_legion_latency.png" alt="09_desktop_legion_latency.png">
+    </div>
+
+    <div class="plot-container">
+        <h4>Desktop Legion - Throughput by Model</h4>
+        <img src="09_desktop_legion_throughput.png" alt="09_desktop_legion_throughput.png">
+    </div>
+
+    <div class="plot-container">
+        <h4>Desktop Legion - Target Success Rate by Model</h4>
+        <img src="09_desktop_legion_success.png" alt="09_desktop_legion_success.png">
+    </div>
+
+    </div>
+    
+    <div class="section">
+        <h2>🔬 Special Analysis: Qwen CPU vs GPU on Jetson Nano</h2>
+
+    <div class="plot-container">
+        <h4>Qwen on Jetson Nano - CPU vs GPU Latency Comparison</h4>
+        <img src="10_qwen_nano_latency_cpu_vs_gpu.png" alt="10_qwen_nano_latency_cpu_vs_gpu.png">
+    </div>
+
+    <div class="plot-container">
+        <h4>Qwen on Jetson Nano - CPU vs GPU Throughput Comparison</h4>
+        <img src="10_qwen_nano_throughput_cpu_vs_gpu.png" alt="10_qwen_nano_throughput_cpu_vs_gpu.png">
+    </div>
+
+    <div class="plot-container">
+        <h4>Qwen on Jetson Nano - CPU vs GPU Target Success Rate</h4>
+        <img src="10_qwen_nano_success_cpu_vs_gpu.png" alt="10_qwen_nano_success_cpu_vs_gpu.png">
+    </div>
+
+    </div>
+    
     <footer>
         <p>Automatically generated by benchmark analysis script</p>
         <p>High resolution charts (300 DPI) ready for inclusion in documents and presentations</p>
+        <p>📌 Note: Each plot focuses on a single metric for clarity and flexibility in selection for final thesis</p>
     </footer>
 </body>
 </html>
