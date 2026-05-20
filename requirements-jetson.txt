@@ -1,48 +1,43 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# Requirements para Jetson Nano — JetPack 4.6.x (CUDA 10.2, Python 3.8)
-# ─────────────────────────────────────────────────────────────────────────────
-# Usado para Dockerfile.jetson-nano
+# Requirements for Jetson Nano — JetPack 4.6.x (CUDA 10.2, Docker Python 3.8)
+# -----------------------------------------------------------------------------------------------
+# Used by Dockerfile.jetson-nano.
 #
-# DIFERENÇAS em relação a requirements.txt (desktop):
+# Differences compared to desktop requirements.txt:
 #
-#  ❌ torch          — instalado via wheel oficial NVIDIA no Dockerfile.jetson
-#                      (wheel CUDA 10.2 / aarch64 não está no PyPI)
+# torch -> installed through the official NVIDIA wheel in the Dockerfile.
+#          CUDA 10.2 / aarch64 wheels are not available on PyPI.
 #
-#  ❌ bitsandbytes   — NÃO suportado no Jetson Nano
-#                      Quantização 4-bit requer GPU compute ≥ 7.5 (Turing+)
-#                      Jetson Nano tem Maxwell (compute 5.3)
+# bitsandbytes -> not supported on Jetson Nano.
+#                 4-bit quantization requires GPU compute capability >= 7.5.
+#                 Jetson Nano uses Maxwell with compute capability 5.3.
 #
-#  ⬇  numpy          — 2.x requer Python 3.9+; usar 1.x aqui
+# numpy -> 2.x requires newer Python versions; use 1.x here.
 #
-#  ⬇  pillow         — 11.x requer Python 3.9+; usar 10.x aqui
+# pillow -> 11.x requires newer Python versions; use 10.x here.
 #
-#  ⬇  scipy          — 1.11+ requer Python 3.9+; usar 1.10.x aqui
-#
-# ─────────────────────────────────────────────────────────────────────────────
+# scipy -> 1.11+ requires newer Python versions; use 1.10.x here.
+
 
 # API
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
 python-multipart==0.0.17
 
-# Utilitários
+# Utilities
 pyyaml==6.0.2
 pillow==10.4.0
 numpy==1.24.4
 scipy==1.10.1
 
-# Visão computacional (wheel aarch64 disponível no PyPI a partir da 4.5)
+# Computer vision
+# aarch64 wheels are available on PyPI for this OpenCV version.
 opencv-python-headless==4.8.1.78
 
-# LLM — torch instalado via wheel NVIDIA no Dockerfile
-# transformers==4.46.3
-# huggingface-hub==0.26.2
+# Plotting and visualization
+matplotlib==3.3.4
+
+# sLM
+# torch is installed through the NVIDIA wheel in the Dockerfile.
 transformers==4.30.0
 huggingface-hub==0.14.1
 accelerate==0.27.2
-# bitsandbytes: OMITIDO (incompatível com compute 5.3 do Jetson Nano)
-
-# Quantização INT8 via optimum-quanto: pure PyTorch, sem restrição de compute CUDA
-# Compatível com Jetson Nano (Maxwell/compute 5.3)
-# Alternativa ao bitsandbytes para ambientes sem suporte a INT4 nativo
-optimum[quanto]

@@ -1,55 +1,79 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# Jetson Nano — JetPack 4.6.x  (L4T R32.7.x · CUDA 10.2 · Ubuntu 18.04)
+# Jetson Nano: JetPack 4.6.x (L4T R32.7.x | CUDA 10.2 | Ubuntu 18.04)
 #
-# ⚠️  NÃO compatível com JetPack 5.x (Xavier NX / AGX Orin usam r35.x)
-# ─────────────────────────────────────────────────────────────────────────────
+# Not compatible with JetPack 5.x.
+# Xavier NX and AGX Orin use newer L4T r35.x/r36.x stacks and require a different base image and dependency set.
+# -------------------------------------------------------------------------------------------------------------------------------
 FROM nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.10-py3
 
 WORKDIR /app
 
-# ── Sistema: Python 3.8 (base tem 3.6; transformers >= 4.47 exige >= 3.8) ───
-# RUN apt-get update && apt-get install -y --no-install-recommends \
-#     python3.8 \
-#     python3.8-dev \
-#     python3.8-distutils \
-#     curl \
-#     && rm -rf /var/lib/apt/lists/*
+# -------------------------------------------------------------------------------------------------------------------------------
+# System: Python 3.8 (base image provides 3.6; transformers >= 4.47 requires >= 3.8)
+# -------------------------------------------------------------------------------------------------------------------------------
+# The base image includes Python 3.6, but newer Transformers versions require Python 3.8+.
+# This section installs Python 3.8 for application execution.
+#
+# Note: The Kitware APT source may be unavailable in some Jetson images.
+# We remove it to avoid apt-get update failures during image build.
+
 RUN find /etc/apt/ -type f \( -name "*.list" -o -name "*.sources" \) -exec sed -i '/apt\.kitware\.com/d' {} \; \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-        python3.8 \
-        python3.8-dev \
-        python3.8-distutils \
-        curl \
+    python3.8 \
+    python3.8-dev \
+    python3.8-distutils \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# pip para Python 3.8
+# Install pip for Python 3.8
 RUN curl -sS https://bootstrap.pypa.io/pip/3.8/get-pip.py | python3.8
 
-# ── PyTorch 1.10 — compilado para Python 3.8 + CUDA 10.2 + ARM64 ────────────
-# Wheel NVIDIA oficial para Jetson Nano com JetPack 4.6 (L4T R32.7)
+# -------------------------------------------------------------------------------------------------------------------------------
+# PyTorch 1.10 for Jetson Nano (Python 3.8 + CUDA 10.2 + ARM64)
+# -------------------------------------------------------------------------------------------------------------------------------
+# Install the official NVIDIA Jetson wheel for JetPack 4.6 (L4T R32.7).
+# These wheels are optimized for Jetson Nano hardware.
+#
+# If the NVIDIA wheel installation fails, the fallback command attempts installation from PyTorch's CUDA 10.2 wheels.
+# Note: GPU support must be verified after build; incompatible wheels may cause fallback to CPU execution.
+
 RUN python3.8 -m pip install --no-cache-dir --no-deps \
     torch==1.10.0 torchvision==0.11.0 -f https://developer.download.nvidia.com/compute/redist/jp/v461/pytorch/ || \
     python3.8 -m pip install --no-cache-dir torch==1.10.0 -i https://download.pytorch.org/whl/cu102
 
-# ── Dependências da aplicação ────────────────────────────────────────────────
+# -------------------------------------------------------------------------------------------------------------------------------
+# Application Dependencies
+# -------------------------------------------------------------------------------------------------------------------------------
 COPY requirements-jetson.txt .
 RUN python3.8 -m pip install --no-cache-dir -r requirements-jetson.txt
 
-# ── Aplicação ────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------------------------------------------------------------------
+# Application Source Code
+# -------------------------------------------------------------------------------------------------------------------------------
 COPY app/ ./app/
 COPY data/ ./data/
 COPY tests/ ./tests/
 
 RUN mkdir -p logs data/uploads
 
-EXPOSE 8000
-
+# -------------------------------------------------------------------------------------------------------------------------------
+# Environment Configuration
+# -------------------------------------------------------------------------------------------------------------------------------
+# Disable Python buffering for real-time log output
 ENV PYTHONUNBUFFERED=1
-# ENV TRANSFORMERS_CACHE=/app/models/cache
+
+# Hugging Face model cache directory inside the container
 ENV HF_HOME=/app/models/cache
-# Expõe a GPU para o container no nvidia-container-runtime (JetPack 4.6)
+
+# Expose GPU to the container through nvidia-container-runtime on JetPack 4.6
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
+# -------------------------------------------------------------------------------------------------------------------------------
+# Runtime Configuration
+# -------------------------------------------------------------------------------------------------------------------------------
+EXPOSE 8000
+
 CMD ["python3.8", "-m", "uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+

@@ -1,566 +1,223 @@
-# MVP Diagnóstico AR: Framework de Avaliação de Qualidade de Iluminação
+# AR Diagnostic MVP - Illumination Diagnosis Backend
 
-## Sumário Executivo
+![Python](https://img.shields.io/badge/Python-3.6%2B-3776AB?logo=python)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi)
+![PyTorch](https://img.shields.io/badge/PyTorch-1.10%2B-EE4C2C?logo=pytorch)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-Este repositório implementa um produto viável mínimo (MVP) pronto para produção para diagnóstico de qualidade de iluminação em tempo real em cenas de realidade aumentada (AR) em plataformas embarcadas com recursos limitados. O sistema combina extração de características baseada em regras com modelos de linguagem pequenos (SLMs) para fornecer tanto avaliação estatística rápida quanto explicações semanticamente significativas das condições de iluminação em ambientes descentralizados de hardware.
+**AR Diagnostic MVP** is a FastAPI-based backend for illumination quality diagnosis in augmented reality scenes, designed to run on constrained embedded hardware without relying on cloud infrastructure.
 
-O projeto aborda o desafio fundamental de implantar sistemas de diagnóstico específicos de domínio em plataformas de hardware heterogêneas, desde dispositivos de borda (Jetson Nano, 4GB VRAM) até sistemas GPU embarcados (Jetson AGX Orin) até estações de trabalho de desktop (GPUs NVIDIA RTX), mantendo contratos de API consistentes e garantias de desempenho mensuráveis. 
+The system combines deterministic luminance-based image analysis, rule-based classification, and Small Language Model inference to produce structured, human-readable AR readiness assessments. It was deployed and validated across three heterogeneous hardware platforms: a desktop workstation, a Jetson AGX Orin, and a Jetson Nano.
 
-## Escopo do Projeto e Objetivos de Pesquisa
+### Related Repositories
 
-### Objetivo Principal
+| Repository | Description |
+|---|---|
+| [ar_sight](https://github.com/daniamorimdesa/ar_sight) | Mobile Flutter frontend for AR scene capture and diagnosis visualization |
+| [backend_tcc_ar_sight](https://github.com/daniamorimdesa/backend_tcc_ar_sight) | Full-scope exploratory backend with four planned diagnostic metrics |
+| `backend_tcc_mvp` | This repository (final MVP focused on illumination diagnosis) |
 
-Desenvolver e validar um pipeline de diagnóstico de iluminação portátil e eficiente que:
+---
 
-1. Processe lotes de imagens capturadas de cenas de realidade aumentada
-2. Classifique condições de iluminação em categorias de risco 
-3. Gere métricas de características quantitativas e explicações em linguagem natural
-4. Funcione dentro de restrições rigorosas de latência em hardware embarcado (objetivo: 3,5 segundos para lotes de 10 quadros)
-5. Forneça resultados determinísticos e reproduzíveis em ambientes de implantação
+## Project Context
 
+This repository is the final MVP used in the TCC research and experimental validation. The scope was deliberately focused on illumination analysis, the most critical and mature descriptor for the embedded pipeline, while the broader set of metrics explored during the project (texture, occlusion, reflection) is preserved in the full-scope backend repository.
 
-### Ambientes Alvo
+---
 
-A implementação foi validada em três ambientes de execução distintos, cada um apresentando restrições e requisitos de otimização únicos:
+## Diagnostic Pipeline
 
-1. **Jetson Nano (4GB VRAM, GPU Maxwell)**: Representa o limite inferior de complexidade de implantação, exigindo pilhas de software legado e compromissos fundamentais entre capacidade de modelo e consumo de recursos.
-2. **Jetson AGX Orin (32GB VRAM, GPU Ampere)**: Representa um alvo moderno de implantação em borda com espaço computacional significativamente maior, mas ainda sujeito a restrições térmicas e de potência.
-3. **Desktop Legion (x86_64, GPUs NVIDIA RTX)**: Serve como plataforma de referência de desempenho e desenvolvimento, sem limitações de sistema embarcado.
+The backend processes image batches through a two-stage hybrid pipeline:
 
-## Arquitetura do Sistema
+1. **Deterministic Analysis.** The IlluminationAnalyzer extracts luminance-based metrics from each frame. The Rule Engine maps these metrics to a structured diagnostic output: pass/fail status, risk level, and triggered rules. This stage completes in under 20 ms per frame regardless of hardware or model.
 
-### Pipeline de Alto Nível
+2. **Language-Based Explanation.** A Small Language Model generates a concise natural language explanation for each frame and a scene-level summary for the batch. If the model output fails validation, the system falls back to deterministic template explanations, guaranteeing a valid response regardless of model behavior.
 
-O pipeline de diagnóstico funciona em duas fases distintas:
+**Key design principle:** the Rule Engine provides deterministic and fully traceable decisions. The SLM generates user-facing explanations without affecting the diagnostic outcome.
 
-```
-                        [Entrada: Lote de Imagens]
-                               |
-                    Fase 1: Extração de Características
-                               |
-              +------------------+------------------+
-              |                  |                  |
-         [Módulo PDI]    [Métricas de Brilho]  [Análise de Clipping]
-              |                  |                  |
-              +------------------+------------------+
-                               |
-                    Classificação via Motor de Regras
-                               |
-                    +----------+----------+
-                    |                     |
-              [Rótulos de Iluminação]    [Pontuações de Risco]
-                    |                     |
-                    +----------+----------+
-                               |
-                    Fase 2: Explicação com SLM
-                               |
-                  [Seleção SLM: Qwen/Phi/DialoGPT]
-                               |
-         [Engenharia de Prompt + Injeção de Contexto]
-                               |
-              [Geração de Explicação em Linguagem Natural]
-                               |
-                   [Relatório de Diagnóstico Final]
-```
+---
 
-### Fase 1: Diagnóstico Físico de Iluminação (PDI)
+## Evaluated Models
 
-O módulo PDI (implementado em `app/pdi/illumination.py`) realiza análise direta de estatísticas em nível de pixel para avaliar a qualidade de iluminação através de características engenheiradas:
+| Model | Parameters | Platforms | Notes |
+|---|---|---|---|
+| DialoGPT-small | 117M | All | Only viable model on Jetson Nano native stack |
+| Qwen2.5-0.5B | 0.5B | Orin, Legion | Best latency/quality trade-off |
+| Phi-3 Mini | 3.8B | Orin, Legion | Best explanation quality |
 
-**Métricas de Brilho:**
-- Luminância média de pixels (escala normalizada 0-1)
-- Desvio padrão de valores de pixel (indicador de uniformidade)
-- Estatísticas baseadas em histograma para regiões claras e escuras
+See [docs/MODEL_SELECTION.md](docs/MODEL_SELECTION.md) for platform recommendations and detailed benchmark comparison.
 
-**Análise de Clipping:**
-- Percentual de pixels abaixo do limiar do 5º percentil
-- Percentual de pixels acima do limiar do 95º percentil
-- Utilizados como indicadores de subexposição e superexposição respectivamente
+---
 
-**Análise de Canal de Cor:**
-- Avaliação de iluminação por canal (RGB)
-- Detecção de dominância de cor através de métricas de desequilíbrio de canal
+## Performance
 
-**Classificação Determinística:**
-O motor de regras em `app/core/rule_engine.py` aplica limites configurados em `app/config/thresholds.yaml` para emitir rótulos de iluminação discretos e pontuações de risco. Esta fase é inteiramente determinística e reproduzível em plataformas.
+On the Desktop Legion and Jetson AGX Orin, all evaluated models achieve mean SLM latency below 0.8 s per diagnosis. On the Jetson Nano, DialoGPT-small achieves sub-second GPU-accelerated inference under the official NVIDIA stack.
 
-### Fase 2: Explicação Baseada em Modelo de Linguagem
+| Platform | Model | Mean Latency |
+|---|---|---:|
+| Desktop Legion | DialoGPT-small | 0.056 s | 
+| Desktop Legion | Qwen2.5-0.5B | 0.371 s | 
+| Desktop Legion | Phi-3 Mini | 0.770 s | 
+| Jetson AGX Orin | DialoGPT-small | 0.125 s | 
+| Jetson AGX Orin | Qwen2.5-0.5B | 0.373 s | 
+| Jetson AGX Orin | Phi-3 Mini | 0.679 s | 
+| Jetson Nano (native) | DialoGPT-small | 0.363 s |
+| Jetson Nano (Ubuntu 20.04) | Qwen GPU | 2.911 s | 
 
-Após classificação baseada em regras, o sistema aumenta o diagnóstico com explicação semântica através de um dos três modelos de linguagem pequenos (SLMs) suportados. A seleção do modelo representa um trade-off fundamental entre latência de inferência, qualidade de explicação e requisitos de hardware.
+For a full analysis including batch efficiency, the amortization model, and applied optimizations, see [docs/BATCH_PERFORMANCE.md](docs/BATCH_PERFORMANCE.md).
 
-**Opções de Modelo:**
+### Jetson Nano: Deployment Investigation
 
-1. **DialoGPT-small (117M parâmetros):** Modelo conversacional otimizado para pegada de memória mínima. Selecionado como opção validada para Jetson Nano onde compatibilidade de pilha de software (JetPack 4.6, PyTorch 1.10, Python 3.6) e restrições de hardware (4GB VRAM compartilhada) tornam modelos maiores impráticos.
+The Jetson Nano results above represent the outcome of a non-trivial deployment process. The details are documented here because the failure modes encountered are subtle and practically important for anyone working with modern AI frameworks on legacy embedded hardware.
 
-2. **Qwen2.5-0.5B (~500M parâmetros):** Modelo sintonizado para instrução que equilibra qualidade de explicação com latência prática. Recomendado para Jetson AGX Orin e Desktop Legion como opção de produção primária.
+**Initial attempt: Docker with Python 3.8**
 
-3. **Phi-3-mini (~3.8B parâmetros):** Opção de mais alta qualidade enfatizando coerência de explicação e raciocínio. Viável em Orin e Legion mas com custos de latência; não suportado em Nano.
+Early experiments used a Docker-based environment with Python 3.8 to work around the native JetPack 4.6 Python 3.6 limitation. The pipeline appeared to run correctly, but exhibited unexpectedly high latency well above what the hardware should theoretically support. Rather than accepting this as a hardware limitation, the Jetson AGX Orin was used as a reference platform to validate the pipeline under known-good conditions.
 
-A decisão de seleção do modelo é documentada em detalhe em [docs/MODEL_SELECTION.md](docs/MODEL_SELECTION.md).
+**Key insight from the Orin**
 
-### Orquestração do Pipeline de Processamento
+Working with the Orin revealed a recurring pattern: automatic dependency resolution via Poetry consistently produced conflicts between PyTorch, CUDA, and the transformer libraries. The solution was a manually sequenced installation that installs packages in a specific order to ensure compatibility. This insight proved to be the turning point for the Nano as well.
 
-O módulo `app/pipeline/illumination_pipeline.py` coordena operações das Fases 1 e 2, manipulando:
+**Root cause: silent CPU fallback**
 
-- Validação de lote e normalização de imagem
-- Cálculo sequencial de PDI entre lote de quadro
-- Agregação de métricas por quadro em resumos de nível de lote
-- Seleção dinâmica de modelo e injeção de prompt
-- Geração de resposta JSON de diagnóstico final
+Applying the same manual installation strategy to the Nano and verifying GPU activation explicitly revealed the root cause of the earlier slowness: the pipeline had been running entirely on CPU throughout the Docker experiments. Architecture incompatibilities inside the container caused a silent fallback: `torch.cuda.is_available()` returned `False` inside the container, but this was never surfaced as an error. The pipeline continued running, just at CPU speeds.
 
-## Decisões de Otimização e Racional de Desempenho
+This is a subtle and practically important failure mode: the system produces correct results at greatly degraded performance, with no obvious error signal. Explicit GPU verification at startup is now built into all setup scripts in this repository.
 
-### Restrições de Eficiência de Memória
+**Resolution: official NVIDIA JetPack stack**
 
-O projeto reflete restrições fundamentais impostas por plataformas embarcadas. Jetson Nano, com 4GB de memória unificada compartilhada entre CPU e GPU, necessita otimização agressiva:
+Switching to the official NVIDIA stack (JetPack 4.6, Python 3.6, CUDA 10.2) with the manually sequenced installation resolved GPU execution for DialoGPT-small, whose architecture is fully compatible with this legacy environment. Under this configuration, DialoGPT-small achieves 0.363 s mean latency and 2.76 diagnoses/s throughput, comfortably meeting the 1.0 s target.
 
-1. **Seleção de Modelo:** DialoGPT-small (~117MB em FP16) representa o maior modelo pré-treinado viável, deixando ~2GB para cálculo de PDI e overhead de framework.
+**Running Qwen on the Nano**
 
-2. **Formato de Precisão:** FP16 (meia precisão) é usado por padrão em todas as plataformas, reduzindo pressão de memória 50% comparado a FP32 com degradação de precisão negligenciável para este domínio de tarefa.
+Qwen2.5-0.5B requires a newer Python and Transformers stack than the official JetPack 4.6 environment can support. Running it with GPU acceleration required installing a community-maintained Ubuntu 20.04 image directly on a second Nano unit, which provides a modern enough userspace while retaining CUDA access. Under this configuration, Qwen latency drops from 15.388 s on CPU to 2.911 s on GPU, a 5.3x speedup. Latency also varies with diagnostic complexity: well-lit batches complete in approximately 16 s, while underexposed scenes can reach 56 s, compared to over 190 s for the CPU equivalent.
 
-3. **Orientação por Lote:** O processamento é fundamentalmente orientado a lotes, permitindo amortização de custos de carregamento de modelo e agrupamento de quadros em operações de kernel GPU. O tamanho típico de lote é 10 quadros por solicitação de diagnóstico.
+Phi-3 Mini could not be loaded on the Nano under any configuration; its memory requirements exceed the 4 GB VRAM budget.
 
-4. **Trade-offs de Quantização:** Quantização de 4 bits (via bitsandbytes) é investigada mas marcada como NÃO SUPORTADA em Jetson Nano devido a limitações de capacidade de cómputo da GPU Maxwell. O recurso está disponível e funcional em Orin (computação 8.7) e GPUs de desktop modernas.
+**What this means in practice**
 
-### Estratégia de Otimização de Latência
+Achieving GPU-accelerated inference for a modern 0.5B-parameter model on legacy embedded hardware is a meaningful engineering result in its own right. The engineering effort required to bridge the gap between modern AI frameworks and legacy embedded platforms should not be underestimated, and the gap is not always visible until GPU activation is explicitly verified.
 
-Restrição de latência alvo: 3,5 segundos para lote de diagnóstico de 10 quadros. Isto impulsiona várias opções arquiteturais:
+For setup instructions per platform, see [docs/PLATFORM_SETUP.md](docs/PLATFORM_SETUP_GUIDE.md).
 
-1. **Caminho Rápido de PDI:** O motor de regras funciona diretamente em estatísticas de pixel sem representações intermediárias, típicamente concluindo em < 100ms por quadro.
+---
 
-2. **Aquecimento de Modelo:** O sinalizador de configuração `warmup_on_startup: true` força carregamento de modelo durante inicialização de API, eliminando latência de início frio do caminho de solicitação voltado ao usuário.
+## Hardware Platforms
 
-3. **Decodificação Gulosa:** Para DialoGPT, seleção de token gulosa (vs. amostragem) é imposta para inferência determinística e mais rápida (embora com custo de qualidade leve).
+| Platform | GPU | VRAM | CUDA | PyTorch |
+|---|---|---|---|---|
+| Desktop Legion | RTX 3060 | 6 GB | 12.1 | 2.5 |
+| Jetson AGX Orin | Ampere | 32 GB | 12.x | 2.x |
+| Jetson Nano | Maxwell | 4 GB | 10.2 | 1.10 |
 
-4. **Controle de Comprimento de Prompt:** Modelos de prompt são deliberadamente restritos (`prompt_max_length) para reduzir tanto computação de janela de contexto quanto comprimento de saída de modelo.
+---
 
+## Quick Start
 
-## Ambientes de Execução Suportados
+### Desktop Legion (Windows, CUDA 12.1+)
 
-### Jetson Nano (4GB VRAM, JetPack 4.6)
-
-**Pilha de Software Validada:**
-- L4T R32.7.x (Núcleo validado)
-- JetPack 4.6.x (Suporte oficial NVIDIA)
-- Python 3.6.9 (Legado mas estável)
-- PyTorch 1.10.0 (CUDA 10.2 compatível)
-- CUDA 10.2 (GPU Maxwell, computação 5.3)
-- Transformers 4.8.2 (Última versão compatível com PyTorch 1.10)
-- Modelo Recomendado: DialoGPT-small (opção única suportada)
-
-**Configuração:** Consulte [docs/JETSON_NANO_GUIDE.md](docs/JETSON_NANO_GUIDE.md)
-
-**Desempenho de Lote:** Aproximadamente 3,4 segundos para lotes de 10 quadros com inferência DialoGPT-small. PDI contribui ~91ms por quadro; inferência de modelo ~250ms cumulativo.
-
-### Jetson AGX Orin (32GB VRAM, JetPack 6.x)
-
-**Pilha de Software Validada:**
-- L4T R36.x (Moderno, suportado ativamente)
-- JetPack 6.x (Padrão NVIDIA atual)
-- Python 3.10 (Biblioteca padrão moderna)
-- PyTorch 2.x (CUDA 12.x compatível)
-- CUDA 12.x (GPU Ampere, computação 8.7)
-- Transformers 4.4x+ (Suporta arquiteturas recentes)
-- Modelo Recomendado: Qwen2.5-0.5B (melhor latência/qualidade)
-
-**Configuração:** Consulte [docs/JETSON_ORIN_GUIDE.md](docs/JETSON_ORIN_GUIDE.md)
-
-**Desempenho de Lote:** Aproximadamente 3,5 segundos para lotes de 10 quadros com Qwen2.5-0.5B. PDI contribui ~50ms por quadro; inferência de modelo ~250ms cumulativo. Phi-3-mini é viável mas resulta em latências de lote ~8-10 segundos.
-
-### Desktop Legion (x86_64, GPU NVIDIA RTX)
-
-**Pilha de Software Validada:**
-- Ubuntu 22.04 LTS (Software de sistema)
-- Python 3.10+ (Ambiente de desenvolvimento padrão)
-- PyTorch 2.x (CUDA 12.x compatível)
-- CUDA 12.x (Stack de driver de desktop)
-- Transformers 4.4x+ (Não restringido por hardware)
-- Modelo Recomendado: Qwen2.5-0.5B (padrão de produção)
-
-**Configuração:** Consulte [docs/LEGION_GUIDE.md](docs/LEGION_GUIDE.md)
-
-**Desempenho de Lote:** Plataforma de referência, típicamente 20-30% mais rápida que Orin para modelos equivalentes devido a suporte superior de conjunto de instruções x86 e pilhas de software maduras. Phi-3-mini é confortavelmente viável para cargas de trabalho de qualidade prioritária.
-
-
-## Especificação de API
-
-### Ponto de extremidade de Upload em Lote
-
-**Endpoint:** `POST /upload/batch`
-
-**Propósito:** Aceitar um lote de imagens para processamento de diagnóstico posterior.
-
-**Solicitação:**
-```
-Dados multiformulários:
-  arquivos: [imagem1.jpg, imagem2.jpg, ..., imagem10.jpg]
+```powershell
+.\setup_legion.ps1
+poetry run ar-api
 ```
 
-**Resposta (200 OK):**
-```json
-{
-  "batch_id": "batch_20260331_150210_a1b2c3",
-  "status": "uploaded",
-  "files_saved": 3,
-  "message": "Salvos 3/3 arquivos"
-}
-```
-
-**Detalhes:**
-- Suporta até 10 imagens por lote
-- Imagens armazenadas em `data/uploads/{batch_id}/`
-- ID de lote é determinístico baseado em timestamp, permitindo resiliência de retry
-- Metadados persistidos em `metadata.json` dentro do diretório de lote
-
-### Ponto de extremidade de Diagnóstico (Processamento em Lote)
-
-**Endpoint:** `POST /diagnose/batch/{batch_id}`
-
-**Propósito:** Realizar diagnóstico completo de iluminação em um lote carregado.
-
-**Solicitação:**
-```
-JSON (parâmetros opcionais):
-{
-  "model_override": "qwen"  // Opcional, padrão conforme config
-}
-```
-
-**Resposta (200 OK):**
-```json
-{
-  "batch_id": "batch_20260331_150210_a1b2c3",
-  "status": "completed",
-  "summary": {
-    "overall_risk": "ALTO|MÉDIO|BAIXO",
-    "dominant_label": "subexposto|adequado|superexposto",
-    "normal_count": 2,
-    "problem_count": 1,
-    "explanation": "Resumo em linguagem natural dos achados...",
-    "recommendations": ["Ajustar configurações de exposição..."],
-    "metrics_avg": {
-      "mean_brightness": 0.65,
-      "mean_luma": 165.75,
-      "uniformity": 0.87,
-      "pct_clipped_dark": 0.0,
-      "pct_clipped_bright": 0.05
-    },
-    "processing_time_s": 3.82
-  },
-  "frames": [
-    {
-      "frame_index": 0,
-      "filename": "frame_00.jpg",
-      "risk_level": "NORMAL|PROBLEMA",
-      "illumination_label": "subexposto|adequado|superexposto",
-      "metrics": {
-        "illumination_score": 0.92,
-        "mean_brightness": 0.62,
-        "uniformity": 0.89,
-        "clipping_dark": 0.0,
-        "clipping_bright": 0.0
-      }
-    }
-  ]
-}
-```
-
-**Detalhes:**
-- Operação bloqueante (síncrona) retornando diagnóstico completo
-- Processamento inclui Fase 1 de PDI e (opcionalmente) Fase 2 de SLM
-- Métricas abrangentes por quadro agregadas em resumo de lote
-- Geração de explicação requer um SLM configurado; pode ser contornada com `skip_llm: true`
-
-### Ponto de extremidade de Verificação de Saúde
-
-**Endpoint:** `GET /health`
-
-**Resposta (200 OK):**
-```json
-{"status": "healthy"}
-```
-
-## Instalação e Configuração
-
-### Início Rápido por Plataforma
-
-#### Jetson Nano
+### Jetson AGX Orin (JetPack 6.x)
 
 ```bash
-cd ~/backend_tcc_mvp
-cp pyproject-jetson-nano.toml pyproject.toml
-poetry install --no-dev
+bash setup_jetson_orin.sh
+poetry run ar-api
+```
+
+### Jetson Nano (JetPack 4.6, native)
+
+```bash
 export OPENBLAS_CORETYPE=ARMV8
+bash setup_poetry_nano.sh
 poetry run ar-api
 ```
 
-Para troubleshooting detalhado e configuração manual, consulte [docs/JETSON_NANO_GUIDE.md](docs/JETSON_NANO_GUIDE.md).
+For detailed setup instructions, troubleshooting, and YAML configuration per platform, see [docs/PLATFORM_SETUP.md](docs/PLATFORM_SETUP_GUIDE.md).
 
-#### Jetson AGX Orin
+---
 
-```bash
-cd ~/backend_tcc_mvp
-cp pyproject-jetson-orin.toml pyproject.toml
-poetry install
-poetry run ar-api
+## REST API
+
+The backend exposes a two-step REST API. Images are uploaded first, then diagnosed in a separate request. This separation keeps PDI extraction and SLM inference independent, enabling better error isolation per frame.
+
+```
+POST /upload/batch                         upload N images, get batch_id
+POST /diagnose/batch/{batch_id}            run diagnosis on saved batch
+GET  /diagnose/batch/{batch_id}/status     check progress
+GET  /diagnose/batch/{batch_id}/result     retrieve saved result
+GET  /health                               API status and model info
 ```
 
-Para troubleshooting detalhado e configuração manual, consulte [docs/JETSON_ORIN_GUIDE.md](docs/JETSON_ORIN_GUIDE.md).
+After starting the API, interactive documentation is available at `http://localhost:8000/docs`.
 
-#### Desktop Legion (Ubuntu/Linux)
+For endpoint details, request/response schemas, and usage examples, see [docs/API_GUIDE.md](docs/API_GUIDE.md).
 
-```bash
-cd ~/backend_tcc_mvp
-cp pyproject-legion.toml pyproject.toml
-poetry install
-poetry run ar-api
-```
+---
 
-Para troubleshooting detalhado e configuração manual, consulte [docs/LEGION_GUIDE.md](docs/LEGION_GUIDE.md).
-
-### Pré-requisitos
-
-Todas as plataformas requerem:
-- Poetry (gerenciador de dependências Python)
-- Python 3.6+ (versão varia por plataforma)
-- PyTorch compatível com CUDA (verifique com `python3 -c "import torch; print(torch.cuda.is_available())"`)
-
-### Configuração
-
-Nível de log, seleção de modelo e limites de motor de regras são controlados através de `app/config/thresholds.yaml`:
-
-```yaml
-models:
-  default: qwen              # Seleção de modelo: dialogpt-small | qwen | phi
-  device: cuda               # Dispositivo: cuda | cpu | auto
-  use_4bit: false            # Quantização de 4 bits (válido somente em Orin/Legion)
-  greedy_decoding: true      # Inferência determinística (somente DialoGPT)
-  prompt_max_length: 256     # Máx tokens de contexto para entrada de modelo
-  warmup_on_startup: true    # Carregar modelo durante inicialização de API
-
-dialogpt-small:
-  name: /home/das9/models/DialoGPT-small
-  max_tokens: 20
-  summary_tokens: 32
-  temperature: 0.3
-  top_p: 0.85
-
-qwen:
-  name: Qwen/Qwen2.5-0.5B-Instruct
-  max_tokens: 100
-  summary_tokens: 150
-  temperature: 0.3
-  top_p: 0.85
-
-phi:
-  name: microsoft/Phi-3-mini-4k-instruct
-  max_tokens: 120
-  summary_tokens: 200
-  temperature: 0.3
-  top_p: 0.85
-
-pipeline:
-  enabled_metrics:
-    - illumination
-
-rule_engine:
-  illumination:
-    underexposed_threshold: 0.35
-    overexposed_threshold: 0.75
-```
-
-## Índice de Documentação
-
-Este repositório contém documentação técnica extensa organizada por tópico:
-
-### Configuração e Implantação
-
-- [docs/JETSON_NANO_GUIDE.md](docs/JETSON_NANO_GUIDE.md): Guia completo de configuração para Jetson Nano, incluindo pré-requisitos, troubleshooting e expectativas de desempenho.
-- [docs/JETSON_ORIN_GUIDE.md](docs/JETSON_ORIN_GUIDE.md): Guia de configuração para Jetson AGX Orin com infraestrutura moderna e opções de otimização avançadas.
-- [docs/LEGION_GUIDE.md](docs/LEGION_GUIDE.md): Guia de configuração de estação de trabalho de desktop para desenvolvimento e benchmarking de referência.
-
-### Seleção de Modelo e Desempenho
-
-- [docs/MODEL_SELECTION.md](docs/MODEL_SELECTION.md): Comparação abrangente de modelos de linguagem suportados (DialoGPT-small, Qwen2.5-0.5B, Phi-3-mini) com recomendações específicas da plataforma.
-
-### Benchmark e Análise Comparativa
-
-- [docs/BENCHMARK_COMPARISON_ANALYSIS.md](docs/BENCHMARK_COMPARISON_ANALYSIS.md): Análise de desempenho medido entre plataformas, modelos e tamanhos de lote. Contém dados de tempo brutos, estatísticas agregadas e razões de speedup.
-- [BENCHMARK_SUMMARY.md](BENCHMARK_SUMMARY.md): Resumo executivo de resultados de benchmark com achados-chave.
-
-### Recursos Adicionais
-
-- [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md): Passo a passo de configuração com padrões comuns de troubleshooting.
-- [setup/TROUBLESHOOTING.md](setup/TROUBLESHOOTING.md): Guia abrangente de troubleshooting para problemas comuns de configuração e tempo de execução.
-
-
-## Estrutura do Projeto
+## Project Structure
 
 ```
 backend_tcc_mvp/
 ├── app/
-│   ├── api/
-│   │   ├── main.py                    # Ponto de entrada da aplicação FastAPI
-│   │   └── routes.py                  # Definições de endpoint REST
-│   ├── config/
-│   │   ├── config.py                  # Carregador de configuração
-│   │   └── thresholds.yaml            # Parâmetros do motor de regras
-│   ├── core/
-│   │   ├── rule_engine.py             # Regras de classificação
-│   │   └── validators.py              # Validadores de métricas
-│   ├── models/
-│   │   ├── base_model.py              # Base abstrata para SLMs
-│   │   ├── dialogpt_model.py           # Implementação DialoGPT-small
-│   │   ├── qwen_model.py              # Implementação Qwen2.5-0.5B
-│   │   └── phi_model.py               # Implementação Phi-3-mini
-│   ├── pdi/
-│   │   └── illumination.py            # Diagnóstico de Iluminação Física
-│   ├── pipeline/
-│   │   └── illumination_pipeline.py    # Orquestração de processamento em lote
-│   └── utils/
-│       └── templates.py               # Templates de prompts
-├── data/
-│   ├── illumination/                  # Imagens de amostra por categoria
-│   │   ├── bright_overexposed/
-│   │   ├── dark_underexposed/
-│   │   ├── normal/
-│   │   └── uploads/                   # Armazenamento de lote em tempo de execução
-├── docs/
-│   ├── JETSON_NANO_GUIDE.md           # Configuração e implantação de Nano
-│   ├── JETSON_ORIN_GUIDE.md           # Configuração e implantação de Orin
-│   ├── LEGION_GUIDE.md                # Configuração de estação de trabalho de desktop
-│   ├── MODEL_SELECTION.md             # Comparação e seleção de modelo
-│   └── BENCHMARK_COMPARISON_ANALYSIS.md  # Análise de desempenho
-├── tests/
-│   ├── test_api.py                    # Testes de integração da API
-│   ├── test_api_quick.py              # Script de validação rápido
-│   └── manual/                        # Utilitários de teste manual
-├── setup/
-│   ├── jetson-nano/                   # Scripts de configuração específicos de Nano
-│   ├── jetson-orin/                   # Scripts de configuração específicos de Orin
-│   └── legion-windows/                # Configuração de desktop (legado)
-├── outputs/
-│   ├── jetson-nano/                   # Saídas de benchmark de Nano
-│   ├── jetson-orin/                   # Saídas de benchmark de Orin
-│   ├── desktop-legion/                # Saídas de benchmark de desktop
-│   └── benchmark_comparison/          # Resultados de análise comparativa
-├── docker/
-│   └── Dockerfile.jetson-nano         # Imagem de container para Nano
-├── pyproject*.toml                    # Arquivos de configuração Poetry
-│   ├── pyproject.toml                 # Genérico/desenvolvimento
-│   ├── pyproject-jetson-nano.toml     # Dependências específicas de Nano
-│   ├── pyproject-jetson-orin.toml     # Dependências específicas de Orin
-│   └── pyproject-legion.toml          # Dependências específicas de desktop
-├── README.md                          # Este arquivo
-└── SETUP_INSTRUCTIONS.md              # Walkthrough detalhado de configuração
+│   ├── api/            FastAPI application and HTTP routes
+│   ├── config/         Configuration loader and YAML files
+│   ├── core/           Rule engine and output validators
+│   ├── models/         SLM implementations (DialoGPT, Qwen, Phi-3)
+│   ├── pdi/            Illumination analyzer
+│   ├── pipeline/       End-to-end diagnostic pipeline
+│   └── utils/          Fallback explanation templates
+├── benchmarks/         Benchmark plotting scripts and outputs
+├── data/               Input images for validation and testing
+├── outputs/            Benchmark result JSON files by platform
+├── docs/               Technical documentation
+├── setup_legion.ps1
+├── setup_jetson_orin.sh
+├── setup_poetry_nano.sh
+├── pyproject-legion.toml
+├── pyproject-jetson-orin.toml
+└── pyproject-jetson-nano.toml
 ```
 
-## Benchmark de Desempenho
+---
 
-### Executando Benchmarks
+## Documentation
 
-Para gerar medidas detalhadas de desempenho em seu hardware:
+| File | Description |
+|---|---|
+| [docs/PLATFORM_SETUP.md](docs/PLATFORM_SETUP.md) | Platform-specific setup instructions |
+| [docs/MODEL_SELECTION.md](docs/MODEL_SELECTION.md) | Model comparison and selection guidance |
+| [docs/API_GUIDE.md](docs/API_GUIDE.md) | API endpoints, schemas, and usage examples |
+| [docs/BATCH_PERFORMANCE.md](docs/BATCH_PERFORMANCE.md) | Batch inference analysis with performance results |
+| [docs/STRUCTURE.md](docs/STRUCTURE.md) | Repository organization |
 
-```bash
-python benchmark_jetson_vs_legion.py
-```
+---
 
-Este script:
-1. Descobre todos os arquivos JSON de resultado em subdiretórios `outputs/`
-2. Normaliza medidas de tempo e identificadores de modelo
-3. Gera estatísticas comparativas por ambiente e modelo
-4. Produz arquivos CSV para análise posterior
-5. Gera um relatório Markdown com resumos estatísticos e visualizações
+## Research and Academic Context
 
-### Artefatos de Saída de Benchmark
+This project was developed as the final project for the **Robotics and Artificial Intelligence Residency / Postgraduate Program at CIn-UFPE**, Cohort 4, investigating hybrid scene diagnosis pipelines for augmented reality on embedded systems.
 
-Gerados em `outputs/benchmark_comparison/`:
+The main contributions are:
 
-- `runs_raw.csv`: Conjunto de dados completo de todos os lotes individuais e seus timings
-- `summary_by_env_model_batch.csv`: Estatísticas agregadas por (ambiente, modelo, tamanho_lote)
-- `speedup_legion_vs_jetson.csv`: Razões de speedup comparando desktop e desempenho embarcado
-- `benchmark_report.md`: Análise legível por humano com achados-chave
-- `plots/`: Visualizações (se matplotlib estiver instalado)
+1. A hybrid diagnostic pipeline combining deterministic analysis, rule-based classification, and Small Language Model inference
+2. End-to-end deployment and validation across three heterogeneous embedded platforms
+3. An interpretable methodology for evaluating environmental conditions in AR applications
 
-### Interpretando Resultados
+---
 
-Métricas-chave reportadas:
+## Author
 
-- **Latência Média:** Tempo médio de processamento de lote entre execuções
-- **Desvio Padrão:** Desvio padrão de latência (indica consistência)
-- **Taxa de Speedup:** Desempenho de desktop relativo ao embarcado (ex: 3.0 = 3x mais rápido)
-- **Throughput:** Quadros por segundo para tamanho de lote e latência
+**Daniela Amorim de Sá**  
+Electronic Engineer, Universidade Federal de Pernambuco (UFPE)  
+Robotics and Artificial Intelligence Residency / Postgraduate Program, CIn-UFPE, Cohort 4  
+GitHub: [@daniamorimdesa](https://github.com/daniamorimdesa)  
+Email: [daniela.amorimdesa@gmail.com](mailto:daniela.amorimdesa@gmail.com)
 
-## Técnicas de Otimização Aplicadas
+---
 
-### Otimização de Memória
+## License
 
-1. **Precisão Mista (FP16):** Reduz pegada de memória 50% em todas as plataformas
-2. **Seleção de Modelo:** Opções de modelo conservador para ambientes restritos
-3. **Processamento em Lote:** Amortiza custos e overhead fixo
-4. **Pipeline sem Estado:** Nenhum estado persistente entre solicitações
-
-### Otimização de Inferência
-
-1. **Aquecimento no Início:** Elimina latência de início frio de solicitações
-2. **Decodificação Gulosa:** Geração mais rápida de token vs. amostragem
-3. **Ajuste de Prompt:** Janelas de contexto mínimas reduzem computação
-4. **Design Orientado a Características:** Caminho rápido baseado em regras antes da fase SLM opcional
-
-### Considerações Específicas de Hardware
-
-1. **Jetson Nano:** OPENBLAS_CORETYPE=ARMV8 para operações aceleradas por CPU
-2. **Jetson Orin:** Stack CUDA 12.x moderno permite agendamento avançado de instrução
-3. **Desktop Legion:** Otimização irrestrita, vantagens SIMD x86
-
-## Limitações Conhecidas e Trade-offs
-
-1. **Pilha de Software Jetson Nano:** Python 3.6 legado e PyTorch 1.10 limitam acesso a arquiteturas de modelo recentes e recursos de biblioteca. A opção validada DialoGPT-small representa a capacidade máxima dentro destas restrições.
-
-2. **Orientação por Lote:** Esta implementação destina-se a processamento em lote com tamanhos típicos de 10 quadros. Streaming de quadro único em tempo real exigiria mudanças arquiteturais (decodificadores de streaming, enfileiramento de solicitação).
-
-3. **Trade-off Determinístico vs. Qualidade:** Decodificação gulosa em DialoGPT garante reprodutibilidade com custo de qualidade leve comparado a geração baseada em amostragem.
-
-4. **Quantização de Modelo:** Quantização de 4 bits não é suportada em GPU Maxwell (Jetson Nano). Isto limita otimização de memória na plataforma mais restrita.
-
-## Trabalho Futuro e Integração
-
-### Melhorias de Curto Prazo
-
-1. Investigar seleção dinâmica de modelo baseada em tamanho de lote e orçamento de latência
-2. Implementar enfileiramento de solicitação para submissões de lote concorrentes
-3. Adicionar pontuação de confiança a classificações de iluminação
-
-### Direções de Longo Prazo
-
-1. Integração com sistema de diagnóstico AR completo cobrindo múltiplos atributos de cena
-2. Fine-tuning de aprendizado de transferência em conjuntos de dados de iluminação específicos de domínio
-3. Suporte de inferência de streaming para análise AR contínua
-4. Processamento distribuído em múltiplos dispositivos embarcados
-
-## Reprodutibilidade e Preservação de Artefato
-
-Todas as medidas de benchmark, arquivos de configuração e resultados de validação são preservados na estrutura de diretório `outputs/` organizada por plataforma e timestamp. Isto permite:
-
-1. Comparação reproduzível de mudanças de otimização
-2. Validação contra metas de desempenho documentadas
-3. Rastreamento histórico da evolução de capacidade da plataforma
-
-Para reproduzir uma configuração de benchmark específica, consulte o diretório correspondente sob `outputs/`:
-
-```bash
-outputs/
-├── jetson-nano/
-│   ├── batch_10_qwen_*_result.json
-│   ├── batch_10_dialogpt_*_result.json
-│   └── summary.json
-├── jetson-orin/
-│   ├── batch_10_qwen_*_result.json
-│   ├── batch_10_phi_*_result.json
-│   └── summary.json
-└── desktop-legion/
-    ├── batch_10_qwen_*_result.json
-    ├── batch_10_phi_*_result.json
-    └── summary.json
-```
-l
+This project is released under the **MIT License**. See [LICENSE](LICENSE) for details.

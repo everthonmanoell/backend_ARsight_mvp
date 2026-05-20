@@ -1,24 +1,24 @@
 #!/bin/bash
 
-# Script de configuração automatica para Jetson AGX Orin
-# Usa pyproject-jetson.toml como configuracao ativa
+# Automatic setup script for Jetson AGX Orin
+# Uses pyproject-jetson-orin.toml as the active Poetry configuration.
 #
-# COMO EXECUTAR (da raiz do projeto):
+# HOW TO RUN from the project root:
 #   bash setup_jetson_orin.sh
 #
-# Este script:
-# 1. Ativa o pyproject-jetson-orin.toml copiando para pyproject.toml
-# 2. Reconstrói o poetry.lock para o ambiente Jetson Orin
-# 3. Instala as dependencias do projeto com Poetry
-# 4. Verifica versoes de torch e accelerate
-# 5. Reinstala torch/accelerate apenas se necessario
-# 6. Verifica disponibilidade de CUDA
+# This script:
+# 1. Activates pyproject-jetson-orin.toml by copying it to pyproject.toml.
+# 2. Rebuilds poetry.lock for the Jetson Orin environment.
+# 3. Installs project dependencies with Poetry.
+# 4. Checks installed torch and accelerate versions.
+# 5. Reinstalls torch/accelerate only when needed.
+# 6. Verifies CUDA availability.
 #
-# Requer:
-# - Poetry instalado
-# - Python compativel com o projeto
-# - CUDA configurado na Jetson Orin
-# - acesso ao indice Jetson AI Lab
+# Requirements:
+# - Poetry installed.
+# - Python compatible with the project.
+# - CUDA configured on Jetson AGX Orin.
+# - Access to the Jetson AI Lab package index.
 
 set -e
 
@@ -32,22 +32,22 @@ POETRY_LOCK="$PROJECT_ROOT/poetry.lock"
 
 echo ""
 echo "=============================================="
-echo "Configuracao Jetson AGX Orin"
+echo "Jetson AGX Orin Setup"
 echo "=============================================="
-echo "Diretorio: $PROJECT_ROOT"
+echo "Project directory: $PROJECT_ROOT"
 echo ""
 
 cd "$PROJECT_ROOT"
 
-# Etapa 0: Verificar pre-requisitos
-echo "0 - Verificando pre-requisitos..."
+# Step 0: Check prerequisites.
+echo "0 - Checking prerequisites..."
 echo ""
 
 if command -v python3 >/dev/null 2>&1; then
     PYTHON_VERSION=$(python3 --version 2>&1)
     echo "  OK Python: $PYTHON_VERSION"
 else
-    echo "  ERRO Python3 nao encontrado. Instale uma versao compativel."
+    echo "  ERROR Python3 not found. Install a compatible version."
     exit 1
 fi
 
@@ -55,72 +55,72 @@ if command -v poetry >/dev/null 2>&1; then
     POETRY_VERSION=$(poetry --version 2>&1)
     echo "  OK Poetry: $POETRY_VERSION"
 else
-    echo "  ERRO Poetry nao encontrado. Instale antes de continuar."
+    echo "  ERROR Poetry not found. Install Poetry before continuing."
     exit 1
 fi
 
 if command -v nvidia-smi >/dev/null 2>&1; then
-    echo "  OK NVIDIA Driver: disponivel"
+    echo "  OK NVIDIA driver: available"
 else
-    echo "  AVISO nvidia-smi nao encontrado. Isso pode ser normal em alguns setups Jetson."
+    echo "  WARNING nvidia-smi not found. This may be normal on some Jetson setups."
 fi
 
-# Etapa 1: Ativar configuracao Jetson Orin
+# Step 1: Activate Jetson Orin configuration.
 echo ""
-echo "1 - Copiando configuracao Jetson Orin..."
+echo "1 - Copying Jetson Orin configuration..."
 
 if [ ! -f "$JETSON_TOML" ]; then
-    echo "  ERRO pyproject-jetson-orin.toml nao encontrado em:"
+    echo "  ERROR pyproject-jetson-orin.toml not found at:"
     echo "  $JETSON_TOML"
     exit 1
 fi
 
 cp "$JETSON_TOML" "$PYPROJECT_TOML"
-echo "  OK Copiado pyproject-jetson-orin.toml para pyproject.toml"
-echo "  INFO Arquivo original preservado (sem renomeacao)"
+echo "  OK Copied pyproject-jetson-orin.toml to pyproject.toml"
+echo "  INFO Original file preserved"
 
-# Etapa 2: Reconstruir arquivo lock
+# Step 2: Rebuild lock file.
 echo ""
-echo "2 - Reconstruindo poetry.lock para Jetson Orin..."
+echo "2 - Rebuilding poetry.lock for Jetson Orin..."
 
 if [ -f "$POETRY_LOCK" ]; then
     rm -f "$POETRY_LOCK"
-    echo "  OK Removido poetry.lock anterior"
+    echo "  OK Removed previous poetry.lock"
 fi
 
-echo "  Rodando poetry lock..."
+echo "  Running poetry lock..."
 poetry lock
-echo "  OK poetry.lock criado"
+echo "  OK poetry.lock created"
 
-# Etapa 3: Instalar dependencias Poetry
+# Step 3: Install Poetry dependencies.
 echo ""
-echo "3 - Instalando dependencias do projeto..."
-echo "  Rodando poetry install..."
+echo "3 - Installing project dependencies..."
+echo "  Running poetry install..."
 poetry install
-echo "  OK Dependencias instaladas"
+echo "  OK Dependencies installed"
 
-# Funcao para verificar versao de pacote dentro do ambiente Poetry
+# Helper function to check package version inside the Poetry environment.
 check_package_version() {
     local package_name="$1"
 
-    poetry run python3 - <<PY 2>/dev/null || echo "NAO_INSTALADO"
+    poetry run python3 - <<PY 2>/dev/null || echo "NOT_INSTALLED"
 try:
     import ${package_name}
     print(${package_name}.__version__)
 except Exception:
-    print("NAO_INSTALADO")
+    print("NOT_INSTALLED")
 PY
 }
 
-# Etapa 4: Verificar versoes instaladas
+# Step 4: Check installed versions.
 echo ""
-echo "4 - Verificando versoes instaladas..."
+echo "4 - Checking installed versions..."
 
 TORCH_INSTALLED=$(check_package_version "torch")
 ACCELERATE_INSTALLED=$(check_package_version "accelerate")
 
-echo "  • torch:      $TORCH_INSTALLED (requerido: $TORCH_VERSION)"
-echo "  • accelerate: $ACCELERATE_INSTALLED (requerido: $ACCELERATE_VERSION)"
+echo "  - torch:      $TORCH_INSTALLED (required: $TORCH_VERSION)"
+echo "  - accelerate: $ACCELERATE_INSTALLED (required: $ACCELERATE_VERSION)"
 
 NEED_TORCH=false
 NEED_ACCELERATE=false
@@ -133,30 +133,30 @@ if [ "$ACCELERATE_INSTALLED" != "$ACCELERATE_VERSION" ]; then
     NEED_ACCELERATE=true
 fi
 
-# Etapa 5: Instalar/atualizar accelerate se necessario
+# Step 5: Install/update accelerate when needed.
 echo ""
 if [ "$NEED_ACCELERATE" = true ]; then
-    echo "5 - Instalando accelerate $ACCELERATE_VERSION..."
+    echo "5 - Installing accelerate $ACCELERATE_VERSION..."
     poetry run pip install --no-deps "accelerate==$ACCELERATE_VERSION"
-    echo "  OK accelerate atualizado"
+    echo "  OK accelerate updated"
 else
-    echo "5 - accelerate ja esta na versao correta"
+    echo "5 - accelerate is already at the required version"
 fi
 
-# Etapa 6: Instalar/atualizar torch se necessario
+# Step 6: Install/update torch when needed.
 echo ""
 if [ "$NEED_TORCH" = true ]; then
-    echo "6 - Instalando torch $TORCH_VERSION do Jetson AI Lab..."
+    echo "6 - Installing torch $TORCH_VERSION from Jetson AI Lab..."
     poetry run pip install --force-reinstall --no-cache-dir "torch==$TORCH_VERSION" \
         --index-url https://pypi.jetson-ai-lab.io/jp6/cu126
-    echo "  OK torch atualizado"
+    echo "  OK torch updated"
 else
-    echo "6 - torch ja esta na versao correta"
+    echo "6 - torch is already at the required version"
 fi
 
-# Etapa 7: Verificar instalacao final
+# Step 7: Verify final installation.
 echo ""
-echo "7 - Verificando instalacao..."
+echo "7 - Verifying installation..."
 
 poetry run python3 <<'VERIFY'
 import sys
@@ -168,26 +168,26 @@ print(f"OK accelerate:   {accelerate.__version__}")
 print(f"OK CUDA:         {torch.cuda.is_available()}")
 
 if torch.cuda.is_available():
-    print(f"OK Dispositivo:   {torch.cuda.get_device_name(0)}")
+    print(f"OK device:       {torch.cuda.get_device_name(0)}")
 else:
-    print("ERRO CUDA nao esta disponivel!")
+    print("ERROR CUDA is not available.")
     sys.exit(1)
 VERIFY
 
 echo ""
 echo "=============================================="
-echo "OK Configuracao concluida!"
+echo "OK Setup completed successfully!"
 echo "=============================================="
 echo ""
-echo "Proximos passos:"
+echo "Next steps:"
 echo ""
-echo "  Para rodar a API REST:"
+echo "  To run the REST API:"
 echo "    poetry run ar-api"
 echo ""
-echo "  Para executar o pipeline de teste:"
+echo "  To run the manual pipeline test:"
 echo "    poetry run python tests/manual/test_pipeline.py"
 echo ""
-echo "  Para rodar testes unitarios:"
+echo "  To run unit tests:"
 echo "    poetry run pytest tests/"
 echo ""
 echo "=============================================="

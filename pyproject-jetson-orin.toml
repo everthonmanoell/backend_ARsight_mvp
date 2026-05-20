@@ -1,24 +1,50 @@
+# -------------------------------------------------------------------------------------------------------------
+# pyproject-jetson-orin.toml | Jetson AGX Orin configuration
+#
+# Environment: Jetson AGX Orin
+# JetPack: 6.x
+# CUDA: 12.x / Jetson AI Lab wheels
+# Python: 3.10+
+#
+# Note:
+# torch and accelerate are verified and installed by setup_jetson_orin.sh
+# because Jetson wheels may require platform-specific package indexes.
+# -------------------------------------------------------------------------------------------------------------
+
 [tool.poetry]
 name = "ar-diagnostic-mvp"
 version = "0.1.0"
-description = "AR Scene Illumination Diagnostic MVP - Jetson Optimized"
-authors = ["Your Name <you@example.com>"]
+description = "AR Scene Illumination Diagnostic MVP - Jetson AGX Orin"
+authors = ["Daniela Amorim de Sá <daniela.amorimdesa@gmail.com>"]
 readme = "README.md"
-packages = [{include = "app"}]
+packages = [{ include = "app" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+
+# API
 fastapi = "^0.115.0"
 uvicorn = { extras = ["standard"], version = "^0.32.0" }
 python-multipart = "^0.0.17"
+
+# Utilities
 pyyaml = "^6.0.2"
 pillow = "^11.0.0"
 numpy = ">=1.26.0,<2.0"
-opencv-python-headless = "4.10.0.84"
-transformers = "^4.30.0"
 scipy = "^1.14.1"
 requests = "^2.32.5"
-# NOTE: torch, accelerate, transformers extras are installed separately per platform (see setup_jetson.sh)
+matplotlib = "^3.8.0"
+
+# Computer vision
+opencv-python-headless = "4.10.0.84"
+
+# Machine learning / SLM inference
+transformers = "^4.30.0"
+
+# NOTE:
+# torch and accelerate are handled by setup_jetson_orin.sh.
+# They are not pinned here because Jetson installations often require
+# platform-specific wheels and indexes.
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"

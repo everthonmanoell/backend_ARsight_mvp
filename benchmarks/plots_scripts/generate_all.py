@@ -1,16 +1,21 @@
 """
 Generate All Benchmark Plots
 
-Coordinator script that runs all individual plots and generates report
+Coordinator script that runs all individual plot scripts and generates an HTML
+report with the resulting figures.
 
-use: poetry run python benchmarks/plots_scripts/generate_all.py
+Usage:
+    poetry run python benchmarks/plots_scripts/generate_all.py
 """
 
 import sys
+import traceback
 from pathlib import Path
+from typing import Callable, Dict, List, Tuple
 
-# Add parent to path to import data_loader
-sys.path.insert(0, str(Path(__file__).parent))
+# Allow importing local plotting utilities when running from the project root.
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from data_loader import BenchmarkLoader
 from plot_01_env_performance import plot_env_performance
@@ -25,122 +30,152 @@ from plot_09_desktop_legion_performance import plot_desktop_legion
 from plot_10_qwen_cpu_vs_gpu_nano import plot_qwen_cpu_vs_gpu
 
 
-def generate_all_plots(outputs_base: Path = Path("../../outputs"), 
-                      plots_output_dir: Path = Path("../plots_output")) -> None:
-    """Runs all plots"""
-    
+def generate_all_plots(
+    outputs_base: Path = None,
+    plots_output_dir: Path = None,
+) -> None:
+    """Run all benchmark plot generators and create the HTML report."""
+    if outputs_base is None:
+        outputs_base = SCRIPT_DIR.parent.parent / "outputs"
+
+    if plots_output_dir is None:
+        plots_output_dir = SCRIPT_DIR.parent / "plots_output"
+
     print("=" * 80)
-    print("🎨 GENERATING ALL BENCHMARK CHARTS")
+    print("GENERATING ALL BENCHMARK CHARTS")
     print("=" * 80)
-    
-    # Create output directories
+
     plots_output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Load data
-    print("\n📊 Loading data from JSON files...")
+
+    print("\nLoading data from JSON files...")
     loader = BenchmarkLoader(outputs_base)
     stats = loader.stats()
-    
-    print(f"  ✅ Total runs: {stats.get('total_runs', 0)}")
-    print(f"  ✅ Environments: {stats.get('environments', [])}")
-    print(f"  ✅ Models: {stats.get('models', [])}")
-    print(f"  ✅ Batches: {stats.get('batches', [])}")
-    
-    # Run each plot
+
+    print(f"  Total runs: {stats.get('total_runs', 0)}")
+    print(f"  Environments: {stats.get('environments', [])}")
+    print(f"  Models: {stats.get('models', [])}")
+    print(f"  Batches: {stats.get('batches', [])}")
+
     print("\n" + "=" * 80)
-    print("🎯 GENERATING PLOTS")
+    print("GENERATING PLOTS")
     print("=" * 80)
-    
-    plots = [
-        ("Performance by Environment - Latency", plot_env_performance),
-        ("Model Comparison - Latency & Accuracy", plot_model_comparison),
+
+    plots: List[Tuple[str, Callable[[BenchmarkLoader, Path], None]]] = [
+        ("Performance by Environment - Latency and Throughput", plot_env_performance),
+        ("Model Comparison - Latency and Accuracy", plot_model_comparison),
         ("Accuracy by Batch", plot_accuracy_by_batch),
         ("Latency Distribution", plot_latency_distribution),
         ("Cross-Environment Speedup", plot_cross_env_comparison),
         ("PDI vs SLM", plot_slm_vs_pdi),
         ("Jetson Nano Performance", plot_jetson_nano),
-        ("Jetson Orin Performance", plot_jetson_orin),
+        ("Jetson AGX Orin Performance", plot_jetson_orin),
         ("Desktop Legion Performance", plot_desktop_legion),
         ("Qwen CPU vs GPU on Jetson Nano", plot_qwen_cpu_vs_gpu),
     ]
-    
-    for i, (description, plot_func) in enumerate(plots, 1):
-        print(f"\n[{i}/{len(plots)}] {description}...")
+
+    failed_plots = []
+
+    for idx, (description, plot_func) in enumerate(plots, 1):
+        print(f"\n[{idx}/{len(plots)}] {description}...")
+
         try:
             plot_func(loader, plots_output_dir)
-        except Exception as e:
-            print(f"  ❌ Error: {e}")
-            import traceback
+        except Exception as exc:
+            failed_plots.append(description)
+            print(f"  ERROR: {exc}")
             traceback.print_exc()
-    
-    # Generate HTML report
+
     print("\n" + "=" * 80)
-    print("📄 GENERATING HTML REPORT")
+    print("GENERATING HTML REPORT")
     print("=" * 80)
-    
+
     generate_html_report(loader, plots_output_dir, stats)
-    
+
     print("\n" + "=" * 80)
-    print("✅ ALL CHARTS GENERATED SUCCESSFULLY!")
-    print("=" * 80)
-    print(f"\n📂 Charts saved in: {plots_output_dir.resolve()}")
-    print(f"📊 Summary statistics:")
-    print(f"   - Average SLM latency: {stats.get('avg_slm_per_diag', 0):.3f}s")
-    print(f"   - Average Accuracy: {stats.get('avg_accuracy', 0):.1f}%")
-    print(f"   - Target achievement rate: {stats.get('target_met_rate', 0)*100:.1f}%")
+
+    if failed_plots:
+        print("PLOTS GENERATED WITH WARNINGS")
+        print("=" * 80)
+        print("The following plots failed:")
+        for plot_name in failed_plots:
+            print(f"  - {plot_name}")
+    else:
+        print("ALL CHARTS GENERATED SUCCESSFULLY")
+        print("=" * 80)
+
+    print(f"\nCharts saved in: {plots_output_dir.resolve()}")
+    print("Summary statistics:")
+    print(f"  - Average SLM latency: {stats.get('avg_slm_per_diag', 0):.3f}s")
+    print(f"  - Average accuracy: {stats.get('avg_accuracy', 0):.1f}%")
+    print(f"  - Target achievement rate: {stats.get('target_met_rate', 0) * 100:.1f}%")
 
 
-def generate_html_report(loader: BenchmarkLoader, plots_dir: Path, stats: dict) -> None:
-    """Generates HTML report with charts"""
-    
-    # List of images with descriptions
+def generate_html_report(
+    loader: BenchmarkLoader,
+    plots_dir: Path,
+    stats: Dict,
+) -> None:
+    """Generate an HTML report with all benchmark charts."""
+
     plot_descriptions = {
-        # Environment Performance
-        "01_env_latency.png": "Environment Performance - SLM Latency across Nano, Orin and Legion",
-        "01_env_throughput.png": "Environment Performance - Throughput (diagnoses/sec) across environments",
-        
-        # Model Comparison
-        "02_model_latency.png": "Model Comparison - SLM Latency for DialoGPT, Qwen and Phi by environment",
+        "01_env_latency.png": "Environment Performance - SLM latency across Nano, Orin, and Legion",
+        "01_env_throughput.png": "Environment Performance - Throughput across environments",
+        "02_model_latency.png": "Model Comparison - SLM latency for DialoGPT, Qwen, and Phi by environment",
         "02_model_accuracy.png": "Model Comparison - Accuracy for each model across environments",
-        
-        # Accuracy Consistency
-        "03_accuracy_by_batch.png": "Accuracy by Batch - Verification of model consistency across test batches",
-        
-        # Latency Distribution
-        "04_latency_distribution.png": "Latency Distribution - Boxplot showing variability and outliers across models",
-        
-        # Cross-Environment Performance
-        "05_cross_env_speedup.png": "Cross-Environment Speedup - Relative performance comparison vs Desktop Legion baseline",
-        
-        # Component Analysis
-        "06_pdi_vs_slm.png": "PDI vs SLM Analysis - Identifying bottleneck components (vision vs language)",
-        
-        # Per-Environment Analysis
-        "07_jetson_nano_latency.png": "Jetson Nano - SLM Latency by Model",
-        "07_jetson_nano_throughput.png": "Jetson Nano - Throughput by Model",
-        "07_jetson_nano_success.png": "Jetson Nano - Target Success Rate by Model",
-        
-        "08_jetson_orin_latency.png": "Jetson Orin - SLM Latency by Model",
-        "08_jetson_orin_throughput.png": "Jetson Orin - Throughput by Model",
-        "08_jetson_orin_success.png": "Jetson Orin - Target Success Rate by Model",
-        
-        "09_desktop_legion_latency.png": "Desktop Legion - SLM Latency by Model",
-        "09_desktop_legion_throughput.png": "Desktop Legion - Throughput by Model",
-        "09_desktop_legion_success.png": "Desktop Legion - Target Success Rate by Model",
-        
-        # Special Analysis
-        "10_qwen_nano_latency_cpu_vs_gpu.png": "Qwen on Jetson Nano - CPU vs GPU Latency Comparison",
-        "10_qwen_nano_throughput_cpu_vs_gpu.png": "Qwen on Jetson Nano - CPU vs GPU Throughput Comparison",
-        "10_qwen_nano_success_cpu_vs_gpu.png": "Qwen on Jetson Nano - CPU vs GPU Target Success Rate",
+        "03_accuracy_by_batch.png": "Accuracy by Batch - Consistency across test batches",
+        "04_latency_distribution.png": "Latency Distribution - Variability and outliers across environments",
+        "05_cross_env_speedup.png": "Cross-Environment Speedup - Relative performance against Desktop Legion baseline",
+        "06_pdi_vs_slm.png": "PDI vs SLM Analysis - Bottleneck comparison between vision and language components",
+        "07_jetson_nano_latency.png": "Jetson Nano - SLM latency by model",
+        "07_jetson_nano_throughput.png": "Jetson Nano - Throughput by model",
+        "07_jetson_nano_success.png": "Jetson Nano - Target success rate by model",
+        "08_jetson_orin_latency.png": "Jetson AGX Orin - SLM latency by model",
+        "08_jetson_orin_throughput.png": "Jetson AGX Orin - Throughput by model",
+        "08_jetson_orin_success.png": "Jetson AGX Orin - Target success rate by model",
+        "09_desktop_legion_latency.png": "Desktop Legion - SLM latency by model",
+        "09_desktop_legion_throughput.png": "Desktop Legion - Throughput by model",
+        "09_desktop_legion_success.png": "Desktop Legion - Target success rate by model",
+        "10_qwen_nano_latency_cpu_vs_gpu.png": "Qwen on Jetson Nano - CPU vs GPU latency comparison",
+        "10_qwen_nano_throughput_cpu_vs_gpu.png": "Qwen on Jetson Nano - CPU vs GPU throughput comparison",
+        "10_qwen_nano_success_cpu_vs_gpu.png": "Qwen on Jetson Nano - CPU vs GPU target success rate",
     }
-    
+
+    def render_plot(img_name: str) -> str:
+        """Render one image block if the image exists."""
+        img_path = plots_dir / img_name
+
+        if not img_path.exists():
+            return ""
+
+        description = plot_descriptions.get(img_name, img_name)
+
+        return f"""
+        <div class="plot-container">
+            <h4>{description}</h4>
+            <img src="{img_name}" alt="{img_name}">
+        </div>
+"""
+
+    def render_section(title: str, image_names: List[str], subtitle: str = None) -> str:
+        """Render a complete report section."""
+        subtitle_html = f"<h3>{subtitle}</h3>" if subtitle else ""
+        plots_html = "".join(render_plot(img_name) for img_name in image_names)
+
+        return f"""
+    <div class="section">
+        <h2>{title}</h2>
+        {subtitle_html}
+        {plots_html}
+    </div>
+"""
+
     html_content = f"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Benchmark Report - Thesis</title>
+    <title>Benchmark Report - AR Diagnostic MVP</title>
     <style>
         body {{
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -201,8 +236,6 @@ def generate_html_report(loader: BenchmarkLoader, plots_dir: Path, stats: dict) 
         }}
         .section h2 {{
             margin-top: 0;
-            border-bottom: 3px solid #007acc;
-            padding-bottom: 10px;
         }}
         .plot-container {{
             background: white;
@@ -218,8 +251,6 @@ def generate_html_report(loader: BenchmarkLoader, plots_dir: Path, stats: dict) 
         }}
         .plot-container h4 {{
             margin-top: 0;
-            color: #333;
-            border: none;
             font-size: 13px;
             color: #666;
         }}
@@ -234,10 +265,10 @@ def generate_html_report(loader: BenchmarkLoader, plots_dir: Path, stats: dict) 
     </style>
 </head>
 <body>
-    <h1>📊 Benchmark Report - AR Diagnostic MVP (Thesis)</h1>
-    
+    <h1>Benchmark Report - AR Diagnostic MVP</h1>
+
     <div class="summary">
-        <h2>📈 Executive Summary</h2>
+        <h2>Executive Summary</h2>
         <div class="stat-grid">
             <div class="stat-box">
                 <h3>Total Runs</h3>
@@ -265,181 +296,107 @@ def generate_html_report(loader: BenchmarkLoader, plots_dir: Path, stats: dict) 
             </div>
             <div class="stat-box">
                 <h3>Target Met Rate</h3>
-                <div class="value">{stats.get('target_met_rate', 0)*100:.1f}%</div>
+                <div class="value">{stats.get('target_met_rate', 0) * 100:.1f}%</div>
             </div>
         </div>
     </div>
-    
+
     <div class="summary">
-        <h2>ℹ️ General Information</h2>
+        <h2>General Information</h2>
         <ul>
             <li><strong>Environments:</strong> {', '.join(sorted(stats.get('environments', [])))}</li>
             <li><strong>Models:</strong> {', '.join(sorted(stats.get('models', [])))}</li>
             <li><strong>Batches:</strong> {', '.join(sorted(stats.get('batches', [])))}</li>
         </ul>
     </div>
-    
-    <div class="section">
-        <h2>🌍 Environment Performance</h2>
 """
-    
-    # Add images organized by section
-    # Environment Performance
-    for img_name in ["01_env_latency.png", "01_env_throughput.png"]:
-        img_path = plots_dir / img_name
-        if img_path.exists():
-            html_content += f"""
-    <div class="plot-container">
-        <h4>{plot_descriptions.get(img_name, img_name)}</h4>
-        <img src="{img_name}" alt="{img_name}">
-    </div>
-"""
-    
+
+    html_content += render_section(
+        "Environment Performance",
+        ["01_env_latency.png", "01_env_throughput.png"],
+    )
+
+    html_content += render_section(
+        "Model Comparison",
+        ["02_model_latency.png", "02_model_accuracy.png"],
+    )
+
+    html_content += render_section(
+        "Consistency and Distribution",
+        ["03_accuracy_by_batch.png", "04_latency_distribution.png"],
+    )
+
+    html_content += render_section(
+        "Cross-Environment and Component Analysis",
+        ["05_cross_env_speedup.png", "06_pdi_vs_slm.png"],
+    )
+
     html_content += """
-    </div>
-    
     <div class="section">
-        <h2>🤖 Model Comparison</h2>
-"""
-    
-    # Model Comparison
-    for img_name in ["02_model_latency.png", "02_model_accuracy.png"]:
-        img_path = plots_dir / img_name
-        if img_path.exists():
-            html_content += f"""
-    <div class="plot-container">
-        <h4>{plot_descriptions.get(img_name, img_name)}</h4>
-        <img src="{img_name}" alt="{img_name}">
-    </div>
-"""
-    
-    html_content += """
-    </div>
-    
-    <div class="section">
-        <h2>📊 Consistency & Distribution</h2>
-"""
-    
-    # Consistency
-    for img_name in ["03_accuracy_by_batch.png", "04_latency_distribution.png"]:
-        img_path = plots_dir / img_name
-        if img_path.exists():
-            html_content += f"""
-    <div class="plot-container">
-        <h4>{plot_descriptions.get(img_name, img_name)}</h4>
-        <img src="{img_name}" alt="{img_name}">
-    </div>
-"""
-    
-    html_content += """
-    </div>
-    
-    <div class="section">
-        <h2>⚡ Cross-Environment & Component Analysis</h2>
-"""
-    
-    # Analysis
-    for img_name in ["05_cross_env_speedup.png", "06_pdi_vs_slm.png"]:
-        img_path = plots_dir / img_name
-        if img_path.exists():
-            html_content += f"""
-    <div class="plot-container">
-        <h4>{plot_descriptions.get(img_name, img_name)}</h4>
-        <img src="{img_name}" alt="{img_name}">
-    </div>
-"""
-    
-    html_content += """
-    </div>
-    
-    <div class="section">
-        <h2>🖥️ Per-Environment Performance Analysis</h2>
-        
+        <h2>Per-Environment Performance Analysis</h2>
+
         <h3>Jetson Nano</h3>
 """
-    
-    # Jetson Nano
-    for img_name in ["07_jetson_nano_latency.png", "07_jetson_nano_throughput.png", "07_jetson_nano_success.png"]:
-        img_path = plots_dir / img_name
-        if img_path.exists():
-            html_content += f"""
-    <div class="plot-container">
-        <h4>{plot_descriptions.get(img_name, img_name)}</h4>
-        <img src="{img_name}" alt="{img_name}">
-    </div>
-"""
-    
+
+    for img_name in [
+        "07_jetson_nano_latency.png",
+        "07_jetson_nano_throughput.png",
+        "07_jetson_nano_success.png",
+    ]:
+        html_content += render_plot(img_name)
+
     html_content += """
-        <h3>Jetson Orin</h3>
+        <h3>Jetson AGX Orin</h3>
 """
-    
-    # Jetson Orin
-    for img_name in ["08_jetson_orin_latency.png", "08_jetson_orin_throughput.png", "08_jetson_orin_success.png"]:
-        img_path = plots_dir / img_name
-        if img_path.exists():
-            html_content += f"""
-    <div class="plot-container">
-        <h4>{plot_descriptions.get(img_name, img_name)}</h4>
-        <img src="{img_name}" alt="{img_name}">
-    </div>
-"""
-    
+
+    for img_name in [
+        "08_jetson_orin_latency.png",
+        "08_jetson_orin_throughput.png",
+        "08_jetson_orin_success.png",
+    ]:
+        html_content += render_plot(img_name)
+
     html_content += """
         <h3>Desktop Legion</h3>
 """
-    
-    # Desktop Legion
-    for img_name in ["09_desktop_legion_latency.png", "09_desktop_legion_throughput.png", "09_desktop_legion_success.png"]:
-        img_path = plots_dir / img_name
-        if img_path.exists():
-            html_content += f"""
-    <div class="plot-container">
-        <h4>{plot_descriptions.get(img_name, img_name)}</h4>
-        <img src="{img_name}" alt="{img_name}">
-    </div>
-"""
-    
+
+    for img_name in [
+        "09_desktop_legion_latency.png",
+        "09_desktop_legion_throughput.png",
+        "09_desktop_legion_success.png",
+    ]:
+        html_content += render_plot(img_name)
+
     html_content += """
     </div>
-    
-    <div class="section">
-        <h2>🔬 Special Analysis: Qwen CPU vs GPU on Jetson Nano</h2>
 """
-    
-    # Qwen CPU vs GPU
-    for img_name in ["10_qwen_nano_latency_cpu_vs_gpu.png", "10_qwen_nano_throughput_cpu_vs_gpu.png", "10_qwen_nano_success_cpu_vs_gpu.png"]:
-        img_path = plots_dir / img_name
-        if img_path.exists():
-            html_content += f"""
-    <div class="plot-container">
-        <h4>{plot_descriptions.get(img_name, img_name)}</h4>
-        <img src="{img_name}" alt="{img_name}">
-    </div>
-"""
-    
+
+    html_content += render_section(
+        "Special Analysis: Qwen CPU vs GPU on Jetson Nano",
+        [
+            "10_qwen_nano_latency_cpu_vs_gpu.png",
+            "10_qwen_nano_throughput_cpu_vs_gpu.png",
+            "10_qwen_nano_success_cpu_vs_gpu.png",
+        ],
+    )
+
     html_content += """
-    </div>
-    
     <footer>
-        <p>Automatically generated by benchmark analysis script</p>
-        <p>High resolution charts (300 DPI) ready for inclusion in documents and presentations</p>
-        <p>📌 Note: Each plot focuses on a single metric for clarity and flexibility in selection for final thesis</p>
+        <p>Automatically generated by the benchmark analysis script.</p>
+        <p>High-resolution charts (300 DPI) ready for inclusion in documents and presentations.</p>
+        <p>Note: each plot focuses on a single metric for clarity and flexibility in final thesis figure selection.</p>
     </footer>
 </body>
 </html>
 """
-    
+
     report_file = plots_dir / "index.html"
-    with open(report_file, "w", encoding="utf-8") as f:
-        f.write(html_content)
-    
-    print(f"✅ HTML report saved in: {report_file}")
+
+    with open(report_file, "w", encoding="utf-8") as file:
+        file.write(html_content)
+
+    print(f"HTML report saved to: {report_file}")
 
 
 if __name__ == "__main__":
-    # Run from this directory (plots_scripts)
-    current_dir = Path(__file__).parent
-    outputs_base = current_dir.parent.parent / "outputs"
-    plots_output = current_dir.parent / "plots_output"
-    
-    generate_all_plots(outputs_base, plots_output)
+    generate_all_plots()

@@ -1,41 +1,51 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# pyproject-legion.toml — Configuração para NVIDIA Legion (Desktop com GPU DESKTOP)
+# -------------------------------------------------------------------------------------------------------------
+# pyproject-legion.toml | Desktop Legion configuration
 #
-# Ambiente: Linux Legion com GPU NVIDIA (RTX 3080 / 4090 / etc)
+# Environment: Linux desktop with NVIDIA GPU
+# Tested target: Desktop Legion with NVIDIA RTX GPU
 # CUDA: 12.1+
 # Python: 3.10+
-# ─────────────────────────────────────────────────────────────────────────────
+# -------------------------------------------------------------------------------------------------------------
 
 [tool.poetry]
 name = "ar-diagnostic-mvp"
 version = "0.1.0"
 description = "AR Scene Illumination Diagnostic MVP - Desktop NVIDIA GPU"
-authors = ["Your Name <you@example.com>"]
+authors = ["Daniela Amorim de Sá <daniela.amorimdesa@gmail.com>"]
 readme = "README.md"
-packages = [{include = "app"}]
+packages = [{ include = "app" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+
+# API
 fastapi = "^0.115.0"
-uvicorn = {extras = ["standard"], version = "^0.32.0"}
+uvicorn = { extras = ["standard"], version = "^0.32.0" }
 python-multipart = "^0.0.17"
+
+# Utilities
 pyyaml = "^6.0.2"
 pillow = "^11.0.0"
 numpy = "^2.1.3"
+scipy = "^1.14.1"
+requests = "^2.32.5"
+matplotlib = "^3.8.0"
+
+# Computer vision
 opencv-python = "^4.10.0.84"
-torch = {version = "^2.5", source = "pytorch-cu121"}
+
+# Machine learning / SLM inference
+torch = { version = "^2.5", source = "pytorch-cu121" }
 transformers = "^5.2.0"
 accelerate = "^1.2.1"
 bitsandbytes = "^0.49.2"
-scipy = "^1.14.1"
-requests = "^2.32.5"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
 pytest-asyncio = "^0.24.0"
 httpx = "^0.28.1"
 
-# ┌─ Fonte oficial do PyTorch para CUDA 12.1 (Desktop) ┐
+# Official PyTorch wheel source for CUDA 12.1 desktop environments.
 [[tool.poetry.source]]
 name = "pytorch-cu121"
 url = "https://download.pytorch.org/whl/cu121"

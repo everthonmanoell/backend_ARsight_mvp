@@ -1,28 +1,34 @@
-version: '3.8'
+version: "3.8"
 
 services:
   ar-diagnostic-mvp:
     build:
       context: .
       dockerfile: docker/Dockerfile.jetson-nano
+
     container_name: ar-diagnostic-mvp
+
     ports:
       - "8000:8000"
+
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
       - ./models/cache:/app/models/cache
       - ./outputs:/app/outputs
+
     environment:
-      - TRANSFORMERS_CACHE=/app/models/cache
       - PYTHONUNBUFFERED=1
+      - HF_HOME=/app/models/cache
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - AR_CONFIG_FILE=/app/app/config/thresholds.jetson.yaml
+
     runtime: nvidia
     restart: unless-stopped
+
     deploy:
       resources:
         limits:
-          cpus: '4'
+          cpus: "4"
           memory: 2G

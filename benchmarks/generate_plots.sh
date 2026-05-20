@@ -1,50 +1,58 @@
 #!/bin/bash
-# Quick script to generate all benchmark plots
+# Quick script to generate all benchmark plots.
 
 set -e
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLOTS_SCRIPTS_DIR="$SCRIPT_DIR/plots_scripts"
+PLOTS_OUTPUT="$SCRIPT_DIR/plots_output"
+GENERATE_ALL="$PLOTS_SCRIPTS_DIR/generate_all.py"
 
-echo "╔════════════════════════════════════════════════════════════╗"
-echo "║      Gerando Gráficos de Benchmark                         ║"
-echo "╚════════════════════════════════════════════════════════════╝"
+echo "============================================================"
+echo "Generating benchmark plots"
+echo "============================================================"
+
+if [ ! -f "$GENERATE_ALL" ]; then
+    echo "ERROR generate_all.py not found at:"
+    echo "  $GENERATE_ALL"
+    exit 1
+fi
 
 cd "$PLOTS_SCRIPTS_DIR"
 
 echo ""
-echo "📂 Diretório: $PLOTS_SCRIPTS_DIR"
+echo "Scripts directory: $PLOTS_SCRIPTS_DIR"
 echo ""
 
-# Verificar se poetry está disponível
-if command -v poetry &> /dev/null; then
-    echo "✅ Poetry encontrado, usando poetry run..."
+# Check whether Poetry is available.
+if command -v poetry >/dev/null 2>&1; then
+    echo "Poetry found. Running with poetry run..."
     poetry run python generate_all.py
 else
-    echo "⚠️  Poetry não encontrado, tentando python direto..."
+    echo "Poetry not found. Running with system python..."
     python generate_all.py
 fi
 
 echo ""
-echo "╔════════════════════════════════════════════════════════════╗"
-echo "║  ✅ Gráficos gerados com sucesso!                         ║"
-echo "╚════════════════════════════════════════════════════════════╝"
+echo "============================================================"
+echo "Benchmark plots generated successfully"
+echo "============================================================"
 
-PLOTS_OUTPUT="$SCRIPT_DIR/plots_output"
 echo ""
-echo "📂 Arquivos salvos em: $PLOTS_OUTPUT"
+echo "Files saved to: $PLOTS_OUTPUT"
 echo ""
-echo "📊 Arquivos gerados:"
-ls -lh "$PLOTS_OUTPUT"/*.png 2>/dev/null || echo "   (nenhum PNG encontrado ainda)"
+
+echo "Generated PNG files:"
+ls -lh "$PLOTS_OUTPUT"/*.png 2>/dev/null || echo "  No PNG files found yet."
 echo ""
 
 if [ -f "$PLOTS_OUTPUT/index.html" ]; then
-    echo "📄 Relatório HTML:"
-    echo "   $PLOTS_OUTPUT/index.html"
+    echo "HTML report:"
+    echo "  $PLOTS_OUTPUT/index.html"
     echo ""
-    echo "💡 Para abrir no navegador:"
-    echo "   open $PLOTS_OUTPUT/index.html"
+    echo "To open it in a browser:"
+    echo "  xdg-open $PLOTS_OUTPUT/index.html"
 fi
 
 echo ""
-echo "Done! ✨"
+echo "Done."
