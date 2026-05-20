@@ -1,11 +1,11 @@
-# AR Diagnostic MVP - Illumination Diagnosis Backend
+# ARSight Backend - MVP Version
 
 ![Python](https://img.shields.io/badge/Python-3.6%2B-3776AB?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi)
 ![PyTorch](https://img.shields.io/badge/PyTorch-1.10%2B-EE4C2C?logo=pytorch)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**AR Diagnostic MVP** is a FastAPI-based backend for illumination quality diagnosis in augmented reality scenes, designed to run on constrained embedded hardware without relying on cloud infrastructure.
+**ARSight Backend MVP** is a FastAPI-based backend for illumination quality diagnosis in augmented reality scenes, designed to run on constrained embedded hardware without relying on cloud infrastructure.
 
 The system combines deterministic luminance-based image analysis, rule-based classification, and Small Language Model inference to produce structured, human-readable AR readiness assessments. It was deployed and validated across three heterogeneous hardware platforms: a desktop workstation, a Jetson AGX Orin, and a Jetson Nano.
 
