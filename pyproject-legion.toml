@@ -17,6 +17,7 @@ packages = [{ include = "app" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+transformers = ">=4.46.0, <4.48.0"
 
 # API
 fastapi = "^0.115.0"

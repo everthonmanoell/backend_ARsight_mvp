@@ -10,7 +10,7 @@ The project supports multiple deployment environments because each platform has 
 
 | Platform | Script | Recommended Models | Notes |
 |---|---|---|---|
-| Desktop Legion | `setup_legion.ps1` | Qwen, Phi, DialoGPT | Main development and benchmark environment |
+| Desktop NVIDIA GPU | `setup_desktop_gpu.sh` / `setup_legion.ps1` | Qwen, Phi, DialoGPT | Ubuntu / Windows; supports NVIDIA GPUs such as RTX 5060 |
 | Jetson AGX Orin | `setup_jetson_orin.sh` | Qwen, Phi, DialoGPT | Embedded high-performance target |
 | Jetson Nano — native (JetPack 4.6) | `setup_poetry_nano.sh` | DialoGPT-small | Python 3.6.9 / CUDA 10.2 legacy stack |
 | Jetson Nano — Ubuntu 20.04 | Manual system setup | Qwen | Community image; used for Qwen GPU experiments |
@@ -19,7 +19,7 @@ The project supports multiple deployment environments because each platform has 
 
 | Platform | Recommended | Alternatives |
 |---|---|---|
-| Desktop Legion | Qwen2.5-0.5B-Instruct | Phi-3 Mini, DialoGPT-small |
+| Desktop NVIDIA GPU | Qwen2.5-0.5B-Instruct | Phi-3 Mini, DialoGPT-small |
 | Jetson AGX Orin | Qwen2.5-0.5B-Instruct | Phi-3 Mini, DialoGPT-small |
 | Jetson Nano - native | DialoGPT-small | None recommended |
 | Jetson Nano - Ubuntu 20.04 | Qwen2.5-0.5B-Instruct | DialoGPT-small |
@@ -30,13 +30,21 @@ See [MODEL_SELECTION.md](MODEL_SELECTION.md) for a detailed comparison.
 
 ---
 
-## 1. Desktop Legion
+## 1. Desktop NVIDIA GPU
 
 Use for development, debugging, benchmarking, and running modern CUDA-compatible models.
 
-**Validated environment:** Windows, Python 3.10+, Poetry, NVIDIA driver, CUDA 12.1+
+**Requirements:** Ubuntu or Windows x86_64, Python 3.10+, Poetry, and an NVIDIA driver with `nvidia-smi` working. The desktop profile installs the official PyTorch CUDA 12.8 wheel, so a system-wide CUDA Toolkit is not required.
 
 ### Setup
+
+On Ubuntu:
+
+```bash
+bash setup_desktop_gpu.sh
+```
+
+The script detects any NVIDIA GPU through `nvidia-smi`, activates `pyproject-legion.toml`, rebuilds the lock file, installs dependencies, and verifies that PyTorch can use CUDA. The GPU model does not need to be named in the configuration.
 
 On Windows PowerShell:
 
@@ -54,7 +62,7 @@ The script copies `pyproject-legion.toml`, rebuilds the lock file, installs depe
 
 Manual setup:
 
-```powershell
+```bash
 cp pyproject-legion.toml pyproject.toml
 poetry lock
 poetry install

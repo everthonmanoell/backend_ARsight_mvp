@@ -1,0 +1,312 @@
+{
+  "metadata": {
+    "timestamp": "2026-10-14T20:52:41.220275",
+    "batch_id": "batch_20261014_205239_0bfc64",
+    "environment": "desktop-rtx",
+    "model": "qwen",
+    "device": "cuda",
+    "quantization": "4-bit",
+    "batch_size": 10
+  },
+  "performance": {
+    "pdi_total_ms": 32.5,
+    "pdi_per_image_ms": 3.2,
+    "slm_total_s": 0.028,
+    "slm_per_diagnosis_s": 0.003,
+    "total_s": 0.061,
+    "target_met": true
+  },
+  "statistics": {
+    "total": 10,
+    "correct": 10,
+    "accuracy": 100.0
+  },
+  "summary": {
+    "overall_risk": "high",
+    "dominant_label": "underexposed",
+    "problem_count": 5,
+    "normal_count": 5,
+    "explanation": "Lighting analysis shows 5/10 frames with insufficient lighting, which could impact AR quality.",
+    "recommendations": [
+      {
+        "condition": "adequate_acceptable",
+        "frames": [
+          0,
+          5,
+          6,
+          7,
+          8
+        ],
+        "count": 5,
+        "actions": [
+          "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+          "Ensure consistent lighting throughout the AR session to preserve quality"
+        ]
+      },
+      {
+        "condition": "underexposed",
+        "frames": [
+          1,
+          2,
+          3,
+          4,
+          9
+        ],
+        "count": 5,
+        "actions": [
+          "Increase ambient lighting or use supplemental light sources",
+          "Position light sources to evenly illuminate the scene"
+        ]
+      }
+    ],
+    "metrics_avg": {
+      "mean_brightness": 0.2588,
+      "mean_luma": 65.99,
+      "uniformity": 0.6936,
+      "pct_clipped_bright": 0.0011,
+      "pct_clipped_dark": 0.0012
+    }
+  },
+  "frames": [
+    {
+      "status": "pass",
+      "risk_level": "low",
+      "explanation": "Strong lighting conditions provide reliable AR tracking.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "frame_index": 0,
+      "filename": "frame_00.jpg",
+      "status_code": 200,
+      "metrics": {
+        "illumination_score": 0.6032,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.3434,
+        "mean_luma": 87.57,
+        "std_luma": 40.17,
+        "uniformity": 0.6855,
+        "pct_clipped_dark": 0.0001,
+        "pct_clipped_bright": 0.0032
+      }
+    },
+    {
+      "status": "fail",
+      "risk_level": "high",
+      "explanation": "Low light severely limits feature visibility.",
+      "triggered_rules": [
+        "Underexposed scene (too dark)"
+      ],
+      "recommendations": [
+        "Increase ambient lighting or use supplemental light sources",
+        "Position light sources to evenly illuminate the scene"
+      ],
+      "frame_index": 1,
+      "filename": "frame_01.jpg",
+      "status_code": 200,
+      "metrics": {
+        "illumination_score": 0.3466,
+        "illumination_label": "underexposed",
+        "mean_brightness": 0.1884,
+        "mean_luma": 48.04,
+        "std_luma": 14.11,
+        "uniformity": 0.7729,
+        "pct_clipped_dark": 0.0,
+        "pct_clipped_bright": 0.0
+      }
+    },
+    {
+      "status": "fail",
+      "risk_level": "high",
+      "explanation": "Low light severely limits feature visibility.",
+      "triggered_rules": [
+        "Underexposed scene (too dark)"
+      ],
+      "recommendations": [
+        "Increase ambient lighting or use supplemental light sources",
+        "Position light sources to evenly illuminate the scene"
+      ],
+      "frame_index": 2,
+      "filename": "frame_02.jpg",
+      "status_code": 200,
+      "metrics": {
+        "illumination_score": 0.3359,
+        "illumination_label": "underexposed",
+        "mean_brightness": 0.1789,
+        "mean_luma": 45.62,
+        "std_luma": 14.97,
+        "uniformity": 0.7529,
+        "pct_clipped_dark": 0.0,
+        "pct_clipped_bright": 0.0
+      }
+    },
+    {
+      "status": "fail",
+      "risk_level": "high",
+      "explanation": "Dark conditions prevent reliable feature detection.",
+      "triggered_rules": [
+        "Underexposed scene (too dark)"
+      ],
+      "recommendations": [
+        "Increase ambient lighting or use supplemental light sources",
+        "Position light sources to evenly illuminate the scene"
+      ],
+      "frame_index": 3,
+      "filename": "frame_03.jpg",
+      "status_code": 200,
+      "metrics": {
+        "illumination_score": 0.3439,
+        "illumination_label": "underexposed",
+        "mean_brightness": 0.1838,
+        "mean_luma": 46.86,
+        "std_luma": 15.83,
+        "uniformity": 0.7475,
+        "pct_clipped_dark": 0.0,
+        "pct_clipped_bright": 0.0
+      }
+    },
+    {
+      "status": "fail",
+      "risk_level": "high",
+      "explanation": "Insufficient brightness degrades AR tracking.",
+      "triggered_rules": [
+        "Underexposed scene (too dark)"
+      ],
+      "recommendations": [
+        "Increase ambient lighting or use supplemental light sources",
+        "Position light sources to evenly illuminate the scene"
+      ],
+      "frame_index": 4,
+      "filename": "frame_04.jpg",
+      "status_code": 200,
+      "metrics": {
+        "illumination_score": 0.2543,
+        "illumination_label": "underexposed",
+        "mean_brightness": 0.1236,
+        "mean_luma": 31.52,
+        "std_luma": 9.48,
+        "uniformity": 0.7688,
+        "pct_clipped_dark": 0.0,
+        "pct_clipped_bright": 0.0
+      }
+    },
+    {
+      "status": "pass",
+      "risk_level": "low",
+      "explanation": "Optimal lighting enables stable AR tracking.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "frame_index": 5,
+      "filename": "frame_05.jpg",
+      "status_code": 200,
+      "metrics": {
+        "illumination_score": 0.6611,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.3943,
+        "mean_luma": 100.55,
+        "std_luma": 37.42,
+        "uniformity": 0.7288,
+        "pct_clipped_dark": 0.0,
+        "pct_clipped_bright": 0.0002
+      }
+    },
+    {
+      "status": "pass",
+      "risk_level": "low",
+      "explanation": "Strong lighting conditions provide reliable AR tracking.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "frame_index": 6,
+      "filename": "frame_06.jpg",
+      "status_code": 200,
+      "metrics": {
+        "illumination_score": 0.5773,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.3058,
+        "mean_luma": 77.98,
+        "std_luma": 47.95,
+        "uniformity": 0.6192,
+        "pct_clipped_dark": 0.0,
+        "pct_clipped_bright": 0.0
+      }
+    },
+    {
+      "status": "pass",
+      "risk_level": "low",
+      "explanation": "Adequate illumination ensures consistent AR performance.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "frame_index": 7,
+      "filename": "frame_07.jpg",
+      "status_code": 200,
+      "metrics": {
+        "illumination_score": 0.6086,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.3554,
+        "mean_luma": 90.61,
+        "std_luma": 35.91,
+        "uniformity": 0.7162,
+        "pct_clipped_dark": 0.0,
+        "pct_clipped_bright": 0.0
+      }
+    },
+    {
+      "status": "pass",
+      "risk_level": "low",
+      "explanation": "Adequate illumination ensures consistent AR performance.",
+      "triggered_rules": [],
+      "recommendations": [
+        "Current lighting conditions are ideal for AR. Maintain these settings for optimal performance",
+        "Ensure consistent lighting throughout the AR session to preserve quality"
+      ],
+      "frame_index": 8,
+      "filename": "frame_08.jpg",
+      "status_code": 200,
+      "metrics": {
+        "illumination_score": 0.5747,
+        "illumination_label": "acceptable",
+        "mean_brightness": 0.3045,
+        "mean_luma": 77.66,
+        "std_luma": 48.75,
+        "uniformity": 0.6143,
+        "pct_clipped_dark": 0.0006,
+        "pct_clipped_bright": 0.0072
+      }
+    },
+    {
+      "status": "fail",
+      "risk_level": "high",
+      "explanation": "Low light severely limits feature visibility.",
+      "triggered_rules": [
+        "Underexposed scene (too dark)"
+      ],
+      "recommendations": [
+        "Increase ambient lighting or use supplemental light sources",
+        "Position light sources to evenly illuminate the scene"
+      ],
+      "frame_index": 9,
+      "filename": "frame_09.jpg",
+      "status_code": 200,
+      "metrics": {
+        "illumination_score": 0.4489,
+        "illumination_label": "underexposed",
+        "mean_brightness": 0.2099,
+        "mean_luma": 53.53,
+        "std_luma": 47.54,
+        "uniformity": 0.5296,
+        "pct_clipped_dark": 0.0111,
+        "pct_clipped_bright": 0.0
+      }
+    }
+  ]
+}

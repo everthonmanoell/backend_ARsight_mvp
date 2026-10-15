@@ -114,7 +114,16 @@ For setup instructions per platform, see [docs/PLATFORM_SETUP.md](docs/PLATFORM_
 
 ## Quick Start
 
-### Desktop Legion (Windows, CUDA 12.1+)
+### Desktop NVIDIA GPU (Ubuntu, Windows, CUDA 12.8 wheel)
+
+Ubuntu:
+
+```bash
+bash setup_desktop_gpu.sh
+poetry run ar-api
+```
+
+Windows PowerShell:
 
 ```powershell
 .\setup_legion.ps1
