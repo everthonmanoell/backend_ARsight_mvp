@@ -595,6 +595,14 @@ async def diagnose_batch_start(batch_id: str):
             logger.error(f"Error during diagnosis for batch {batch_id}: {e}")
             _save_batch_status(batch_id, 'failed', {'error': str(e)})
             raise HTTPException(status_code=500, detail=f"Diagnosis failed: {str(e)}")
+        # Limpeza das imagens temporárias do batch
+        finally:
+            for f in os.listdir(batch_dir):
+                if f.startswith('frame_') and f.endswith('.jpg'):
+                    try:
+                        os.remove(os.path.join(batch_dir, f))
+                    except OSError as rm_err:
+                        logger.warning(f"Could not delete {f}: {rm_err}")
         
     except HTTPException:
         raise
